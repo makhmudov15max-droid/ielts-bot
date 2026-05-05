@@ -1,41 +1,55 @@
-import asyncio
-from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import Command
-# ... qolganlari o'zgarishsiz qoladi
+import logging
+import os
 
-bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher()
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.utils import executor
 
-def main_menu():
-    builder = ReplyKeyboardBuilder()
-    builder.button(text="Daily Report")
-    builder.button(text="Weekly Report")
-    builder.button(text="Monthly Report")
-    builder.adjust(1)
-    return builder.as_markup(resize_keyboard=True)
+from sheets import get_report  # sheets.py dan funksiya
 
-@dp.message(Command("start"))
-async def start(message: types.Message):
-    await message.answer("IELTS Monitoring botiga xush kelibsiz!", reply_markup=main_menu())
+logging.basicConfig(level=logging.INFO)
 
-@dp.message(F.text == "Daily Report")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+
+bot = Bot(token=8679587093:AAGjXpGVMiAexuNKPzRpQjASQRb8K2DYvyg)
+dp = Dispatcher(bot)
+
+# 🔘 Tugmalar
+keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+keyboard.add(
+    KeyboardButton("Daily report"),
+    KeyboardButton("Weekly report"),
+    KeyboardButton("Monthly report")
+)
+
+# 🚀 START
+@dp.message_handler(commands=['start'])
+async def start_handler(message: types.Message):
+    await message.answer("Bot ishlayapti ✅", reply_markup=keyboard)
+
+# 📊 Daily
+@dp.message_handler(lambda message: message.text == "Daily report")
 async def daily(message: types.Message):
-    res = get_report(30)
-    await message.answer(res)
+    report = get_report(30)
+    await message.answer(report)
 
-@dp.message(F.text == "Weekly Report")
+# 📊 Weekly
+@dp.message_handler(lambda message: message.text == "Weekly report")
 async def weekly(message: types.Message):
-    res = get_report(60)
-    await message.answer(res)
+    report = get_report(60)
+    await message.answer(report)
 
-@dp.message(F.text == "Monthly Report")
+# 📊 Monthly
+@dp.message_handler(lambda message: message.text == "Monthly report")
 async def monthly(message: types.Message):
-    res = get_report(90)
-    await message.answer(res)
+    report = get_report(90)
+    await message.answer(report)
 
-async def main():
-    print("Bot ishga tushdi...")
-    await dp.start_polling(bot)
+# ❗ boshqa message
+@dp.message_handler()
+async def other(message: types.Message):
+    await message.answer("Tugmalardan birini tanlang")
 
+# 🚀 RUN
 if __name__ == "__main__":
-    asyncio.run(main())
+    executor.start_polling(dp, skip_updates=True)
