@@ -16,8 +16,7 @@ def load_data():
     if CACHE["data"] and now - CACHE["time"] < CACHE_DURATION:
         return CACHE["data"]
 
-    data = sheet.get_all_values()  # 🔥 MUHIM: records emas
-
+    data = sheet.get_all_values()
     CACHE["data"] = data
     CACHE["time"] = now
 
@@ -28,7 +27,14 @@ def parse_date(value):
     if not value:
         return None
 
-    formats = ["%d.%m.%Y", "%m/%d/%Y", "%Y-%m-%d"]
+    value = str(value).strip()
+
+    formats = [
+        "%d.%m.%Y",
+        "%m/%d/%Y",
+        "%Y-%m-%d",
+        "%d-%b-%Y"
+    ]
 
     for fmt in formats:
         try:
@@ -41,12 +47,10 @@ def parse_date(value):
 
 def get_report(days_limit):
     data = load_data()
+    today = datetime.today()
 
-    today = datetime.today().date()
     result = []
-
-    # header skip
-    rows = data[2:]  # 👈 1 emas, 2! chunki sening sheetda 2-qatordan boshlanadi
+    rows = data[2:]  # header skip
 
     for row in rows:
         try:
@@ -54,28 +58,35 @@ def get_report(days_limit):
             name = row[3]
             level = row[4]
             end_raw = row[7]
-            status = row[9]
             comment = row[10]
 
             if not name or not end_raw:
+                continue
+
+            # 🎯 FAAT IELTS
+            if "ielts" not in str(level).lower():
                 continue
 
             end_date = parse_date(end_raw)
             if not end_date:
                 continue
 
-            days_left = (end_date.date() - today).days
+            days_left = (end_date - today).days
 
             if 0 < days_left <= days_limit:
 
-                emoji = "🔴" if days_left <= 14 else "🟡"
+                # 🔥 STATUS (Apps Script dagi kabi)
+                if days_left <= 14:
+                    emoji = "🔴"
+                else:
+                    emoji = "🟡"
 
                 text = f"{emoji} {name} ({level})\n"
                 text += f"👨‍🏫 {teacher}\n"
                 text += f"⏳ {days_left} kun qoldi\n"
 
-                if status:
-                    text += f"📌 {status}\n"
+                # status sifatida days_left chiqaramiz (sen oldin shunaqa qilgansan)
+                text += f"📌 {days_left}\n"
 
                 if comment:
                     text += f"💬 {comment}\n"
@@ -86,6 +97,6 @@ def get_report(days_limit):
             continue
 
     if not result:
-        return f"📊 {days_limit} kun ichida tugaydigan guruh topilmadi.\nBot vaqti: {today}"
+        return f"📊 {days_limit} kun ichida tugaydigan guruh topilmadi.\nBot vaqti: {today.strftime('%d.%m.%Y')}"
 
-    return "📊 GURUH RADAR 📡\n\n" + "\n".join(result)
+    return "📊 DAILY REPORT\n\n" + "\n".join(result)
