@@ -2,13 +2,39 @@ import gspread
 from datetime import datetime
 from config import SHEET_ID, GOOGLE_CREDENTIALS
 
+# 🔗 Google Sheets ulanish
 gc = gspread.service_account_from_dict(GOOGLE_CREDENTIALS)
 sheet = gc.open_by_key(SHEET_ID).sheet1
 
-def get_report(days_limit):
-    data = sheet.get_all_values()[1:]
 
+def parse_date(value):
+    """Har xil formatdagi sanani o‘qiydi"""
+    if not value:
+        return None
+
+    if isinstance(value, datetime):
+        return value
+
+    if isinstance(value, str):
+        formats = [
+            "%d.%m.%Y",
+            "%m/%d/%Y",
+            "%Y-%m-%d",
+            "%d-%m-%Y"
+        ]
+        for fmt in formats:
+            try:
+                return datetime.strptime(value, fmt)
+            except:
+                continue
+
+    return None
+
+
+def get_report(days_limit):
+    data = sheet.get_all_values()[1:]  # header skip
     today = datetime.today()
+
     result = []
 
     for row in data:
@@ -16,22 +42,27 @@ def get_report(days_limit):
             teacher = row[2]
             name = row[3]
             level = row[4]
-            end_date = row[7]
+            end_date_raw = row[7]
             status = row[8]
             comment = row[9]
             score = float(row[10]) if row[10] else 0
 
-            if not name or not end_date:
+            if not name or not end_date_raw:
                 continue
 
+            # 🎯 faqat IELTS guruhlar
             if "ielts" not in level.lower():
                 continue
 
-            end = datetime.strptime(end_date, "%d.%m.%Y")
-            days_left = (end - today).days
+            end_date = parse_date(end_date_raw)
+            if not end_date:
+                continue
+
+            days_left = (end_date - today).days
 
             if 0 < days_left <= days_limit:
 
+                # 🔥 smart status
                 if "general" in level.lower():
                     status = "Next level transition"
 
@@ -52,7 +83,7 @@ def get_report(days_limit):
 
                 result.append(text)
 
-        except:
+        except Exception as e:
             continue
 
     if not result:
