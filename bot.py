@@ -1,10 +1,7 @@
 import asyncio
-from aiogram import Bot, Dispatcher, types
-from aiogram import magic_filter as F
+from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
-from aiogram.utils.keyboard import ReplyKeyboardBuilder
-from config import BOT_TOKEN
-from sheets import get_report
+# ... qolganlari o'zgarishsiz qoladi
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
