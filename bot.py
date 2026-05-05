@@ -4,6 +4,7 @@ import os
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils import executor
+from sheets import get_report
 
 logging.basicConfig(level=logging.INFO)
 
@@ -29,17 +30,20 @@ async def start_handler(message: types.Message):
 # 📊 Daily
 @dp.message_handler(lambda message: message.text == "Daily report")
 async def daily(message: types.Message):
-    await message.answer("📊 Daily report (test)")
+    report = get_report(30)
+await message.answer(report)
 
 # 📊 Weekly
 @dp.message_handler(lambda message: message.text == "Weekly report")
 async def weekly(message: types.Message):
-    await message.answer("📊 Weekly report (test)")
+    report = get_report(60)
+await message.answer(report)
 
 # 📊 Monthly
 @dp.message_handler(lambda message: message.text == "Monthly report")
 async def monthly(message: types.Message):
-    await message.answer("📊 Monthly report (test)")
+    report = get_report(90)
+await message.answer(report)
 
 # ❗ boshqa message
 @dp.message_handler()
