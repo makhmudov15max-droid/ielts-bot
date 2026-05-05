@@ -3,15 +3,15 @@ from datetime import datetime
 from config import SHEET_ID, GOOGLE_CREDENTIALS
 import time
 
+# 🔗 Google Sheets ulanish
 gc = gspread.service_account_from_dict(GOOGLE_CREDENTIALS)
 sheet = gc.open_by_key(SHEET_ID).sheet1
 
-# 🔥 CACHE
+# ⚡ CACHE (tezlik uchun)
 CACHE = {
     "data": None,
     "time": 0
 }
-
 CACHE_DURATION = 60  # sekund
 
 
@@ -37,7 +37,13 @@ def parse_date(value):
         return value
 
     if isinstance(value, str):
-        for fmt in ("%d.%m.%Y", "%m/%d/%Y", "%Y-%m-%d"):
+        formats = [
+            "%d.%m.%Y",
+            "%m/%d/%Y",
+            "%Y-%m-%d",
+            "%d-%b-%Y"
+        ]
+        for fmt in formats:
             try:
                 return datetime.strptime(value, fmt)
             except:
@@ -47,17 +53,20 @@ def parse_date(value):
 
 
 def get_report(days_limit):
-    rows = load_data()  # 🔥 CACHE ishlayapti
+    rows = load_data()
 
     today = datetime.today().date()
     result = []
 
     for row in rows:
         try:
-            name = row.get("Group Name")
+            # 🔴 SHEET COLUMN NOMLARI
+            name = row.get("Nom")
             level = row.get("Level")
             teacher = row.get("Teacher")
             end_raw = row.get("End Date")
+            status = row.get("Status")
+            comment = row.get("Comment")
 
             if not name or not end_raw:
                 continue
@@ -76,6 +85,12 @@ def get_report(days_limit):
                 text += f"👨‍🏫 {teacher}\n"
                 text += f"⏳ {days_left} kun qoldi\n"
 
+                if status:
+                    text += f"📌 {status}\n"
+
+                if comment:
+                    text += f"💬 {comment}\n"
+
                 result.append(text)
 
         except:
@@ -84,4 +99,4 @@ def get_report(days_limit):
     if not result:
         return f"📊 {days_limit} kun ichida tugaydigan guruh topilmadi.\nBot vaqti: {today}"
 
-    return "📊 REPORT\n\n" + "\n".join(result)
+    return "📊 GURUH RADAR 📡\n\n" + "\n".join(result)
