@@ -16,7 +16,9 @@ def load_data():
     if CACHE["data"] and now - CACHE["time"] < CACHE_DURATION:
         return CACHE["data"]
 
-    data = sheet.get_all_values()
+    # 🔥 MUHIM: display value olish
+    data = sheet.get_all_values(value_render_option="FORMATTED_VALUE")
+
     CACHE["data"] = data
     CACHE["time"] = now
 
@@ -29,20 +31,13 @@ def parse_date(value):
 
     value = str(value).strip()
 
-    formats = [
-        "%d.%m.%Y",
-        "%m/%d/%Y",
-        "%Y-%m-%d",
-        "%d-%b-%Y"
-    ]
-
-    for fmt in formats:
+    try:
+        return datetime.strptime(value, "%d.%m.%Y")
+    except:
         try:
-            return datetime.strptime(value, fmt)
+            return datetime.strptime(value, "%m/%d/%Y")
         except:
-            continue
-
-    return None
+            return None
 
 
 def get_report(days_limit):
@@ -63,7 +58,6 @@ def get_report(days_limit):
             if not name or not end_raw:
                 continue
 
-            # 🎯 FAAT IELTS
             if "ielts" not in str(level).lower():
                 continue
 
@@ -75,17 +69,11 @@ def get_report(days_limit):
 
             if 0 < days_left <= days_limit:
 
-                # 🔥 STATUS (Apps Script dagi kabi)
-                if days_left <= 14:
-                    emoji = "🔴"
-                else:
-                    emoji = "🟡"
+                emoji = "🔴" if days_left <= 14 else "🟡"
 
                 text = f"{emoji} {name} ({level})\n"
                 text += f"👨‍🏫 {teacher}\n"
                 text += f"⏳ {days_left} kun qoldi\n"
-
-                # status sifatida days_left chiqaramiz (sen oldin shunaqa qilgansan)
                 text += f"📌 {days_left}\n"
 
                 if comment:
