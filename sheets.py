@@ -2,90 +2,73 @@ import gspread
 from datetime import datetime
 from config import SHEET_ID, GOOGLE_CREDENTIALS
 
-# 🔗 Google Sheets ulanish
 gc = gspread.service_account_from_dict(GOOGLE_CREDENTIALS)
-sheet = gc.open_by_key(SHEET_ID).sheet1
-
+# Faylni ochamiz va birinchi varaqni olamiz
+sh = gc.open_by_key(SHEET_ID)
+sheet = sh.get_worksheet(0) 
 
 def parse_date(value):
-    """Har xil formatdagi sanani o‘qiydi"""
-    if not value:
-        return None
-
-    if isinstance(value, datetime):
-        return value
-
-    if isinstance(value, str):
-        formats = [
-            "%d.%m.%Y",
-            "%m/%d/%Y",
-            "%Y-%m-%d",
-            "%d-%m-%Y"
-        ]
-        for fmt in formats:
-            try:
-                return datetime.strptime(value, fmt)
-            except:
-                continue
-
+    if not value: return None
+    if isinstance(value, datetime): return value
+    formats = ["%d.%m.%Y", "%m/%d/%Y", "%Y-%m-%d", "%d-%m-%Y"]
+    for fmt in formats:
+        try:
+            return datetime.strptime(str(value).strip(), fmt)
+        except:
+            continue
     return None
 
-
 def get_report(days_limit):
-    data = sheet.get_all_values()[1:]  # header skip
-    today = datetime.today()
+    try:
+        data = sheet.get_all_values()[1:]
+        today = datetime.today()
+        result = []
 
-    result = []
-
-    for row in data:
-        try:
+        for row in data:
+            if len(row) < 11: continue
+            
             teacher = row[2]
             name = row[3]
             level = row[4]
             end_date_raw = row[7]
             status = row[8]
             comment = row[9]
-            score = float(row[10]) if row[10] else 0
+            score_raw = str(row[10]).replace(',', '.') if row[10] else "0"
+            score = float(score_raw)
 
-            if not name or not end_date_raw:
-                continue
+            if not name or not end_date_raw: continue
 
-            # 🎯 faqat IELTS guruhlar
+            # 🎯 IELTS filtrini to'g'irladik
+            if "IELTS" not in level.upper():
                 continue
 
             end_date = parse_date(end_date_raw)
-            if not end_date:
-                continue
+            if not end_date: continue
 
             days_left = (end_date - today).days
 
             if 0 < days_left <= days_limit:
-
-                # 🔥 smart status
+                # 🔥 Smart status
+                current_status = status
                 if "general" in level.lower():
-                    status = "Next level transition"
-
+                    current_status = "Next level transition"
                 if "novice" in level.lower() and score >= 8:
-                    status = "Need new teacher"
+                    current_status = "Need new teacher"
 
                 emoji = "🔴" if days_left <= 14 else "🟡"
+                
+                report_text = (
+                    f"{emoji} {name} ({level})\n"
+                    f"👨‍🏫 {teacher}\n"
+                    f"⏳ {days_left} kun qoldi\n"
+                    f"📌 {current_status if current_status else 'Status yoq'}\n"
+                    f"💬 {comment if comment else 'Izoh yoq'}\n"
+                )
+                result.append(report_text)
 
-                text = f"{emoji} {name} ({level})\n"
-                text += f"👨‍🏫 {teacher}\n"
-                text += f"⏳ {days_left} kun qoldi\n"
+        if not result:
+            return "📊 Hozircha muammo yo‘q"
 
-                if status:
-                    text += f"📌 {status}\n"
-
-                if comment:
-                    text += f"💬 {comment}\n"
-
-                result.append(text)
-
-        except Exception as e:
-            continue
-
-    if not result:
-        return "📊 Hozircha muammo yo‘q"
-
-    return "📊 REPORT\n\n" + "\n".join(result)
+        return f"📊 REPORT ({days_limit} kunlik)\n\n" + "\n".join(result)
+    except Exception as e:
+        return f"⚠️ Xatolik yuz berdi: {str(e)}"
