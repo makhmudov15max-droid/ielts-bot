@@ -51,7 +51,6 @@ def get_report(days_limit):
                 continue
 
             # 🎯 faqat IELTS guruhlar
-            if "ielts" not in level.lower():
                 continue
 
             end_date = parse_date(end_date_raw)
