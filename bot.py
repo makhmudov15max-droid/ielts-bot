@@ -1,55 +1,71 @@
 import logging
-import os
-
 from aiogram import Bot, Dispatcher, types
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils import executor
-
-from sheets import get_report
+from config import BOT_TOKEN
+from sheets import get_graduating_report, clear_cache
 
 logging.basicConfig(level=logging.INFO)
-
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-
-bot = Bot(token=BOT_TOKEN)
+bot = Bot(token=BOT_TOKEN, parse_mode="Markdown")
 dp = Dispatcher(bot)
 
-# 🔘 Tugmalar
-keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-keyboard.add(
-    KeyboardButton("Daily report"),
-    KeyboardButton("Weekly report"),
-    KeyboardButton("Monthly report")
-)
+ALLOWED_IDS = []  # Bo'sh qoldirsangiz hamma foydalana oladi
+                   # [123456789, 987654321] — faqat shu IDlar uchun
 
-# 🚀 START
-@dp.message_handler(commands=['start'])
-async def start_handler(message: types.Message):
-    await message.answer("Bot ishlayapti ✅", reply_markup=keyboard)
 
-# 📊 Daily
-@dp.message_handler(lambda message: message.text == "Daily report")
-async def daily_handler(message: types.Message):
-    report = get_report(30)
-    await message.answer(report)
+def is_allowed(user_id: int) -> bool:
+    if not ALLOWED_IDS:
+        return True
+    return user_id in ALLOWED_IDS
 
-# 📊 Weekly
-@dp.message_handler(lambda message: message.text == "Weekly report")
-async def weekly_handler(message: types.Message):
-    report = get_report(60)
-    await message.answer(report)
 
-# 📊 Monthly
-@dp.message_handler(lambda message: message.text == "Monthly report")
-async def monthly_handler(message: types.Message):
-    report = get_report(90)
-    await message.answer(report)
+@dp.message_handler(commands=["start", "help"])
+async def cmd_start(message: types.Message):
+    if not is_allowed(message.from_user.id):
+        return
+    await message.answer(
+        "👋 Salom! Men IELTS guruhlar botiman.\n\n"
+        "📋 *Buyruqlar:*\n"
+        "/report — 14 kun ichida tugaydigan IELTS guruhlar\n"
+        "/report7 — 7 kun ichida tugaydigan guruhlar\n"
+        "/report30 — 30 kun ichida tugaydigan guruhlar\n"
+        "/refresh — Keshni tozalash (yangi ma'lumot olish)"
+    )
 
-# ❗ boshqa message
-@dp.message_handler()
-async def other_handler(message: types.Message):
-    await message.answer("Tugmalardan birini tanlang")
 
-# 🚀 RUN
+@dp.message_handler(commands=["report"])
+async def cmd_report(message: types.Message):
+    if not is_allowed(message.from_user.id):
+        return
+    await message.answer("⏳ Ma'lumot olinmoqda...")
+    text = get_graduating_report(days_limit=14)
+    await message.answer(text)
+
+
+@dp.message_handler(commands=["report7"])
+async def cmd_report7(message: types.Message):
+    if not is_allowed(message.from_user.id):
+        return
+    await message.answer("⏳ Ma'lumot olinmoqda...")
+    text = get_graduating_report(days_limit=7)
+    await message.answer(text)
+
+
+@dp.message_handler(commands=["report30"])
+async def cmd_report30(message: types.Message):
+    if not is_allowed(message.from_user.id):
+        return
+    await message.answer("⏳ Ma'lumot olinmoqda...")
+    text = get_graduating_report(days_limit=30)
+    await message.answer(text)
+
+
+@dp.message_handler(commands=["refresh"])
+async def cmd_refresh(message: types.Message):
+    if not is_allowed(message.from_user.id):
+        return
+    clear_cache()
+    await message.answer("✅ Kesh tozalandi. Keyingi /report yangi ma'lumot oladi.")
+
+
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
