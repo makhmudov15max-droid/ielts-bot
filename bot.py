@@ -5,13 +5,12 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils import executor
 
-from sheets import get_report  # sheets.py dan funksiya
-
 logging.basicConfig(level=logging.INFO)
 
+# 🔑 Token Railway variables dan olinadi
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-bot = Bot(token=8679587093:AAGjXpGVMiAexuNKPzRpQjASQRb8K2DYvyg)
+bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(bot)
 
 # 🔘 Tugmalar
@@ -30,20 +29,17 @@ async def start_handler(message: types.Message):
 # 📊 Daily
 @dp.message_handler(lambda message: message.text == "Daily report")
 async def daily(message: types.Message):
-    report = get_report(30)
-    await message.answer(report)
+    await message.answer("📊 Daily report (test)")
 
 # 📊 Weekly
 @dp.message_handler(lambda message: message.text == "Weekly report")
 async def weekly(message: types.Message):
-    report = get_report(60)
-    await message.answer(report)
+    await message.answer("📊 Weekly report (test)")
 
 # 📊 Monthly
 @dp.message_handler(lambda message: message.text == "Monthly report")
 async def monthly(message: types.Message):
-    report = get_report(90)
-    await message.answer(report)
+    await message.answer("📊 Monthly report (test)")
 
 # ❗ boshqa message
 @dp.message_handler()
