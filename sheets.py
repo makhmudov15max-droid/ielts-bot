@@ -24,35 +24,30 @@ def get_report(days_limit):
         all_data = sheet.get_all_values()
         if not all_data: return "⚠️ Jadval bo'sh!"
 
-        # 1. Sarlavhalarni aniqlab olamiz (Ustunlar o'zgarsa ham adashmaslik uchun)
-        headers = all_data[1] # Odatda 2-qatorda sarlavhalar bo'ladi
-        try:
-            t_idx = headers.index("Teacher")
-            n_idx = headers.index("Nom")
-            l_idx = headers.index("Level")
-            e_idx = headers.index("End Date")
-            s_idx = headers.index("Status")
-        except ValueError:
-            # Agar sarlavhalar topilmasa, siz bergan qat'iy indekslarni ishlatamiz
-            t_idx, n_idx, l_idx, e_idx, s_idx = 2, 3, 4, 7, 9
-
         today = datetime.today()
         result = []
+        
+        # Ustunlar indeksi (Siz bergan aniq tartib bo'yicha)
+        # C=2 (Teacher), D=3 (Nom), E=4 (Level), H=7 (End Date), J=9 (Status)
+        t_idx, n_idx, l_idx, e_idx, s_idx = 2, 3, 4, 7, 9
 
-        # 2. Ma'lumotlarni tahlil qilish
-        for row in all_data[2:]: # Ma'lumotlar 3-qatordan boshlanadi deb hisoblaymiz
-            if len(row) <= max(t_idx, n_idx, l_idx, e_idx, s_idx): continue
+        count_checked = 0
+        for row in all_data:
+            # Ustunlar soni yetarli emas qatorlarni tashlab ketamiz
+            if len(row) < 8: continue
             
             group_id = row[n_idx].strip()
             level = row[l_idx].strip()
             end_date_raw = row[e_idx].strip()
-            
-            if not group_id or not end_date_raw: continue
 
-            # 3. FILTR: IELTS so'zi borligini tekshirish
-            # Ba'zida "IELTS" so'zi orasida ko'rinmas bo'shliqlar bo'lishi mumkin
-            clean_level = level.upper().replace(" ", "")
-            if "IELTS" not in clean_level:
+            # Agar bu sarlavha qatori bo'lsa yoki kerakli ma'lumot bo'lmasa o'tkazib yuboramiz
+            if group_id == "Nom" or not group_id or not end_date_raw:
+                continue
+
+            count_checked += 1
+
+            # FILTR: IELTS (Katta-kichik harfga qaramaymiz)
+            if "IELTS" not in level.upper():
                 continue
 
             end_date = parse_date(end_date_raw)
@@ -60,7 +55,7 @@ def get_report(days_limit):
 
             days_left = (end_date - today).days
 
-            # 4. Hisobotga qo'shish
+            # Muddatni tekshirish
             if -1 <= days_left <= days_limit:
                 emoji = "🔴" if days_left <= 14 else "🟡"
                 if days_left < 0: emoji = "❌"
@@ -69,12 +64,14 @@ def get_report(days_limit):
                     f"{emoji} <b>{group_id}</b> ({level})\n"
                     f"👨‍🏫 {row[t_idx].strip()}\n"
                     f"⏳ {days_left} kun qoldi\n"
-                    f"📌 {row[s_idx].strip()}"
+                    f"📌 {row[s_idx].strip() if len(row) > 9 else ''}"
                 )
                 result.append(res)
 
         if not result:
-            return f"📊 30 kunlikda hech narsa topilmadi.\nBot vaqti: {today.strftime('%d.%m.%Y')}\nTekshirilgan qatorlar: {len(all_data)-2}"
+            return (f"📊 Topilmadi.\n"
+                    f"Bot vaqti: {today.strftime('%d.%m.%Y')}\n"
+                    f"Tekshirilgan ma'lumotli qatorlar: {count_checked}")
 
         return f"📊 <b>MONITORING ({days_limit} kun)</b>\n\n" + "\n\n".join(result)
 
