@@ -1,7 +1,9 @@
-import os, json
+import os
+import json
 
-BOT_TOKEN = os.environ["BOT_TOKEN"]
-SHEET_ID  = os.environ["SHEET_ID"]
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+SHEET_ID = os.getenv("SHEET_ID")
 
-_raw = os.environ["GOOGLE_CREDENTIALS"]
-GOOGLE_CREDENTIALS = json.loads(_raw)
+GOOGLE_CREDENTIALS = json.loads(
+    os.getenv("GOOGLE_CREDENTIALS_JSON")
+)
