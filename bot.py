@@ -141,6 +141,11 @@ async def teacher_selected(callback: types.CallbackQuery):
 
     markup.row(
         InlineKeyboardButton(
+            "8.0",
+            callback_data="score_8.0"
+        ),
+        
+        InlineKeyboardButton(
             "8.5",
             callback_data="score_8.5"
         ),
