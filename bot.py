@@ -18,9 +18,13 @@ keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
+keyboard = ReplyKeyboardMarkup(
+    resize_keyboard=True
+)
+
 keyboard.row(
     KeyboardButton("Daily report"),
-    KeyboardButton("👨‍🏫 Ustozni tanlang")
+    KeyboardButton("Teachers")
 )
 
 # START
