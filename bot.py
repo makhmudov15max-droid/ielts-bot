@@ -9,6 +9,8 @@ from aiogram.utils import executor
 
 import logging
 import os
+import asyncio
+from datetime import datetime
 
 from sheets import (
     get_report,
@@ -18,6 +20,7 @@ from sheets import (
 logging.basicConfig(level=logging.INFO)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+GROUP_ID = os.getenv("GROUP_ID")
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(bot)
@@ -35,12 +38,49 @@ keyboard.row(
     KeyboardButton("Teachers")
 )
 
+# AUTO DAILY REPORT
+async def auto_daily_report():
+
+    while True:
+
+        now = datetime.now()
+
+        # Yakshanba emas va vaqt 09:00
+        if now.weekday() != 6 and now.hour == 9 and now.minute == 0:
+
+            try:
+
+                report = get_report()
+
+                await bot.send_message(
+                    chat_id=GROUP_ID,
+                    text=report
+                )
+
+                print("✅ DAILY REPORT YUBORILDI")
+
+                # Duplicate yubormaslik uchun
+                await asyncio.sleep(60)
+
+            except Exception as e:
+
+                print(f"❌ AUTO REPORT ERROR: {e}")
+
+        await asyncio.sleep(20)
+
+# STARTUP
+async def on_startup(dp):
+
+    asyncio.create_task(
+        auto_daily_report()
+    )
+
 # START
 @dp.message_handler(commands=["start"])
 async def start_handler(message: types.Message):
 
     await message.answer(
-        "✅ new version",
+        "✅ Bot ishlayapti",
         reply_markup=keyboard
     )
 
@@ -153,4 +193,9 @@ async def other_handler(message: types.Message):
 
 # RUN
 if __name__ == "__main__":
-    executor.start_polling(dp, skip_updates=True)
+
+    executor.start_polling(
+        dp,
+        skip_updates=True,
+        on_startup=on_startup
+    )
