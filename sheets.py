@@ -8,9 +8,17 @@ sheet = gc.open_by_key(SHEET_ID).worksheet("EduControl")
 
 def get_report():
     try:
-        value = sheet.acell("I15").value
+        row = sheet.row_values(15)
 
-        return f"📊 I15:\n{value}"
+        if not row:
+            return "❌ 15-qator bo'sh"
+
+        result = "📊 15-QATOR:\n\n"
+
+        for cell in row:
+            result += f"{cell}\n"
+
+        return result
 
     except Exception as e:
         return f"❌ Error:\n{e}"
