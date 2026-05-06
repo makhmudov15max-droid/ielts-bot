@@ -1,13 +1,36 @@
-import gspread
-from config import SHEET_ID, GOOGLE_CREDENTIALS
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.utils import executor
+import logging
+import os
 
-gc = gspread.service_account_from_dict(GOOGLE_CREDENTIALS)
-sheet = gc.open_by_key(SHEET_ID).sheet1
+from sheets import get_report
 
+logging.basicConfig(level=logging.INFO)
 
-def get_report():
-    try:
-        value = sheet.acell("I15").value
-        return f"📊 I15 qiymati:\n{value}"
-    except Exception as e:
-        return f"❌ Error:\n{e}"
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher(bot)
+
+# Keyboard
+keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+keyboard.add(KeyboardButton("Daily report"))
+
+# START
+@dp.message_handler(commands=["start"])
+async def start_handler(message: types.Message):
+    await message.answer(
+        "✅ Bot ishlayapti",
+        reply_markup=keyboard
+    )
+
+# DAILY REPORT
+@dp.message_handler(lambda message: message.text == "Daily report")
+async def daily_handler(message: types.Message):
+    report = get_report()
+    await message.answer(report)
+
+# RUN
+if __name__ == "__main__":
+    executor.start_polling(dp, skip_updates=True)
