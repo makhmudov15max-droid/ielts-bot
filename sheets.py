@@ -1,11 +1,13 @@
 import gspread
 from config import SHEET_ID, GOOGLE_CREDENTIALS
 
+# Google Sheets ulanish
 gc = gspread.service_account_from_dict(GOOGLE_CREDENTIALS)
 
+# EduControl sheet
 sheet = gc.open_by_key(SHEET_ID).worksheet("EduControl")
 
-
+# IELTS teacher score
 IELTS_TEACHERS = {
     "Adkhambek I": 9.0,
     "Sardorbek K": 9.0,
@@ -22,30 +24,40 @@ IELTS_TEACHERS = {
 
 def get_report():
     try:
+
+        # Barcha ma'lumotlarni olish
         data = sheet.get_all_values()
 
-        result = "📊 DAILY REPORT\n\n"
+        report = "📊 DAILY REPORT\n\n"
 
         found = False
 
+        # Headerlarni skip qilish
         for row in data[2:]:
 
             try:
-                teacher = row[2].strip()   # C
-                group_name = row[3].strip() # D
-                level = row[4].strip()      # E
-                days_left = row[7].strip()  # H
-                status = row[9].strip()     # J
-                comment = row[10].strip()   # K
 
+                # USTUNLAR
+                teacher = row[2].strip()      # C
+                group_name = row[3].strip()   # D
+                level = row[4].strip()        # E
+
+                days_left = row[7].strip()    # H
+
+                status = row[8].strip()       # I
+                comment = row[9].strip()      # J
+
+                # Days left tekshirish
                 if not days_left.isdigit():
                     continue
 
                 days_left = int(days_left)
 
+                # 14 kundan katta bo'lsa skip
                 if days_left > 14:
                     continue
 
+                # IELTS group filter
                 allowed_levels = [
                     "IELTS Standard",
                     "IELTS Expert",
@@ -54,36 +66,49 @@ def get_report():
 
                 novice_warning = False
 
+                # IELTS Novice logikasi
                 if level == "IELTS Novice":
 
                     teacher_score = IELTS_TEACHERS.get(teacher)
 
+                    # Faqat 8.0 teacher bo'lsa chiqariladi
                     if teacher_score == 8.0:
                         novice_warning = True
                     else:
                         continue
 
+                # Beginner va boshqa GE group skip
                 elif level not in allowed_levels:
                     continue
 
                 found = True
 
-                emoji = "🔴" if days_left <= 7 else "🟡"
+                # Emoji
+                if days_left <= 7:
+                    emoji = "🔴"
+                else:
+                    emoji = "🟡"
 
-                result += f"{emoji} {group_name} ({level})\n\n"
+                # REPORT
+                report += f"{emoji} {group_name} ({level})\n"
 
-                result += f"👨‍🏫 {teacher}\n"
+                report += f"👨‍🏫 {teacher}\n"
 
-                result += f"⏳ {days_left} kun qoldi\n\n"
+                report += f"⏳ {days_left} kun qoldi\n"
 
+                # Novice warning
                 if novice_warning:
-                    result += "⚠️ Boshqa ustoz topish kerak\n\n"
+                    report += "⚠️ Boshqa ustoz topish kerak\n"
 
+                # Status
                 if status:
-                    result += f"📌 {status}\n\n"
+                    report += f"📌 {status}\n"
 
+                # Comment
                 if comment:
-                    result += f"💬 {comment}\n\n"
+                    report += f"💬 {comment}\n"
+
+                report += "\n"
 
             except:
                 continue
@@ -91,7 +116,7 @@ def get_report():
         if not found:
             return "📊 Hozircha muammo yo'q"
 
-        return result
+        return report
 
     except Exception as e:
         return f"❌ Error:\n{e}"
