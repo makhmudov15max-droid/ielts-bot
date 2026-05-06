@@ -14,9 +14,13 @@ bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(bot)
 
 # Keyboard
-keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-keyboard.add(
-    KeyboardButton("Daily report")
+keyboard = ReplyKeyboardMarkup(
+    resize_keyboard=True
+)
+
+keyboard.row(
+    KeyboardButton("Daily report"),
+    KeyboardButton("👨‍🏫 Ustozni tanlang")
 )
 
 # START
