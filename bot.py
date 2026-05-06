@@ -80,7 +80,7 @@ async def on_startup(dp):
 async def start_handler(message: types.Message):
 
     await message.answer(
-        "✅ Bot ishlayapti",
+        "Assalomu aalaykum 😇 sizga qanday yordam bera olaman 🙃",
         reply_markup=keyboard
     )
 
