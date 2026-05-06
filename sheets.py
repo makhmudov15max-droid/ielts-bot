@@ -1,155 +1,140 @@
-from aiogram import Bot, Dispatcher, types
-from aiogram.types import (
-    ReplyKeyboardMarkup,
-    KeyboardButton,
-    InlineKeyboardMarkup,
-    InlineKeyboardButton
-)
-from aiogram.utils import executor
+import gspread
+from config import SHEET_ID, GOOGLE_CREDENTIALS
 
-import logging
-import os
+# GOOGLE SHEETS CONNECT
+gc = gspread.service_account_from_dict(GOOGLE_CREDENTIALS)
 
-from sheets import (
-    get_report,
-    update_teacher_score
-)
+# SHEETS
+edu_sheet = gc.open_by_key(SHEET_ID).worksheet("EduControl")
+teacher_sheet = gc.open_by_key(SHEET_ID).worksheet("Ustozlar")
 
-logging.basicConfig(level=logging.INFO)
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+# IELTS SCORE OLISH
+def get_teacher_score(teacher_name):
 
-bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher(bot)
+    data = teacher_sheet.get_all_values()
 
-# MEMORY
-selected_teacher = {}
+    for row in data[1:]:
 
-# MAIN MENU
-keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+        if len(row) < 2:
+            continue
 
-keyboard.add(
-    KeyboardButton("Daily report")
-)
+        name = row[0].strip()
+        score = row[1].strip()
 
-keyboard.add(
-    KeyboardButton("👨‍🏫 Ustozni tanlang")
-)
+        if name == teacher_name:
+            return score
 
-# START
-@dp.message_handler(commands=["start"])
-async def start_handler(message: types.Message):
+    return None
 
-    await message.answer(
-        "✅ Bot ishlayapti",
-        reply_markup=keyboard
-    )
+
+# IELTS SCORE UPDATE
+def update_teacher_score(teacher_name, new_score):
+
+    data = teacher_sheet.get_all_values()
+
+    for index, row in enumerate(data[1:], start=2):
+
+        if len(row) < 2:
+            continue
+
+        name = row[0].strip()
+
+        if name == teacher_name:
+
+            teacher_sheet.update(
+                f"B{index}",
+                [[new_score]]
+            )
+
+            return True
+
+    return False
+
 
 # DAILY REPORT
-@dp.message_handler(lambda message: message.text == "Daily report")
-async def daily_handler(message: types.Message):
+def get_report():
 
-    report = get_report()
+    try:
 
-    await message.answer(report)
+        data = edu_sheet.get_all_values()
 
-# TEACHER MENU
-@dp.message_handler(lambda message: message.text == "👨‍🏫 Ustozni tanlang")
-async def teacher_menu(message: types.Message):
+        report = "📊 DAILY REPORT\n\n"
 
-    markup = InlineKeyboardMarkup(row_width=2)
+        found = False
 
-    teachers = [
-        "Adkhambek I",
-        "Sardorbek K",
-        "Akhmadali T",
-        "Obidjon R",
-        "Otabek M",
-        "Ilkhom A",
-        "Sevinch I",
-        "Khurshid Kh",
-        "Nilufar K",
-        "Farangiz E"
-    ]
+        for row in data[2:]:
 
-    buttons = []
+            try:
 
-    for teacher in teachers:
+                if len(row) < 10:
+                    continue
 
-        buttons.append(
-            InlineKeyboardButton(
-                teacher,
-                callback_data=f"teacher_{teacher}"
-            )
-        )
+                teacher = row[2].strip()
+                group_name = row[3].strip()
+                level = row[4].strip()
 
-    markup.add(*buttons)
+                days_left = row[7].strip()
 
-    await message.answer(
-        "👨‍🏫 Ustozni tanlang",
-        reply_markup=markup
-    )
+                status = row[8].strip()
+                comment = row[9].strip()
 
-# TEACHER SELECT
-@dp.callback_query_handler(lambda c: c.data.startswith("teacher_"))
-async def teacher_selected(callback: types.CallbackQuery):
+                if not days_left.isdigit():
+                    continue
 
-    teacher_name = callback.data.replace("teacher_", "")
+                days_left = int(days_left)
 
-    selected_teacher[callback.from_user.id] = teacher_name
+                if days_left > 14:
+                    continue
 
-    markup = InlineKeyboardMarkup(row_width=2)
+                allowed_levels = [
+                    "IELTS Standard",
+                    "IELTS Expert",
+                    "IELTS Intensive"
+                ]
 
-    markup.add(
-        InlineKeyboardButton(
-            "8.5",
-            callback_data="score_8.5"
-        ),
+                novice_warning = False
 
-        InlineKeyboardButton(
-            "9.0",
-            callback_data="score_9.0"
-        )
-    )
+                if level == "IELTS Novice":
 
-    await callback.message.answer(
-        f"{teacher_name} ustozning yangi IELTS bali nechchi? 🧐",
-        reply_markup=markup
-    )
+                    teacher_score = get_teacher_score(teacher)
 
-# SCORE SELECT
-@dp.callback_query_handler(lambda c: c.data.startswith("score_"))
-async def score_selected(callback: types.CallbackQuery):
+                    if teacher_score == "8.0":
+                        novice_warning = True
+                    else:
+                        continue
 
-    score = callback.data.replace("score_", "")
+                elif level not in allowed_levels:
+                    continue
 
-    teacher_name = selected_teacher.get(callback.from_user.id)
+                found = True
 
-    if not teacher_name:
+                emoji = "🔴" if days_left <= 7 else "🟡"
 
-        await callback.message.answer(
-            "❌ Ustoz topilmadi"
-        )
+                report += f"{emoji} {group_name} ({level})\n"
 
-        return
+                report += f"👨‍🏫 {teacher}\n"
 
-    update_teacher_score(
-        teacher_name,
-        score
-    )
+                report += f"⏳ {days_left} kun qoldi\n"
 
-    await callback.message.answer(
-        f"✅ {teacher_name} ustozimizning IELTS natijasi yangilandi 🙂"
-    )
+                if novice_warning:
+                    report += "⚠️ Boshqa ustoz topish kerak\n"
 
-# OTHER
-@dp.message_handler()
-async def other_handler(message: types.Message):
+                if status:
+                    report += f"📌 {status}\n"
 
-    await message.answer(
-        "Tugmalardan foydalaning 👇"
-    )
+                if comment:
+                    report += f"💬 {comment}\n"
 
-# RUN
-if __name__ == "__main__":
-    executor.start_polling(dp, skip_updates=True)
+                report += "\n"
+
+            except:
+                continue
+
+        if not found:
+            return "📊 Hozircha muammo yo'q"
+
+        return report
+
+    except Exception as e:
+        return f"❌ Error:\n{e}"
