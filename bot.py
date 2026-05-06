@@ -46,7 +46,7 @@ async def auto_daily_report():
         now = datetime.now()
 
         # Yakshanba emas va vaqt 09:00
-        if now.weekday() != 6 and now.hour == 9 and now.minute == 0:
+        if now.weekday() != 6 and now.hour == 2 and now.minute == 55:
 
             try:
 
