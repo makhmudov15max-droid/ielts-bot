@@ -23,7 +23,7 @@ keyboard.add(
 @dp.message_handler(commands=["start"])
 async def start_handler(message: types.Message):
     await message.answer(
-        "✅ Bot ishlayapti",
+        "✅ new version",
         reply_markup=keyboard
     )
 
