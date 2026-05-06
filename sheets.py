@@ -8,7 +8,10 @@ sheet = gc.open_by_key(SHEET_ID).sheet1
 
 def get_report():
     try:
-        value = sheet.get("I15", value_render_option="FORMATTED_VALUE")[0][0]
+        value = sheet.acell("I15").value
+
+        if value is None or value == "":
+            return "❌ I15 bo'sh"
 
         return f"📊 I15:\n{value}"
 
