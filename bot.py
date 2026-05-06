@@ -85,6 +85,20 @@ async def start_handler(message: types.Message):
     )
 
 # DAILY REPORT
+# TEST AUTO REPORT
+@dp.message_handler(commands=["testreport"])
+async def test_report(message: types.Message):
+
+    report = get_report()
+
+    await bot.send_message(
+        chat_id=GROUP_ID,
+        text=report
+    )
+
+    await message.answer(
+        "✅ Groupga yuborildi"
+    )
 @dp.message_handler(lambda message: message.text == "Daily report")
 async def daily_handler(message: types.Message):
 
