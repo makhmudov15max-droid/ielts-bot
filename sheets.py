@@ -1,60 +1,140 @@
-def get_teacher_workload(teacher_name):
+import gspread
+from config import SHEET_ID, GOOGLE_CREDENTIALS
+
+# GOOGLE SHEETS CONNECT
+gc = gspread.service_account_from_dict(GOOGLE_CREDENTIALS)
+
+# SHEETS
+edu_sheet = gc.open_by_key(SHEET_ID).worksheet("EduControl")
+teacher_sheet = gc.open_by_key(SHEET_ID).worksheet("Ustozlar")
+
+
+# IELTS SCORE OLISH
+def get_teacher_score(teacher_name):
+
+    data = teacher_sheet.get_all_values()
+
+    for row in data[1:]:
+
+        if len(row) < 2:
+            continue
+
+        name = row[0].strip()
+        score = row[1].strip()
+
+        if name == teacher_name:
+            return score
+
+    return None
+
+
+# IELTS SCORE UPDATE
+def update_teacher_score(teacher_name, new_score):
+
+    data = teacher_sheet.get_all_values()
+
+    for index, row in enumerate(data[1:], start=2):
+
+        if len(row) < 2:
+            continue
+
+        name = row[0].strip()
+
+        if name == teacher_name:
+
+            teacher_sheet.update(
+                f"B{index}",
+                [[new_score]]
+            )
+
+            return True
+
+    return False
+
+
+# DAILY REPORT
+def get_report():
+
     try:
-        data = sheet.get_all_values()[1:] # Headerdan keyingi barcha qatorlar
-        today = datetime.today()
-        
-        active_groups = []
-        nabor_groups = []
-        
-        for row in data:
-            if len(row) < 10: continue
-            
-            # C ustuni (index 2) - Teacher
-            current_teacher = row[2].strip()
-            
-            if current_teacher == teacher_name:
-                group_id = row[3].strip()     # D ustuni - Nom
-                level = row[4].strip()        # E ustuni - Level
-                end_date_raw = row[7].strip() # H ustuni - End Date
-                status = row[9].strip()       # J ustuni - Status
-                
-                if not group_id: continue
-                
-                # Sanani hisoblash
-                end_date = parse_date(end_date_raw)
-                days_left = (end_date - today).days if end_date else "?"
-                
-                group_info = {
-                    "id": group_id,
-                    "level": level,
-                    "days": days_left,
-                    "status": status
-                }
-                
-                # Nabor yoki aktivligini ajratamiz
-                if "Nabor" in status or "Naborga" in status:
-                    nabor_groups.append(group_info)
-                else:
-                    active_groups.append(group_info)
 
-        if not active_groups and not nabor_groups:
-            return f"😕 {teacher_name} uchun hozircha guruhlar topilmadi."
+        data = edu_sheet.get_all_values()
 
-        # Xabar matnini yig'ish
-        header_text = f"👨‍🏫 <b>{teacher_name}</b> ning {len(active_groups)} ta guruhi hamda {len(nabor_groups)} ta naborda guruhi bor.\n"
-        
-        details = []
-        # Avval aktiv guruhlar
-        for g in active_groups:
-            details.append(f"🔹 <b>{g['id']}</b> ({g['level']})\n⏳ {g['days']} kun qoldi\n📌 {g['status']}")
-            
-        # Keyin nabor guruhlar
-        if nabor_groups:
-            details.append("\n<b>📦 Nabor guruhlar:</b>")
-            for g in nabor_groups:
-                details.append(f"🔸 <b>{g['id']}</b> ({g['level']})\n📌 {g['status']}")
+        report = "📊 DAILY REPORT\n\n"
 
-        return header_text + "\n" + "\n\n".join(details)
+        found = False
+
+        for row in data[2:]:
+
+            try:
+
+                if len(row) < 10:
+                    continue
+
+                teacher = row[2].strip()
+                group_name = row[3].strip()
+                level = row[4].strip()
+
+                days_left = row[7].strip()
+
+                status = row[8].strip()
+                comment = row[9].strip()
+
+                if not days_left.isdigit():
+                    continue
+
+                days_left = int(days_left)
+
+                if days_left > 14:
+                    continue
+
+                allowed_levels = [
+                    "IELTS Standard",
+                    "IELTS Expert",
+                    "IELTS Intensive"
+                ]
+
+                novice_warning = False
+
+                if level == "IELTS Novice":
+
+                    teacher_score = get_teacher_score(teacher)
+
+                    if teacher_score == "8.0":
+                        novice_warning = True
+                    else:
+                        continue
+
+                elif level not in allowed_levels:
+                    continue
+
+                found = True
+
+                emoji = "🔴" if days_left <= 7 else "🟡"
+
+                report += f"{emoji} {group_name} ({level})\n"
+
+                report += f"👨‍🏫 {teacher}\n"
+
+                report += f"⏳ {days_left} kun qoldi\n"
+
+                if novice_warning:
+                    report += "⚠️ Boshqa ustoz topish kerak\n"
+
+                if status:
+                    report += f"📌 {status}\n"
+
+                if comment:
+                    report += f"💬 {comment}\n"
+
+                report += "\n"
+
+            except:
+                continue
+
+        if not found:
+            return "📊 Hozircha muammo yo'q"
+
+        return report
 
     except Exception as e:
-        return f"⚠️ Xatolik: {str(e)}"
+        return f"❌ Error:\n{e}"
