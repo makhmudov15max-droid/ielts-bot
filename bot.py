@@ -344,11 +344,11 @@ async def get_cover(message: types.Message, state: FSMContext):
 
     else:
 
-    data = await state.get_data()
+        data = await state.get_data()
 
-    status = data.get("status")
-    hours = int(data.get("hours"))
-    days = int(data.get("days"))
+        status = data.get("status")
+        hours = int(data.get("hours"))
+        days = int(data.get("days"))
 
     rates = {
         "Nova": 11000,
