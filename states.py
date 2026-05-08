@@ -17,3 +17,4 @@ class SalaryStates(StatesGroup):
     waiting_for_missed_hours = State()
     waiting_for_cover = State()
     waiting_for_cover_hours = State()
+    waiting_for_individual_plan = State()
