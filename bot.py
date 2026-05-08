@@ -148,7 +148,27 @@ async def get_status(message: types.Message, state: FSMContext):
 
     await state.update_data(status=status)
 
-    await message.answer(f"🏆 Status: {status}")
+    hours_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+hours_keyboard.add("6")
+hours_keyboard.add("7")
+hours_keyboard.add("8")
+hours_keyboard.add("9")
+
+await message.answer(
+    f"🏆 Status: {status}\n\n⏰ Ish soatini tanlang:",
+    reply_markup=hours_keyboard
+)
+
+await SalaryStates.waiting_for_hours.set()
+@dp.message_handler(state=SalaryStates.waiting_for_hours)
+async def get_hours(message: types.Message, state: FSMContext):
+
+    hours = message.text
+
+    await state.update_data(hours=hours)
+
+    await message.answer(f"⏰ Ish soati: {hours} soat")
 
     await state.finish()
 
