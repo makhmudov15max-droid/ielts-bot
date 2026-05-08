@@ -162,7 +162,6 @@ async def get_status(message: types.Message, state: FSMContext):
 
     await SalaryStates.waiting_for_hours.set()
 
-
 @dp.message_handler(state=SalaryStates.waiting_for_hours)
 async def get_hours(message: types.Message, state: FSMContext):
 
@@ -171,10 +170,11 @@ async def get_hours(message: types.Message, state: FSMContext):
     await state.update_data(hours=hours)
 
     await message.answer(
-    f"⏰ Ish soati: {hours} soat\n\n📅 Ish kunlari sonini kiriting:"
-)
+        f"⏰ Ish soati: {hours} soat\n\n📅 Ish kunlari sonini kiriting:"
+    )
 
-await SalaryStates.waiting_for_days.set()
+    await SalaryStates.waiting_for_days.set()
+
 
 @dp.message_handler(state=SalaryStates.waiting_for_days)
 async def get_days(message: types.Message, state: FSMContext):
@@ -186,7 +186,6 @@ async def get_days(message: types.Message, state: FSMContext):
     await message.answer(f"📅 Ish kunlari: {days} kun")
 
     await state.finish()
-
 
 # TEST AUTO REPORT
 @dp.message_handler(commands=["testreport"])
