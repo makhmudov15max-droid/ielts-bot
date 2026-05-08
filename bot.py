@@ -213,7 +213,6 @@ async def get_actual_sales(message: types.Message, state: FSMContext):
 
     await SalaryStates.waiting_for_conversion_plan.set()
 
-
 @dp.message_handler(state=SalaryStates.waiting_for_conversion_plan)
 async def get_conversion_plan(message: types.Message, state: FSMContext):
 
@@ -222,10 +221,11 @@ async def get_conversion_plan(message: types.Message, state: FSMContext):
     await state.update_data(conversion_plan=conversion_plan)
 
     await message.answer(
-    f"📈 Konversiya plani: {conversion_plan}%\n\n📊 Amaldagi konversiyani kiriting:"
-)
+        f"📈 Konversiya plani: {conversion_plan}%\n\n📊 Amaldagi konversiyani kiriting:"
+    )
 
-await SalaryStates.waiting_for_actual_conversion.set()
+    await SalaryStates.waiting_for_actual_conversion.set()
+
 
 @dp.message_handler(state=SalaryStates.waiting_for_actual_conversion)
 async def get_actual_conversion(message: types.Message, state: FSMContext):
