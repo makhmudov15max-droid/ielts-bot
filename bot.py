@@ -373,7 +373,7 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
 
     cover_hours = message.text
 
-    await state.update_data(cover_hours=cover_hours)
+    await state.update_data(cover=cover)
 
     data = await state.get_data()
 
@@ -388,6 +388,9 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
         "Leader": 15000
     }
 
+    data = await state.get_data()
+
+    status = data.get("status")
     hourly_rate = rates.get(status, 0)
 
     fixa = hourly_rate * hours * days
@@ -443,6 +446,8 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
     cover_hours = int(data.get("cover_hours", 0))
 
     cover_bonus = cover_hours * hourly_rate
+
+    total_fixa = fixa + russian_bonus + ielts_bonus + cover_bonus
 
     await message.answer(f"📈 Individual KPI: {individual_percentage:.1f}%\n\n"
                          f"🔥 KPI Bonus: {kpi_bonus:,} UZS\n\n"
