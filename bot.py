@@ -195,10 +195,10 @@ async def get_individual_plan(message: types.Message, state: FSMContext):
     await state.update_data(individual_plan=individual_plan)
 
     await message.answer(
-        f"🎯 Individual plan: {individual_plan}"
-    )
+    f"🎯 Individual plan: {individual_plan}\n\n✅ Amaldagi sotuv sonini kiriting:"
+)
 
-    await state.finish()
+await SalaryStates.waiting_for_actual_sales.set()
 
 # TEST AUTO REPORT
 @dp.message_handler(commands=["testreport"])
