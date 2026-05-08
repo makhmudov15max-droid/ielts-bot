@@ -150,15 +150,10 @@ async def get_status(message: types.Message, state: FSMContext):
 
     hours_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 
-    hours_keyboard.add("6")
-    hours_keyboard.add("7")
-    hours_keyboard.add("8")
-    hours_keyboard.add("9")
-
     await message.answer(
-        f"🏆 Status: {status}\n\n⏰ Ish soatini tanlang:",
-        reply_markup=hours_keyboard
-    )
+    f"🏆 Status: {status}\n\n⏰ Ish soatini kiriting:",
+    reply_markup=types.ReplyKeyboardRemove()
+)
 
     await SalaryStates.waiting_for_hours.set()
 
