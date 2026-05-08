@@ -222,7 +222,20 @@ async def get_conversion_plan(message: types.Message, state: FSMContext):
     await state.update_data(conversion_plan=conversion_plan)
 
     await message.answer(
-        f"📈 Konversiya plani: {conversion_plan}%"
+    f"📈 Konversiya plani: {conversion_plan}%\n\n📊 Amaldagi konversiyani kiriting:"
+)
+
+await SalaryStates.waiting_for_actual_conversion.set()
+
+@dp.message_handler(state=SalaryStates.waiting_for_actual_conversion)
+async def get_actual_conversion(message: types.Message, state: FSMContext):
+
+    actual_conversion = message.text
+
+    await state.update_data(actual_conversion=actual_conversion)
+
+    await message.answer(
+        f"📊 Amaldagi konversiya: {actual_conversion}%"
     )
 
     await state.finish()
