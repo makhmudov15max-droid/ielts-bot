@@ -281,8 +281,28 @@ async def get_russian(message: types.Message, state: FSMContext):
 
     await state.update_data(russian=russian)
 
+    ielts_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+    ielts_keyboard.add("✅ Ha")
+    ielts_keyboard.add("❌ Yo'q")
+
     await message.answer(
-        f"🌍 Rus tili: {russian}"
+        f"🌍 Rus tili: {russian}\n\n🎓 IELTS 7+ bormi?",
+        reply_markup=ielts_keyboard
+    )
+
+    await SalaryStates.waiting_for_ielts.set()
+
+
+@dp.message_handler(state=SalaryStates.waiting_for_ielts)
+async def get_ielts(message: types.Message, state: FSMContext):
+
+    ielts = message.text
+
+    await state.update_data(ielts=ielts)
+
+    await message.answer(
+        f"🎓 IELTS: {ielts}"
     )
 
     await state.finish()
