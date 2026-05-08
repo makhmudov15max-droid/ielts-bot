@@ -382,30 +382,30 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
     days = int(data.get("days"))
 
     rates = {
-    "Nova": 11000,
-    "Prime": 12000,
-    "Apex": 13000,
-    "Leader": 15000
-}
+        "Nova": 11000,
+        "Prime": 12000,
+        "Apex": 13000,
+        "Leader": 15000
+    }
 
     hourly_rate = rates.get(status, 0)
 
     fixa = hourly_rate * hours * days
 
     russian = data.get("russian")
-ielts = data.get("ielts")
+    ielts = data.get("ielts")
 
-russian_bonus = 500000 if russian == "✅ Ha" else 0
-ielts_bonus = 1000000 if ielts == "✅ Ha" else 0
+    russian_bonus = 500000 if russian == "✅ Ha" else 0
+    ielts_bonus = 1000000 if ielts == "✅ Ha" else 0
 
-total_fixa = fixa + russian_bonus + ielts_bonus
+    total_fixa = fixa + russian_bonus + ielts_bonus
 
     await message.answer(
-    f"💵 Fiksa: {fixa:,} UZS\n\n"
-    f"🌍 Rus bonusi: +{russian_bonus:,} UZS\n"
-    f"🎓 IELTS bonusi: +{ielts_bonus:,} UZS\n\n"
-    f"💰 Umumiy fixa: {total_fixa:,} UZS"
-)
+        f"💵 Fiksa: {fixa:,} UZS\n\n"
+        f"🌍 Rus bonusi: +{russian_bonus:,} UZS\n"
+        f"🎓 IELTS bonusi: +{ielts_bonus:,} UZS\n\n"
+        f"💰 Umumiy fixa: {total_fixa:,} UZS"
+    )
 
     await state.finish()
 
