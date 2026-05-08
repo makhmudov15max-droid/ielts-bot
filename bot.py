@@ -315,8 +315,28 @@ async def get_missed_hours(message: types.Message, state: FSMContext):
 
     await state.update_data(missed_hours=missed_hours)
 
+    cover_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+    cover_keyboard.add("✅ Cover qilgan")
+    cover_keyboard.add("❌ Cover qilmagan")
+
     await message.answer(
-        f"⏳ Qoldirilgan soat: {missed_hours}"
+        f"⏳ Qoldirilgan soat: {missed_hours}\n\n🔄 Cover qilganmi?",
+        reply_markup=cover_keyboard
+    )
+
+    await SalaryStates.waiting_for_cover.set()
+
+
+@dp.message_handler(state=SalaryStates.waiting_for_cover)
+async def get_cover(message: types.Message, state: FSMContext):
+
+    cover = message.text
+
+    await state.update_data(cover=cover)
+
+    await message.answer(
+        f"🔄 Cover holati: {cover}"
     )
 
     await state.finish()
