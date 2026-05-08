@@ -11,3 +11,4 @@ class SalaryStates(StatesGroup):
     waiting_for_conversion_plan = State()
     waiting_for_actual_conversion = State()
     waiting_for_active_plan = State()
+    waiting_for_team_active = State()
