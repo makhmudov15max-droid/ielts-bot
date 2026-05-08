@@ -125,7 +125,28 @@ async def get_admin_name(message: types.Message, state: FSMContext):
 
     await state.update_data(admin_name=admin_name)
 
-    await message.answer(f"✅ Admin: {admin_name}")
+    status_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+status_keyboard.add("Nova")
+status_keyboard.add("Prime")
+status_keyboard.add("Apex")
+status_keyboard.add("Leader")
+
+await message.answer(
+    f"✅ Admin: {admin_name}\n\n🏆 Statusni tanlang:",
+    reply_markup=status_keyboard
+)
+
+await SalaryStates.waiting_for_status.set()
+
+@dp.message_handler(state=SalaryStates.waiting_for_status)
+async def get_status(message: types.Message, state: FSMContext):
+
+    status = message.text
+
+    await state.update_data(status=status)
+
+    await message.answer(f"🏆 Status: {status}")
 
     await state.finish()
 
