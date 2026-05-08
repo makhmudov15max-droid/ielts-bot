@@ -13,3 +13,4 @@ class SalaryStates(StatesGroup):
     waiting_for_active_plan = State()
     waiting_for_team_active = State()
     waiting_for_russian = State()
+    waiting_for_ielts = State()
