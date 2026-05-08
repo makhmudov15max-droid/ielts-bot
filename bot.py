@@ -261,8 +261,28 @@ async def get_team_active(message: types.Message, state: FSMContext):
 
     await state.update_data(team_active=team_active)
 
+    russian_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+    russian_keyboard.add("✅ Ha")
+    russian_keyboard.add("❌ Yo'q")
+
     await message.answer(
-        f"👥 Jamoaviy aktiv o'quvchilar: {team_active}"
+        f"👥 Jamoaviy aktiv o'quvchilar: {team_active}\n\n🌍 Rus tilini biladimi?",
+        reply_markup=russian_keyboard
+    )
+
+    await SalaryStates.waiting_for_russian.set()
+
+
+@dp.message_handler(state=SalaryStates.waiting_for_russian)
+async def get_russian(message: types.Message, state: FSMContext):
+
+    russian = message.text
+
+    await state.update_data(russian=russian)
+
+    await message.answer(
+        f"🌍 Rus tili: {russian}"
     )
 
     await state.finish()
