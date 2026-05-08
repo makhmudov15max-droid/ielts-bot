@@ -170,6 +170,7 @@ async def get_hours(message: types.Message, state: FSMContext):
 )
 
     await SalaryStates.waiting_for_days.set()
+    waiting_for_individual_plan = State()
 
 
 @dp.message_handler(state=SalaryStates.waiting_for_days)
@@ -179,7 +180,22 @@ async def get_days(message: types.Message, state: FSMContext):
 
     await state.update_data(days=days)
 
-    await message.answer(f"📅 Ish kunlari: {days} kun")
+    await message.answer(
+    f"📅 Ish kunlari: {days} kun\n\n🎯 Individual plan kiriting:"
+)
+
+await SalaryStates.waiting_for_individual_plan.set()
+
+@dp.message_handler(state=SalaryStates.waiting_for_individual_plan)
+async def get_individual_plan(message: types.Message, state: FSMContext):
+
+    individual_plan = message.text
+
+    await state.update_data(individual_plan=individual_plan)
+
+    await message.answer(
+        f"🎯 Individual plan: {individual_plan}"
+    )
 
     await state.finish()
 
