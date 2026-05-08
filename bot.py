@@ -370,10 +370,6 @@ async def get_cover(message: types.Message, state: FSMContext):
 
     await get_cover_hours(message, state)
     return
-        f"💵 Fiksa hisoblandi: {fixa:,} UZS"
-    )
-
-    await state.finish()
 
 
 @dp.message_handler(state=SalaryStates.waiting_for_cover_hours)
