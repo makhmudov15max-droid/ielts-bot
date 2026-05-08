@@ -15,3 +15,4 @@ class SalaryStates(StatesGroup):
     waiting_for_russian = State()
     waiting_for_ielts = State()
     waiting_for_missed_hours = State()
+    waiting_for_cover = State()
