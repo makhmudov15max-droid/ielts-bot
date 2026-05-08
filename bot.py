@@ -200,6 +200,19 @@ async def get_individual_plan(message: types.Message, state: FSMContext):
 
 await SalaryStates.waiting_for_actual_sales.set()
 
+@dp.message_handler(state=SalaryStates.waiting_for_actual_sales)
+async def get_actual_sales(message: types.Message, state: FSMContext):
+
+    actual_sales = message.text
+
+    await state.update_data(actual_sales=actual_sales)
+
+    await message.answer(
+        f"✅ Amaldagi sotuv: {actual_sales}"
+    )
+
+    await state.finish()
+
 # TEST AUTO REPORT
 @dp.message_handler(commands=["testreport"])
 async def test_report(message: types.Message):
