@@ -1,3 +1,4 @@
+from aiogram.dispatcher import FSMContext
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import (
     ReplyKeyboardMarkup,
@@ -7,6 +8,7 @@ from aiogram.types import (
 )
 from aiogram.utils import executor
 
+from states import SalaryStates
 import logging
 import os
 import asyncio
@@ -103,6 +105,25 @@ async def daily_handler(message: types.Message):
     report = get_report()
 
     await message.answer(report)
+
+@dp.message_handler(lambda message: message.text == "💰 Salary Panel")
+async def salary_panel(message: types.Message):
+
+    await message.answer("👤 Admin ism familiyasini kiriting:")
+
+    await SalaryStates.waiting_for_name.set()
+
+@dp.message_handler(state=SalaryStates.waiting_for_name)
+async def get_admin_name(message: types.Message, state: FSMContext):
+
+    admin_name = message.text
+
+    await state.update_data(admin_name=admin_name)
+
+    await message.answer(f"✅ Admin: {admin_name}")
+
+    await state.finish()
+
 
 # TEST AUTO REPORT
 @dp.message_handler(commands=["testreport"])
