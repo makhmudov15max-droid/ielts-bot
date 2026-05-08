@@ -368,7 +368,8 @@ async def get_cover(message: types.Message, state: FSMContext):
 
     fixa = hourly_rate * hours * days
 
-    await message.answer(
+    await get_cover_hours(message, state)
+    return
         f"💵 Fiksa hisoblandi: {fixa:,} UZS"
     )
 
