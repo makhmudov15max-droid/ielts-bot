@@ -170,7 +170,6 @@ async def get_hours(message: types.Message, state: FSMContext):
 )
 
     await SalaryStates.waiting_for_days.set()
-    waiting_for_individual_plan = State()
 
 
 @dp.message_handler(state=SalaryStates.waiting_for_days)
