@@ -346,6 +346,9 @@ async def get_cover(message: types.Message, state: FSMContext):
 
         data = await state.get_data()
 
+        hours = int(data.get("hours", 0))
+        days = int(data.get("days", 0))
+
         status = data.get("status")
         hours = int(data.get("hours"))
         days = int(data.get("days"))
@@ -380,6 +383,12 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
     await state.update_data(cover_hours=cover_hours)
 
     data = await state.get_data()
+
+    conversion_plan = float(data.get("conversion_plan", 0))
+    actual_conversion = float(data.get("actual_conversion", 0))
+
+    active_plan = float(data.get("active_plan", 0))
+    actual_active = float(data.get("actual_active", 0))
 
     status = data.get("status")
     hours = int(data.get("hours"))
