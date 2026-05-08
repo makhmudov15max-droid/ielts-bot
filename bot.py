@@ -405,7 +405,7 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
 
     individual_percentage = (actual_sales / individual_plan) * 100
 
-        if individual_percentage <= 49:
+    if individual_percentage <= 49:
         bonus_rate = 0
 
     elif individual_percentage <= 60:
