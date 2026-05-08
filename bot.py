@@ -1,4 +1,4 @@
-from aiogram.dispatcher import FSMContext
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import (
     ReplyKeyboardMarkup,
@@ -26,7 +26,11 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 GROUP_ID = os.getenv("GROUP_ID")
 
 bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher(bot)
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
+
+storage = MemoryStorage()
+
+dp = Dispatcher(bot, storage=storage)
 
 # MEMORY
 selected_teacher = {}
