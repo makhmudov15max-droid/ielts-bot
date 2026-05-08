@@ -248,7 +248,21 @@ async def get_active_plan(message: types.Message, state: FSMContext):
     await state.update_data(active_plan=active_plan)
 
     await message.answer(
-        f"🔔 Aktiv plan: {active_plan}"
+        f"🔔 Aktiv plan: {active_plan}\n\n👥 Jamoaviy aktiv o'quvchilar sonini kiriting:"
+    )
+
+    await SalaryStates.waiting_for_team_active.set()
+
+
+@dp.message_handler(state=SalaryStates.waiting_for_team_active)
+async def get_team_active(message: types.Message, state: FSMContext):
+
+    team_active = message.text
+
+    await state.update_data(team_active=team_active)
+
+    await message.answer(
+        f"👥 Jamoaviy aktiv o'quvchilar: {team_active}"
     )
 
     await state.finish()
