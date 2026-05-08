@@ -124,6 +124,11 @@ async def get_admin_name(message: types.Message, state: FSMContext):
 
     admin_name = message.text
 
+    @dp.message_handler(state=SalaryStates.waiting_for_name)
+async def get_admin_name(message: types.Message, state: FSMContext):
+
+    admin_name = message.text
+
     await state.update_data(admin_name=admin_name)
 
     status_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
@@ -150,17 +155,19 @@ async def get_status(message: types.Message, state: FSMContext):
 
     hours_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 
-hours_keyboard.add("6")
-hours_keyboard.add("7")
-hours_keyboard.add("8")
-hours_keyboard.add("9")
+    hours_keyboard.add("6")
+    hours_keyboard.add("7")
+    hours_keyboard.add("8")
+    hours_keyboard.add("9")
 
-await message.answer(
-    f"🏆 Status: {status}\n\n⏰ Ish soatini tanlang:",
-    reply_markup=hours_keyboard
-)
+    await message.answer(
+        f"🏆 Status: {status}\n\n⏰ Ish soatini tanlang:",
+        reply_markup=hours_keyboard
+    )
 
-await SalaryStates.waiting_for_hours.set()
+    await SalaryStates.waiting_for_hours.set()
+
+
 @dp.message_handler(state=SalaryStates.waiting_for_hours)
 async def get_hours(message: types.Message, state: FSMContext):
 
