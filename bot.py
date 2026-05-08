@@ -302,7 +302,21 @@ async def get_ielts(message: types.Message, state: FSMContext):
     await state.update_data(ielts=ielts)
 
     await message.answer(
-        f"🎓 IELTS: {ielts}"
+        f"🎓 IELTS: {ielts}\n\n⏳ Necha soat ish qoldirdi?"
+    )
+
+    await SalaryStates.waiting_for_missed_hours.set()
+
+
+@dp.message_handler(state=SalaryStates.waiting_for_missed_hours)
+async def get_missed_hours(message: types.Message, state: FSMContext):
+
+    missed_hours = message.text
+
+    await state.update_data(missed_hours=missed_hours)
+
+    await message.answer(
+        f"⏳ Qoldirilgan soat: {missed_hours}"
     )
 
     await state.finish()
