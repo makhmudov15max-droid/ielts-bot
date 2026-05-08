@@ -398,8 +398,8 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
     russian_bonus = 500000 if russian == "✅ Ha" else 0
     ielts_bonus = 1000000 if ielts == "✅ Ha" else 0
 
-    total_fixa = fixa + russian_bonus + ielts_bonus
-
+    
+    
     individual_plan = int(data.get("individual_plan"))
     actual_sales = int(data.get("actual_sales"))
 
@@ -440,8 +440,13 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
 
     kpi_bonus = actual_sales * bonus_rate
 
+    cover_hours = int(data.get("cover_hours", 0))
+
+    cover_bonus = cover_hours * hourly_rate
+
     await message.answer(f"📈 Individual KPI: {individual_percentage:.1f}%\n\n"
                          f"🔥 KPI Bonus: {kpi_bonus:,} UZS\n\n"
+                         f"🔄 Cover bonus: +{cover_bonus:,} UZS\n\n"
         f"💵 Fiksa: {fixa:,} UZS\n\n"
         f"🌍 Rus bonusi: +{russian_bonus:,} UZS\n"
         f"🎓 IELTS bonusi: +{ielts_bonus:,} UZS\n\n"
