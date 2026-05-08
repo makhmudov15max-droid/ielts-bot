@@ -7,3 +7,4 @@ class SalaryStates(StatesGroup):
     waiting_for_hours = State()
     waiting_for_days = State()
     waiting_for_individual_plan = State()
+    waiting_for_actual_sales = State()
