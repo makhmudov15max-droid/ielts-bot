@@ -10,6 +10,7 @@ from aiogram.utils import executor
 import logging
 import os
 import asyncio
+from roles import OWNERS
 from datetime import datetime
 
 from sheets import (
@@ -37,6 +38,10 @@ keyboard.row(
     KeyboardButton("Daily report"),
     KeyboardButton("Teachers")
 )
+owner_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+owner_keyboard.add("💰 Salary Panel")
+owner_keyboard.add("➕ Add Owner")
 
 # AUTO DAILY REPORT
 async def auto_daily_report():
@@ -79,10 +84,17 @@ async def on_startup(dp):
 @dp.message_handler(commands=["start"])
 async def start_handler(message: types.Message):
 
-    await message.answer(
-        "✅ Bot ishlayapti",
-        reply_markup=keyboard
-    )
+    if message.from_user.id in OWNERS:
+        await message.answer(
+            "✅ Main manager panel",
+            reply_markup=owner_keyboard
+        )
+
+    else:
+        await message.answer(
+            "✅ Office manager panel",
+            reply_markup=keyboard
+        )
 
 # DAILY REPORT
 @dp.message_handler(lambda message: message.text == "Daily report")
