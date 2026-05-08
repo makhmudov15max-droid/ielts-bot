@@ -170,7 +170,20 @@ async def get_hours(message: types.Message, state: FSMContext):
 
     await state.update_data(hours=hours)
 
-    await message.answer(f"⏰ Ish soati: {hours} soat")
+    await message.answer(
+    f"⏰ Ish soati: {hours} soat\n\n📅 Ish kunlari sonini kiriting:"
+)
+
+await SalaryStates.waiting_for_days.set()
+
+@dp.message_handler(state=SalaryStates.waiting_for_days)
+async def get_days(message: types.Message, state: FSMContext):
+
+    days = message.text
+
+    await state.update_data(days=days)
+
+    await message.answer(f"📅 Ish kunlari: {days} kun")
 
     await state.finish()
 
