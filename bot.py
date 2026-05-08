@@ -359,9 +359,26 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
 
     await state.update_data(cover_hours=cover_hours)
 
+    data = await state.get_data()
+
+status = data.get("status")
+hours = int(data.get("hours"))
+days = int(data.get("days"))
+
+rates = {
+    "Nova": 11000,
+    "Prime": 12000,
+    "Apex": 13000,
+    "Leader": 15000
+}
+
+hourly_rate = rates.get(status, 0)
+
+fixa = hourly_rate * hours * days
+
     await message.answer(
-        f"🔄 Cover soati: {cover_hours}"
-    )
+    f"💵 Fiksa hisoblandi: {fixa:,} UZS"
+)
 
     await state.finish()
 
