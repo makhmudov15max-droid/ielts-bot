@@ -238,7 +238,7 @@ async def get_actual_conversion(message: types.Message, state: FSMContext):
     f"📊 Amaldagi konversiya: {actual_conversion}%\n\n🔔 Aktiv plan kiriting:"
 )
 
-await SalaryStates.waiting_for_active_plan.set()
+    await SalaryStates.waiting_for_active_plan.set()
 
 @dp.message_handler(state=SalaryStates.waiting_for_active_plan)
 async def get_active_plan(message: types.Message, state: FSMContext):
