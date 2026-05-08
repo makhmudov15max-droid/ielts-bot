@@ -200,7 +200,6 @@ async def get_individual_plan(message: types.Message, state: FSMContext):
 
     await SalaryStates.waiting_for_actual_sales.set()
 
-
 @dp.message_handler(state=SalaryStates.waiting_for_actual_sales)
 async def get_actual_sales(message: types.Message, state: FSMContext):
 
@@ -209,10 +208,11 @@ async def get_actual_sales(message: types.Message, state: FSMContext):
     await state.update_data(actual_sales=actual_sales)
 
     await message.answer(
-    f"✅ Amaldagi sotuv: {actual_sales}\n\n📈 Konversiya planini kiriting:"
-)
+        f"✅ Amaldagi sotuv: {actual_sales}\n\n📈 Konversiya planini kiriting:"
+    )
 
-await SalaryStates.waiting_for_conversion_plan.set()
+    await SalaryStates.waiting_for_conversion_plan.set()
+
 
 @dp.message_handler(state=SalaryStates.waiting_for_conversion_plan)
 async def get_conversion_plan(message: types.Message, state: FSMContext):
