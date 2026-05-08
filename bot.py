@@ -455,12 +455,22 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
     else:
         bonus_rate = 40000
 
-    weighted_kpi = (
+   weighted_kpi = (
     (individual_percentage * 0.5) +
     (conversion_percentage * 0.3) +
     (active_percentage * 0.2)
-    )
-    
+)
+
+await message.answer(
+    f"""
+Individual: {individual_percentage}
+Conversion: {conversion_percentage}
+Active: {active_percentage}
+
+Weighted: {weighted_kpi}
+"""
+)
+        
     base_kpi_bonus = actual_sales * bonus_rate
 
     kpi_bonus = base_kpi_bonus * (weighted_kpi / 100)
@@ -469,7 +479,13 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
 
     cover_bonus = cover_hours * hourly_rate
 
-    total_fixa = fixa + russian_bonus + ielts_bonus + cover_bonus
+    total_salary = (
+    fixa +
+    russian_bonus +
+    ielts_bonus +
+    cover_bonus +
+    kpi_bonus
+    )
 
     await message.answer(f"📈 Individual KPI: {individual_percentage:.1f}%\n\n"
                          f"🔥 KPI Bonus: {kpi_bonus:,} UZS\n\n"
@@ -477,7 +493,7 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
         f"💵 Fiksa: {fixa:,} UZS\n\n"
         f"🌍 Rus bonusi: +{russian_bonus:,} UZS\n"
         f"🎓 IELTS bonusi: +{ielts_bonus:,} UZS\n\n"
-        f"💰 Umumiy fixa: {total_fixa:,} UZS"
+        f"💰 JAMI OYLIK: {total_salary:,.0f} UZS"
     )
 
     await state.finish()
