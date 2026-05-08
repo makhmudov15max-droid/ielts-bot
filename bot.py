@@ -124,11 +124,6 @@ async def get_admin_name(message: types.Message, state: FSMContext):
 
     admin_name = message.text
 
-    @dp.message_handler(state=SalaryStates.waiting_for_name)
-async def get_admin_name(message: types.Message, state: FSMContext):
-
-    admin_name = message.text
-
     await state.update_data(admin_name=admin_name)
 
     status_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
