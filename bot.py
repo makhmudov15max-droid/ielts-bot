@@ -412,6 +412,10 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
 
     individual_percentage = (actual_sales / individual_plan) * 100
 
+    conversion_percentage = (actual_conversion / conversion_plan) * 100
+
+    active_percentage = (actual_active / active_plan) * 100
+
     if individual_percentage <= 49:
         bonus_rate = 0
 
@@ -445,7 +449,15 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
     else:
         bonus_rate = 40000
 
-    kpi_bonus = actual_sales * bonus_rate
+    weighted_kpi = (
+    (individual_percentage * 0.5) +
+    (conversion_percentage * 0.3) +
+    (active_percentage * 0.2)
+    )
+    
+    base_kpi_bonus = actual_sales * bonus_rate
+
+    kpi_bonus = base_kpi_bonus * (weighted_kpi / 100)
 
     cover_hours = int(data.get("cover_hours", 0))
 
