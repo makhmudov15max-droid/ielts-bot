@@ -118,6 +118,7 @@ async def salary_panel(message: types.Message):
 
     await SalaryStates.waiting_for_name.set()
 
+
 @dp.message_handler(state=SalaryStates.waiting_for_name)
 async def get_admin_name(message: types.Message, state: FSMContext):
 
@@ -127,17 +128,18 @@ async def get_admin_name(message: types.Message, state: FSMContext):
 
     status_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 
-status_keyboard.add("Nova")
-status_keyboard.add("Prime")
-status_keyboard.add("Apex")
-status_keyboard.add("Leader")
+    status_keyboard.add("Nova")
+    status_keyboard.add("Prime")
+    status_keyboard.add("Apex")
+    status_keyboard.add("Leader")
 
-await message.answer(
-    f"✅ Admin: {admin_name}\n\n🏆 Statusni tanlang:",
-    reply_markup=status_keyboard
-)
+    await message.answer(
+        f"✅ Admin: {admin_name}\n\n🏆 Statusni tanlang:",
+        reply_markup=status_keyboard
+    )
 
-await SalaryStates.waiting_for_status.set()
+    await SalaryStates.waiting_for_status.set()
+
 
 @dp.message_handler(state=SalaryStates.waiting_for_status)
 async def get_status(message: types.Message, state: FSMContext):
