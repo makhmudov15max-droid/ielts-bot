@@ -335,8 +335,32 @@ async def get_cover(message: types.Message, state: FSMContext):
 
     await state.update_data(cover=cover)
 
+    if cover == "✅ Cover qilgan":
+
+        await message.answer(
+            "🔄 Necha soat cover qilgan?"
+        )
+
+        await SalaryStates.waiting_for_cover_hours.set()
+
+    else:
+
+        await message.answer(
+            "❌ Cover qilmagan"
+        )
+
+        await state.finish()
+
+
+@dp.message_handler(state=SalaryStates.waiting_for_cover_hours)
+async def get_cover_hours(message: types.Message, state: FSMContext):
+
+    cover_hours = message.text
+
+    await state.update_data(cover_hours=cover_hours)
+
     await message.answer(
-        f"🔄 Cover holati: {cover}"
+        f"🔄 Cover soati: {cover_hours}"
     )
 
     await state.finish()
