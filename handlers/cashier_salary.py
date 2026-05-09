@@ -461,7 +461,7 @@ def register_cashier_handlers(dp):
 
         await message.answer(
 
-                    debt_emoji = "🟢"
+                            debt_emoji = "🟢"
 
         if result['debt_percentage'] >= 10:
             debt_emoji = "🟡"
@@ -503,6 +503,5 @@ def register_cashier_handlers(dp):
 
             reply_markup=main_menu_keyboard()
         )
-
 
         await state.finish()
