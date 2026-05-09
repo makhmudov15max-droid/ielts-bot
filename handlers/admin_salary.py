@@ -1,4 +1,3 @@
-```python
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 
@@ -63,4 +62,3 @@ def register_admin_handlers(dp):
         await message.answer(
             f"✅ Soat tanlandi: {message.text}"
         )
-```
