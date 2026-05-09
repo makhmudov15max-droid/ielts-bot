@@ -115,13 +115,11 @@ async def get_status(message: types.Message, state: FSMContext):
 
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 
-    keyboard.add("9 soat")
-    keyboard.add("10 soat")
-
-    keyboard.add("6 soat")
-    keyboard.add("7 soat")
+    keyboard.add("9 soat", "10 soat")
+    keyboard.add("6 soat", "7 soat")
 
     keyboard.add("✍️ Boshqa soat")
+    keyboard.add("🏠 Bosh sahifa")
 
     await message.answer(
         "⏰ Kunlik necha soat ishlaydi?",
@@ -140,16 +138,30 @@ async def get_hours(message: types.Message, state: FSMContext):
 
     text = message.text
 
-    if text == "✍️ Boshqa soat":
+    if text == "🏠 Bosh sahifa":
 
-        back_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+        await state.finish()
 
-        back_keyboard.add("🏠 Bosh sahifa")
+        keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+        keyboard.add("💰 Salary")
 
         await message.answer(
-            "👤 Admin necha soat ishlaydi?\n\n"
-            "✍️ Soatni manual kiriting:",
-            reply_markup=back_keyboard
+            "🏠 Bosh sahifa",
+            reply_markup=keyboard
+        )
+
+        return
+
+    if text == "✍️ Boshqa soat":
+
+        keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+        keyboard.add("🏠 Bosh sahifa")
+
+        await message.answer(
+            "✍️ Soatni kiriting:",
+            reply_markup=keyboard
         )
 
         return
@@ -181,8 +193,17 @@ async def get_hours(message: types.Message, state: FSMContext):
 
     await state.update_data(hours=hours)
 
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+    keyboard.add("27 kun", "26 kun")
+    keyboard.add("25 kun", "24 kun")
+
+    keyboard.add("✍️ Boshqa kun")
+    keyboard.add("🏠 Bosh sahifa")
+
     await message.answer(
-        "📅 Oyda necha kun ishladi?"
+        "📅 Oyda necha kun ishladi?",
+        reply_markup=keyboard
     )
 
     await SalaryStates.waiting_for_days.set()
@@ -195,7 +216,62 @@ async def get_hours(message: types.Message, state: FSMContext):
 @dp.message_handler(state=SalaryStates.waiting_for_days)
 async def get_days(message: types.Message, state: FSMContext):
 
-    await state.update_data(days=message.text)
+    text = message.text
+
+    if text == "🏠 Bosh sahifa":
+
+        await state.finish()
+
+        keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+        keyboard.add("💰 Salary")
+
+        await message.answer(
+            "🏠 Bosh sahifa",
+            reply_markup=keyboard
+        )
+
+        return
+
+    if text == "✍️ Boshqa kun":
+
+        keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+        keyboard.add("🏠 Bosh sahifa")
+
+        await message.answer(
+            "✍️ Kunlar sonini kiriting:",
+            reply_markup=keyboard
+        )
+
+        return
+
+    if text == "27 kun":
+        days = 27
+
+    elif text == "26 kun":
+        days = 26
+
+    elif text == "25 kun":
+        days = 25
+
+    elif text == "24 kun":
+        days = 24
+
+    else:
+
+        try:
+            days = float(text)
+
+        except:
+
+            await message.answer(
+                "❌ Faqat raqam kiriting."
+            )
+
+            return
+
+    await state.update_data(days=days)
 
     await message.answer(
         "🎯 Individual plan nechta?"
