@@ -461,19 +461,45 @@ def register_cashier_handlers(dp):
 
         await message.answer(
 
-            f"💵 Kunlik maosh: {result['daily_salary']:,.0f} UZS\n\n"
+                    debt_emoji = "🟢"
 
-            f"💰 Fiks maosh: {result['worked_salary']:,.0f} UZS\n"
+        if result['debt_percentage'] >= 10:
+            debt_emoji = "🟡"
 
-            f"📉 Qarzdorlik foizi: {result['debt_percentage']:.2f}%\n"
+        if result['debt_percentage'] >= 20:
+            debt_emoji = "🔴"
 
-            f"🚀 Multiplier: {result['multiplier']}x\n\n"
 
-            f"🔄 Cover bonus: +{result['cover_bonus']:,.0f} UZS\n"
+        await message.answer(
 
-            f"📉 Jarima: -{result['missed_penalty']:,.0f} UZS\n\n"
+            f"🏦 CASHIER SALARY REPORT\n\n"
 
-            f"🏆 JAMI OYLIK: {result['final_salary']:,.0f} UZS",
+            f"━━━━━━━━━━━━━━━━━━\n\n"
+
+            f"💵 FIKS MAOSH\n"
+            f"{result['worked_salary']:,.0f} UZS\n\n"
+
+            f"━━━━━━━━━━━━━━━━━━\n\n"
+
+            f"📅 Kunlik maosh: "
+            f"{result['daily_salary']:,.0f} UZS\n\n"
+
+            f"{debt_emoji} Qarzdorlik foizi: "
+            f"{result['debt_percentage']:.2f}%\n\n"
+
+            f"📈 Bonus koeffitsienti: "
+            f"{result['multiplier']}x\n\n"
+
+            f"🔄 Cover bonusi: "
+            f"+{result['cover_bonus']:,.0f} UZS\n\n"
+
+            f"📉 Jarima: "
+            f"-{result['missed_penalty']:,.0f} UZS\n\n"
+
+            f"━━━━━━━━━━━━━━━━━━\n\n"
+
+            f"💰 UMUMIY OYLIK\n"
+            f"{result['final_salary']:,.0f} UZS",
 
             reply_markup=main_menu_keyboard()
         )
