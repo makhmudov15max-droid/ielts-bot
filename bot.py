@@ -89,8 +89,19 @@ async def on_startup(dp):
     )
 
 # START
-@dp.message_handler(commands=["start"])
-async def start_handler(message: types.Message):
+@dp.message_handler(commands=['start'], state="*")
+async def start_handler(message: types.Message, state: FSMContext):
+
+    await state.finish()
+
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+    keyboard.add("💰 Salary Panel")
+
+    await message.answer(
+        "🏠 Asosiy menu",
+        reply_markup=keyboard
+    )
 
     if message.from_user.id in OWNERS:
         await message.answer(
