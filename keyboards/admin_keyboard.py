@@ -20,3 +20,14 @@ def status_keyboard():
     keyboard.add("🏠 Bosh sahifa")
 
     return keyboard
+
+def hours_keyboard():
+
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+    keyboard.add("6 soat", "7 soat")
+    keyboard.add("9 soat", "10 soat")
+    keyboard.add("✍️ Boshqa soat")
+    keyboard.add("🏠 Bosh sahifa")
+
+    return keyboard
