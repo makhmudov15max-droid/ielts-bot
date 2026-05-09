@@ -486,9 +486,9 @@ total_salary = (
     kpi_bonus
     )
 
-    await message.answer(f"📈 Individual KPI: {individual_percentage:.1f}%\n\n"
-                         f"🔥 KPI Bonus: {kpi_bonus:,} UZS\n\n"
-                         f"🔄 Cover bonus: +{cover_bonus:,} UZS\n\n"
+await message.answer(f"📈 Individual KPI: {individual_percentage:.1f}%\n\n"
+                         f"🔥 KPI Bonus: {kpi_bonus:,.0f} UZS\n\n"
+                         f"🔄 Cover bonus: +{cover_bonus:,.0f} UZS\n\n"
         f"💵 Fiksa: {fixa:,} UZS\n\n"
         f"🌍 Rus bonusi: +{russian_bonus:,} UZS\n"
         f"🎓 IELTS bonusi: +{ielts_bonus:,} UZS\n\n"
