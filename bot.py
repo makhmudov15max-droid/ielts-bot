@@ -4,7 +4,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import ReplyKeyboardMarkup
 
-TOKEN = "TOKENINGIZNI_QOYING"
+TOKEN = "8679587093:AAGjXpGVMiAexuNKPzRpQjASQRb8K2DYvyg"
 
 bot = Bot(token=TOKEN)
 storage = MemoryStorage()
