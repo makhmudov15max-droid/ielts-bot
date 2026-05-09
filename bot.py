@@ -457,7 +457,7 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
     else:
         bonus_rate = 40000
 
-   weighted_kpi = (
+weighted_kpi = (
     (individual_percentage * 0.5) +
     (conversion_percentage * 0.3) +
     (active_percentage * 0.2)
@@ -468,16 +468,6 @@ await message.answer(
     f"Conversion: {conversion_percentage}\n"
     f"Active: {active_percentage}\n"
     f"Weighted: {weighted_kpi}"
-)
-
-await message.answer(
-    f"""
-Individual: {individual_percentage}
-Conversion: {conversion_percentage}
-Active: {active_percentage}
-
-Weighted: {weighted_kpi}
-"""
 )
         
     base_kpi_bonus = actual_sales * bonus_rate
