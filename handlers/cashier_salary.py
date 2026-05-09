@@ -98,3 +98,67 @@ def register_cashier_handlers(dp):
         )
 
         await CashierSalaryStates.waiting_for_days.set()
+
+    @dp.message_handler(state=CashierSalaryStates.waiting_for_days)
+    async def get_days(message: types.Message, state: FSMContext):
+
+        text = message.text
+
+
+        if text == "🏠 Bosh sahifa":
+
+            await go_home(message, state)
+
+            return
+
+
+        if text == "24 kun":
+
+            days = 24
+
+        elif text == "25 kun":
+
+            days = 25
+
+        elif text == "26 kun":
+
+            days = 26
+
+        elif text == "27 kun":
+
+            days = 27
+
+        elif text == "✍️ Boshqa":
+
+            await message.answer(
+                "📅 Necha kun ishladi?",
+                reply_markup=home_keyboard()
+            )
+
+            return
+
+        else:
+
+            try:
+
+                days = float(text)
+
+            except:
+
+                await message.answer(
+                    "❌ To'g'ri raqam kiriting."
+                )
+
+                return
+
+
+        await state.update_data(days=days)
+
+
+        await message.answer(
+            "📉 Ish qoldirdimi?",
+            reply_markup=yes_no_keyboard()
+        )
+
+
+        await CashierSalaryStates.waiting_for_missed_work.set()
