@@ -191,7 +191,7 @@ def register_cashier_handlers(dp):
             await state.update_data(missed_days=0)
 
             await message.answer(
-                "🔄 Cover qilganmi?",
+                "🔄 Cover qildingizmi?",
                 reply_markup=yes_no_keyboard()
             )
 
