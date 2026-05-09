@@ -19,7 +19,7 @@ dp = Dispatcher(bot, storage=storage)
 async def start_handler(message: types.Message):
 
     await message.answer(
-        "Bot ishlayapti ✅",
+        "🏠 Bosh sahifa",
         reply_markup=main_menu_keyboard()
     )
 
