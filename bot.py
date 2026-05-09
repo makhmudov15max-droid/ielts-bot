@@ -141,7 +141,10 @@ class SalaryStates(StatesGroup):
 
     waiting_for_russian = State()
     waiting_for_ielts = State()
-
+    
+    waiting_for_missed_work = State()
+    waiting_for_missed_hours = State()
+    
     waiting_for_cover = State()
     waiting_for_cover_hours = State()
 
@@ -310,8 +313,42 @@ async def get_russian(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state=SalaryStates.waiting_for_ielts)
 async def get_ielts(message: types.Message, state: FSMContext):
+    
+    @dp.message_handler(state=SalaryStates.waiting_for_missed_work)
+async def get_missed_work(message: types.Message, state: FSMContext):
 
-    await state.update_data(ielts=message.text)
+    missed_work = message.text
+
+    await state.update_data(missed_work=missed_work)
+
+    if missed_work == "✅ Ha":
+
+        await message.answer(
+            "⏰ Necha soat ish qoldirdi?"
+        )
+
+        await SalaryStates.waiting_for_missed_hours.set()
+
+    else:
+
+        await state.update_data(missed_hours=0)
+
+        keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+        keyboard.add("✅ Cover qilgan")
+        keyboard.add("❌ Cover qilmagan")
+
+        await message.answer(
+            "🔄 Cover qilganmi?",
+            reply_markup=keyboard
+        )
+
+        await SalaryStates.waiting_for_cover.set()
+
+@dp.message_handler(state=SalaryStates.waiting_for_missed_hours)
+async def get_missed_hours(message: types.Message, state: FSMContext):
+
+    await state.update_data(missed_hours=message.text)
 
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 
@@ -324,6 +361,20 @@ async def get_ielts(message: types.Message, state: FSMContext):
     )
 
     await SalaryStates.waiting_for_cover.set()
+
+    await state.update_data(ielts=message.text)
+
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+    keyboard.add("✅ Ha")
+    keyboard.add("❌ Yo'q")
+
+    await message.answer(
+        "📉 Ish qoldirdimi?",
+        reply_markup=keyboard
+    )
+
+    await SalaryStates.waiting_for_missed_work.set()
 
 
 @dp.message_handler(state=SalaryStates.waiting_for_cover)
