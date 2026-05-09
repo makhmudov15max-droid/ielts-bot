@@ -463,11 +463,11 @@ weighted_kpi = (
     (active_percentage * 0.2)
 )
 
-await message.answer(
-    f"Individual: {individual_percentage}\n"
-    f"Conversion: {conversion_percentage}\n"
-    f"Active: {active_percentage}\n"
-    f"Weighted: {weighted_kpi}"
+    await message.answer(
+        f"Individual: {individual_percentage}\n"
+        f"Conversion: {conversion_percentage}\n"
+        f"Active: {active_percentage}\n"
+        f"Weighted: {weighted_kpi}"
 )
         
 base_kpi_bonus = actual_sales * bonus_rate
