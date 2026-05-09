@@ -1,3 +1,4 @@
+```python
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 
@@ -36,15 +37,30 @@ def register_admin_handlers(dp):
     @dp.message_handler(state=AdminSalaryStates.waiting_for_status)
     async def get_status(message: types.Message, state: FSMContext):
 
-    if message.text == "🏠 Bosh sahifa":
-        await go_home(message, state)
-        return
+        if message.text == "🏠 Bosh sahifa":
+            await go_home(message, state)
+            return
 
-    await state.update_data(status=message.text)
+        await state.update_data(status=message.text)
 
-    await message.answer(
-        "⏰ Kunlik necha soat ishlaydi?",
-        reply_markup=hours_keyboard()
-    )
+        await message.answer(
+            "⏰ Kunlik necha soat ishlaydi?",
+            reply_markup=hours_keyboard()
+        )
 
-    await AdminSalaryStates.waiting_for_hours.set()
+        await AdminSalaryStates.waiting_for_hours.set()
+
+
+    @dp.message_handler(state=AdminSalaryStates.waiting_for_hours)
+    async def get_hours(message: types.Message, state: FSMContext):
+
+        if message.text == "🏠 Bosh sahifa":
+            await go_home(message, state)
+            return
+
+        await state.update_data(hours=message.text)
+
+        await message.answer(
+            f"✅ Soat tanlandi: {message.text}"
+        )
+```
