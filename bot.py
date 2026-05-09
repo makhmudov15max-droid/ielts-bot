@@ -4,12 +4,9 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from config import TOKEN
 
 from handlers.admin_salary import register_admin_handlers
-
-from keyboards.admin_keyboard import main_menu_keyboard
-
 from handlers.cashier_salary import register_cashier_handlers
 
-register_cashier_handlers(dp)
+from keyboards.admin_keyboard import main_menu_keyboard
 
 
 bot = Bot(token=TOKEN)
@@ -29,6 +26,8 @@ async def start_handler(message: types.Message):
 
 
 register_admin_handlers(dp)
+
+register_cashier_handlers(dp)
 
 
 if __name__ == "__main__":
