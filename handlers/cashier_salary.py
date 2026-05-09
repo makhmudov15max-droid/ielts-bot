@@ -1,1 +1,100 @@
+from aiogram import types
+from aiogram.dispatcher import FSMContext
 
+from states.cashier_states import CashierSalaryStates
+
+from keyboards.admin_keyboard import main_menu_keyboard
+
+from keyboards.cashier_keyboard import (
+    cashier_hours_keyboard,
+    cashier_days_keyboard,
+    yes_no_keyboard,
+    home_keyboard
+)
+
+
+async def go_home(message: types.Message, state: FSMContext):
+
+    await state.finish()
+
+    await message.answer(
+        "🏠 Bosh sahifa",
+        reply_markup=main_menu_keyboard()
+    )
+
+
+def register_cashier_handlers(dp):
+
+
+    @dp.message_handler(lambda message: message.text == "💵 Cashier Salary")
+    async def cashier_start(message: types.Message):
+
+        await message.answer(
+            "⏰ Kunlik ish soati?",
+            reply_markup=cashier_hours_keyboard()
+        )
+
+        await CashierSalaryStates.waiting_for_hours.set()
+
+
+    @dp.message_handler(state=CashierSalaryStates.waiting_for_hours)
+    async def get_hours(message: types.Message, state: FSMContext):
+
+        text = message.text
+
+
+        if text == "🏠 Bosh sahifa":
+
+            await go_home(message, state)
+
+            return
+
+
+        if text == "6 soat":
+
+            hours = 6
+
+        elif text == "7 soat":
+
+            hours = 7
+
+        elif text == "8 soat":
+
+            hours = 8
+
+        elif text == "9 soat":
+
+            hours = 9
+
+        elif text == "✍️ Boshqa":
+
+            await message.answer(
+                "⏰ Necha soat ishlaydi?",
+                reply_markup=home_keyboard()
+            )
+
+            return
+
+        else:
+
+            try:
+
+                hours = float(text)
+
+            except:
+
+                await message.answer(
+                    "❌ To'g'ri raqam kiriting."
+                )
+
+                return
+
+
+        await state.update_data(hours=hours)
+
+        await message.answer(
+            "📅 Bu oy necha kun ishladilar?",
+            reply_markup=cashier_days_keyboard()
+        )
+
+        await CashierSalaryStates.waiting_for_days.set()
