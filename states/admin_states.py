@@ -14,7 +14,7 @@ dp = Dispatcher(bot, storage=storage)
 # STATES
 # =====================================
 
-class SalaryStates(StatesGroup):
+class AdminSalaryStates(StatesGroup):
 
     waiting_for_status = State()
 
