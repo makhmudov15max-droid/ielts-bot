@@ -181,7 +181,7 @@ def register_cashier_handlers(dp):
         if text == "✅ Ha":
 
             await message.answer(
-                "📉 Necha kun ishga chiqmadingiz?",
+                "📉 Necha soat ishga chiqmadingiz?",
                 reply_markup=home_keyboard()
             )
 
@@ -253,7 +253,7 @@ def register_cashier_handlers(dp):
         if text == "✅ Ha":
 
             await message.answer(
-                "🔄 Necha kun cover qildingiz?",
+                "🔄 Necha soat cover qildingiz?",
                 reply_markup=home_keyboard()
             )
 
