@@ -314,24 +314,19 @@ async def get_russian(message: types.Message, state: FSMContext):
 @dp.message_handler(state=SalaryStates.waiting_for_ielts)
 async def get_ielts(message: types.Message, state: FSMContext):
 
+    await state.update_data(ielts=message.text)
 
-    missed_work = message.text
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 
-    await state.update_data(missed_work=missed_work)
+    keyboard.add("✅ Ha")
+    keyboard.add("❌ Yo'q")
 
-    if missed_work == "✅ Ha":
+    await message.answer(
+        "📉 Ish qoldirdimi?",
+        reply_markup=keyboard
+    )
 
-        await message.answer(
-            "⏰ Necha soat ish qoldirdi?"
-        )
-
-        await SalaryStates.waiting_for_missed_hours.set()
-
-    else:
-
-        await state.update_data(missed_hours=0)
-
-        keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+    await SalaryStates.waiting_for_missed_work.set()
 
         keyboard.add("✅ Cover qilgan")
         keyboard.add("❌ Cover qilmagan")
