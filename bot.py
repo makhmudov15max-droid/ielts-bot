@@ -389,13 +389,16 @@ async def calculate_salary(message: types.Message, state: FSMContext):
     missed_hours = float(data.get("missed_hours", 0))
     cover_hours = float(data.get("cover_hours", 0))
 
-    worked_hours = (hours * days) - missed_hours
+    total_hours = hours * days
 
-    fixa = worked_hours * hourly_rate
+    fixa = total_hours * hourly_rate
+
+    penalty = missed_hours * hourly_rate
 
     cover_bonus = cover_hours * hourly_rate
 
     russian_bonus = 500000 if data.get("russian") == "✅ Ha" else 0
+
     ielts_bonus = 1000000 if data.get("ielts") == "✅ Ha" else 0
 
     individual_plan = float(data.get("individual_plan", 1))
@@ -408,7 +411,9 @@ async def calculate_salary(message: types.Message, state: FSMContext):
     actual_active = float(data.get("actual_active", 0))
 
     individual_percentage = (actual_sales / individual_plan) * 100
+
     conversion_percentage = (actual_conversion / conversion_plan) * 100
+
     active_percentage = (actual_active / active_plan) * 100
 
     weighted_kpi = (
@@ -455,11 +460,12 @@ async def calculate_salary(message: types.Message, state: FSMContext):
     kpi_bonus = base_kpi_bonus * (weighted_kpi / 100)
 
     total_salary = (
-        fixa +
-        cover_bonus +
-        russian_bonus +
-        ielts_bonus +
-        kpi_bonus
+        fixa
+        - penalty
+        + cover_bonus
+        + russian_bonus
+        + ielts_bonus
+        + kpi_bonus
     )
 
     await message.answer(
@@ -470,7 +476,8 @@ async def calculate_salary(message: types.Message, state: FSMContext):
         f"🏆 Weighted KPI: {weighted_kpi:.1f}%\n\n"
 
         f"🔥 KPI Bonus: {kpi_bonus:,.0f} UZS\n"
-        f"🔄 Cover bonus: +{cover_bonus:,.0f} UZS\n\n"
+        f"🔄 Cover bonus: +{cover_bonus:,.0f} UZS\n"
+        f"📉 Jarima: -{penalty:,.0f} UZS\n\n"
 
         f"💵 Fiksa: {fixa:,.0f} UZS\n"
         f"🌍 Rus bonusi: +{russian_bonus:,.0f} UZS\n"
