@@ -3,6 +3,8 @@ from aiogram.dispatcher import FSMContext
 
 from states.cashier_states import CashierSalaryStates
 
+from calculators.cashier_calc import calculate_cashier_salary
+
 from keyboards.admin_keyboard import main_menu_keyboard
 
 from keyboards.cashier_keyboard import (
@@ -418,8 +420,6 @@ def register_cashier_handlers(dp):
         )
 
         await CashierSalaryStates.waiting_for_archive_debtors.set()
-
-from calculators.cashier_calc import calculate_cashier_salary
 
 
 
