@@ -7,11 +7,8 @@ from aiogram.types import ReplyKeyboardMarkup
 TOKEN = "8679587093:AAGjXpGVMiAexuNKPzRpQjASQRb8K2DYvyg"
 
 bot = Bot(token=TOKEN)
-
 storage = MemoryStorage()
-
 dp = Dispatcher(bot, storage=storage)
-
 
 # =====================================
 # STATES
@@ -44,22 +41,42 @@ class SalaryStates(StatesGroup):
 
 
 # =====================================
+# GLOBAL HOME FUNCTION
+# =====================================
+
+async def go_home(message: types.Message, state: FSMContext):
+
+    await state.finish()
+
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+    keyboard.add("💰 Salary")
+
+    await message.answer(
+        "🏠 Bosh sahifa",
+        reply_markup=keyboard
+    )
+
+
+# =====================================
+# ONLY HOME BUTTON KEYBOARD
+# =====================================
+
+def home_keyboard():
+
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+    keyboard.add("🏠 Bosh sahifa")
+
+    return keyboard
+
+
+# =====================================
 # START
 # =====================================
 
 @dp.message_handler(commands=["start"], state="*")
 async def start_handler(message: types.Message, state: FSMContext):
 
-    await state.finish()
-
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-
-    keyboard.add("💰 Salary")
-
-    await message.answer(
-        "🏠 Menu",
-        reply_markup=keyboard
-    )
+    await go_home(message, state)
 
 
 # =====================================
@@ -69,16 +86,7 @@ async def start_handler(message: types.Message, state: FSMContext):
 @dp.message_handler(lambda message: message.text == "🏠 Bosh sahifa", state="*")
 async def back_home(message: types.Message, state: FSMContext):
 
-    await state.finish()
-
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-
-    keyboard.add("💰 Salary")
-
-    await message.answer(
-        "🏠 Bosh sahifa",
-        reply_markup=keyboard
-    )
+    await go_home(message, state)
 
 
 # =====================================
@@ -90,11 +98,9 @@ async def salary_start(message: types.Message):
 
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 
-    keyboard.add("Nova")
-    keyboard.add("Prime")
-
-    keyboard.add("Apex")
-    keyboard.add("Leader")
+    keyboard.add("Nova", "Prime")
+    keyboard.add("Apex", "Leader")
+    keyboard.add("🏠 Bosh sahifa")
 
     await message.answer(
         "📋 Statusni tanlang:",
@@ -111,13 +117,16 @@ async def salary_start(message: types.Message):
 @dp.message_handler(state=SalaryStates.waiting_for_status)
 async def get_status(message: types.Message, state: FSMContext):
 
+    if message.text == "🏠 Bosh sahifa":
+        await go_home(message, state)
+        return
+
     await state.update_data(status=message.text)
 
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 
-    keyboard.add("9 soat", "10 soat")
     keyboard.add("6 soat", "7 soat")
-
+    keyboard.add("9 soat", "10 soat")
     keyboard.add("✍️ Boshqa soat")
     keyboard.add("🏠 Bosh sahifa")
 
@@ -139,44 +148,29 @@ async def get_hours(message: types.Message, state: FSMContext):
     text = message.text
 
     if text == "🏠 Bosh sahifa":
-
-        await state.finish()
-
-        keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-
-        keyboard.add("💰 Salary")
-
-        await message.answer(
-            "🏠 Bosh sahifa",
-            reply_markup=keyboard
-        )
-
+        await go_home(message, state)
         return
 
-    if text == "✍️ Boshqa soat":
+    if text == "6 soat":
+        hours = 6
 
-        keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+    elif text == "7 soat":
+        hours = 7
 
-        keyboard.add("🏠 Bosh sahifa")
-
-        await message.answer(
-            "✍️ Soatni kiriting:",
-            reply_markup=keyboard
-        )
-
-        return
-
-    if text == "9 soat":
+    elif text == "9 soat":
         hours = 9
 
     elif text == "10 soat":
         hours = 10
 
-    elif text == "6 soat":
-        hours = 6
+    elif text == "✍️ Boshqa soat":
 
-    elif text == "7 soat":
-        hours = 7
+        await message.answer(
+            "✍️ Soatni kiriting:",
+            reply_markup=home_keyboard()
+        )
+
+        return
 
     else:
 
@@ -185,19 +179,15 @@ async def get_hours(message: types.Message, state: FSMContext):
 
         except:
 
-            await message.answer(
-                "❌ Faqat raqam kiriting."
-            )
-
+            await message.answer("❌ Faqat raqam kiriting.")
             return
 
     await state.update_data(hours=hours)
 
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 
-    keyboard.add("27 kun", "26 kun")
-    keyboard.add("25 kun", "24 kun")
-
+    keyboard.add("24 kun", "25 kun")
+    keyboard.add("26 kun", "27 kun")
     keyboard.add("✍️ Boshqa kun")
     keyboard.add("🏠 Bosh sahifa")
 
@@ -219,44 +209,29 @@ async def get_days(message: types.Message, state: FSMContext):
     text = message.text
 
     if text == "🏠 Bosh sahifa":
-
-        await state.finish()
-
-        keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-
-        keyboard.add("💰 Salary")
-
-        await message.answer(
-            "🏠 Bosh sahifa",
-            reply_markup=keyboard
-        )
-
+        await go_home(message, state)
         return
 
-    if text == "✍️ Boshqa kun":
-
-        keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-
-        keyboard.add("🏠 Bosh sahifa")
-
-        await message.answer(
-            "✍️ Kunlar sonini kiriting:",
-            reply_markup=keyboard
-        )
-
-        return
-
-    if text == "27 kun":
-        days = 27
-
-    elif text == "26 kun":
-        days = 26
+    if text == "24 kun":
+        days = 24
 
     elif text == "25 kun":
         days = 25
 
-    elif text == "24 kun":
-        days = 24
+    elif text == "26 kun":
+        days = 26
+
+    elif text == "27 kun":
+        days = 27
+
+    elif text == "✍️ Boshqa kun":
+
+        await message.answer(
+            "✍️ Kun sonini kiriting:",
+            reply_markup=home_keyboard()
+        )
+
+        return
 
     else:
 
@@ -265,16 +240,14 @@ async def get_days(message: types.Message, state: FSMContext):
 
         except:
 
-            await message.answer(
-                "❌ Faqat raqam kiriting."
-            )
-
+            await message.answer("❌ Faqat raqam kiriting.")
             return
 
     await state.update_data(days=days)
 
     await message.answer(
-        "🎯 Individual plan nechta?"
+        "🎯 Individual plan nechta?",
+        reply_markup=home_keyboard()
     )
 
     await SalaryStates.waiting_for_individual_plan.set()
@@ -287,10 +260,15 @@ async def get_days(message: types.Message, state: FSMContext):
 @dp.message_handler(state=SalaryStates.waiting_for_individual_plan)
 async def get_individual_plan(message: types.Message, state: FSMContext):
 
+    if message.text == "🏠 Bosh sahifa":
+        await go_home(message, state)
+        return
+
     await state.update_data(individual_plan=message.text)
 
     await message.answer(
-        "📈 Amaldagi sotuv nechta?"
+        "📈 Amaldagi sotuv nechta?",
+        reply_markup=home_keyboard()
     )
 
     await SalaryStates.waiting_for_actual_sales.set()
@@ -303,10 +281,15 @@ async def get_individual_plan(message: types.Message, state: FSMContext):
 @dp.message_handler(state=SalaryStates.waiting_for_actual_sales)
 async def get_actual_sales(message: types.Message, state: FSMContext):
 
+    if message.text == "🏠 Bosh sahifa":
+        await go_home(message, state)
+        return
+
     await state.update_data(actual_sales=message.text)
 
     await message.answer(
-        "📊 Conversion plan nechta?"
+        "📊 Conversion plan nechta?",
+        reply_markup=home_keyboard()
     )
 
     await SalaryStates.waiting_for_conversion_plan.set()
@@ -319,10 +302,15 @@ async def get_actual_sales(message: types.Message, state: FSMContext):
 @dp.message_handler(state=SalaryStates.waiting_for_conversion_plan)
 async def get_conversion_plan(message: types.Message, state: FSMContext):
 
+    if message.text == "🏠 Bosh sahifa":
+        await go_home(message, state)
+        return
+
     await state.update_data(conversion_plan=message.text)
 
     await message.answer(
-        "📊 Amaldagi conversion nechta?"
+        "📊 Amaldagi conversion nechta?",
+        reply_markup=home_keyboard()
     )
 
     await SalaryStates.waiting_for_actual_conversion.set()
@@ -335,10 +323,15 @@ async def get_conversion_plan(message: types.Message, state: FSMContext):
 @dp.message_handler(state=SalaryStates.waiting_for_actual_conversion)
 async def get_actual_conversion(message: types.Message, state: FSMContext):
 
+    if message.text == "🏠 Bosh sahifa":
+        await go_home(message, state)
+        return
+
     await state.update_data(actual_conversion=message.text)
 
     await message.answer(
-        "👥 Aktiv plan nechta?"
+        "👥 Aktiv plan nechta?",
+        reply_markup=home_keyboard()
     )
 
     await SalaryStates.waiting_for_active_plan.set()
@@ -351,10 +344,15 @@ async def get_actual_conversion(message: types.Message, state: FSMContext):
 @dp.message_handler(state=SalaryStates.waiting_for_active_plan)
 async def get_active_plan(message: types.Message, state: FSMContext):
 
+    if message.text == "🏠 Bosh sahifa":
+        await go_home(message, state)
+        return
+
     await state.update_data(active_plan=message.text)
 
     await message.answer(
-        "👥 Amaldagi aktiv nechta?"
+        "👥 Amaldagi aktiv nechta?",
+        reply_markup=home_keyboard()
     )
 
     await SalaryStates.waiting_for_actual_active.set()
@@ -367,12 +365,16 @@ async def get_active_plan(message: types.Message, state: FSMContext):
 @dp.message_handler(state=SalaryStates.waiting_for_actual_active)
 async def get_actual_active(message: types.Message, state: FSMContext):
 
+    if message.text == "🏠 Bosh sahifa":
+        await go_home(message, state)
+        return
+
     await state.update_data(actual_active=message.text)
 
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 
-    keyboard.add("✅ Ha")
-    keyboard.add("❌ Yo'q")
+    keyboard.add("✅ Ha", "❌ Yo'q")
+    keyboard.add("🏠 Bosh sahifa")
 
     await message.answer(
         "🌍 Rus tilini biladimi?",
@@ -389,12 +391,16 @@ async def get_actual_active(message: types.Message, state: FSMContext):
 @dp.message_handler(state=SalaryStates.waiting_for_russian)
 async def get_russian(message: types.Message, state: FSMContext):
 
+    if message.text == "🏠 Bosh sahifa":
+        await go_home(message, state)
+        return
+
     await state.update_data(russian=message.text)
 
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 
-    keyboard.add("✅ Ha")
-    keyboard.add("❌ Yo'q")
+    keyboard.add("✅ Ha", "❌ Yo'q")
+    keyboard.add("🏠 Bosh sahifa")
 
     await message.answer(
         "🎓 IELTS 7+ bormi?",
@@ -411,12 +417,16 @@ async def get_russian(message: types.Message, state: FSMContext):
 @dp.message_handler(state=SalaryStates.waiting_for_ielts)
 async def get_ielts(message: types.Message, state: FSMContext):
 
+    if message.text == "🏠 Bosh sahifa":
+        await go_home(message, state)
+        return
+
     await state.update_data(ielts=message.text)
 
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 
-    keyboard.add("✅ Ha")
-    keyboard.add("❌ Yo'q")
+    keyboard.add("✅ Ha", "❌ Yo'q")
+    keyboard.add("🏠 Bosh sahifa")
 
     await message.answer(
         "📉 Ish qoldirdimi?",
@@ -433,10 +443,15 @@ async def get_ielts(message: types.Message, state: FSMContext):
 @dp.message_handler(state=SalaryStates.waiting_for_missed_work)
 async def get_missed_work(message: types.Message, state: FSMContext):
 
+    if message.text == "🏠 Bosh sahifa":
+        await go_home(message, state)
+        return
+
     if message.text == "✅ Ha":
 
         await message.answer(
-            "⏰ Necha soat ish qoldirdi?"
+            "⏰ Necha soat ish qoldirdi?",
+            reply_markup=home_keyboard()
         )
 
         await SalaryStates.waiting_for_missed_hours.set()
@@ -447,8 +462,8 @@ async def get_missed_work(message: types.Message, state: FSMContext):
 
         keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 
-        keyboard.add("✅ Cover qilgan")
-        keyboard.add("❌ Cover qilmagan")
+        keyboard.add("✅ Cover qilgan", "❌ Cover qilmagan")
+        keyboard.add("🏠 Bosh sahifa")
 
         await message.answer(
             "🔄 Cover qilganmi?",
@@ -465,12 +480,16 @@ async def get_missed_work(message: types.Message, state: FSMContext):
 @dp.message_handler(state=SalaryStates.waiting_for_missed_hours)
 async def get_missed_hours(message: types.Message, state: FSMContext):
 
+    if message.text == "🏠 Bosh sahifa":
+        await go_home(message, state)
+        return
+
     await state.update_data(missed_hours=message.text)
 
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 
-    keyboard.add("✅ Cover qilgan")
-    keyboard.add("❌ Cover qilmagan")
+    keyboard.add("✅ Cover qilgan", "❌ Cover qilmagan")
+    keyboard.add("🏠 Bosh sahifa")
 
     await message.answer(
         "🔄 Cover qilganmi?",
@@ -487,10 +506,15 @@ async def get_missed_hours(message: types.Message, state: FSMContext):
 @dp.message_handler(state=SalaryStates.waiting_for_cover)
 async def get_cover(message: types.Message, state: FSMContext):
 
+    if message.text == "🏠 Bosh sahifa":
+        await go_home(message, state)
+        return
+
     if message.text == "✅ Cover qilgan":
 
         await message.answer(
-            "⏰ Necha soat cover qilgan?"
+            "⏰ Necha soat cover qilgan?",
+            reply_markup=home_keyboard()
         )
 
         await SalaryStates.waiting_for_cover_hours.set()
@@ -508,6 +532,10 @@ async def get_cover(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state=SalaryStates.waiting_for_cover_hours)
 async def get_cover_hours(message: types.Message, state: FSMContext):
+
+    if message.text == "🏠 Bosh sahifa":
+        await go_home(message, state)
+        return
 
     await state.update_data(cover_hours=message.text)
 
@@ -548,7 +576,6 @@ async def calculate_salary(message: types.Message, state: FSMContext):
     cover_bonus = cover_hours * hourly_rate
 
     russian_bonus = 500000 if data.get("russian") == "✅ Ha" else 0
-
     ielts_bonus = 1000000 if data.get("ielts") == "✅ Ha" else 0
 
     individual_plan = float(data.get("individual_plan", 1))
@@ -574,34 +601,24 @@ async def calculate_salary(message: types.Message, state: FSMContext):
 
     if individual_percentage <= 49:
         bonus_rate = 0
-
     elif individual_percentage <= 60:
         bonus_rate = 5000
-
     elif individual_percentage <= 70:
         bonus_rate = 6000
-
     elif individual_percentage <= 80:
         bonus_rate = 10000
-
     elif individual_percentage <= 90:
         bonus_rate = 15000
-
     elif individual_percentage <= 95:
         bonus_rate = 18000
-
     elif individual_percentage <= 100:
         bonus_rate = 25000
-
     elif individual_percentage <= 110:
         bonus_rate = 30000
-
     elif individual_percentage <= 120:
         bonus_rate = 32000
-
     elif individual_percentage <= 130:
         bonus_rate = 35000
-
     else:
         bonus_rate = 40000
 
@@ -618,6 +635,9 @@ async def calculate_salary(message: types.Message, state: FSMContext):
         + kpi_bonus
     )
 
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+    keyboard.add("💰 Salary")
+
     await message.answer(
         f"📈 Individual KPI: {individual_percentage:.1f}%\n"
         f"📊 Conversion KPI: {conversion_percentage:.1f}%\n"
@@ -626,14 +646,15 @@ async def calculate_salary(message: types.Message, state: FSMContext):
         f"🏆 Weighted KPI: {weighted_kpi:.1f}%\n\n"
 
         f"🔥 KPI Bonus: {kpi_bonus:,.0f} UZS\n"
-        f"🔄 Cover bonus: +{cover_bonus:,.0f} UZS\n"
+        f"🔄 Cover Bonus: +{cover_bonus:,.0f} UZS\n"
         f"📉 Jarima: -{penalty:,.0f} UZS\n\n"
 
         f"💵 Fiksa: {fixa:,.0f} UZS\n"
         f"🌍 Rus bonusi: +{russian_bonus:,.0f} UZS\n"
         f"🎓 IELTS bonusi: +{ielts_bonus:,.0f} UZS\n\n"
 
-        f"💰 JAMI OYLIK: {total_salary:,.0f} UZS"
+        f"💰 JAMI OYLIK: {total_salary:,.0f} UZS",
+        reply_markup=keyboard
     )
 
     await state.finish()
