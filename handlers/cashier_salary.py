@@ -162,3 +162,75 @@ def register_cashier_handlers(dp):
 
 
         await CashierSalaryStates.waiting_for_missed_work.set()
+
+    @dp.message_handler(state=CashierSalaryStates.waiting_for_missed_work)
+    async def get_missed_work(message: types.Message, state: FSMContext):
+
+        text = message.text
+
+
+        if text == "🏠 Bosh sahifa":
+
+            await go_home(message, state)
+
+            return
+
+
+        if text == "✅ Ha":
+
+            await message.answer(
+                "📉 Necha kun ishga chiqmadingiz?",
+                reply_markup=home_keyboard()
+            )
+
+            await CashierSalaryStates.waiting_for_missed_days.set()
+
+
+        else:
+
+            await state.update_data(missed_days=0)
+
+            await message.answer(
+                "🔄 Cover qilganmi?",
+                reply_markup=yes_no_keyboard()
+            )
+
+            await CashierSalaryStates.waiting_for_cover.set()
+
+
+
+    @dp.message_handler(state=CashierSalaryStates.waiting_for_missed_days)
+    async def get_missed_days(message: types.Message, state: FSMContext):
+
+        text = message.text
+
+
+        if text == "🏠 Bosh sahifa":
+
+            await go_home(message, state)
+
+            return
+
+
+        try:
+
+            missed_days = float(text)
+
+        except:
+
+            await message.answer(
+                "❌ To'g'ri raqam kiriting."
+            )
+
+            return
+
+
+        await state.update_data(missed_days=missed_days)
+
+
+        await message.answer(
+            "🔄 Cover qilganmi?",
+            reply_markup=yes_no_keyboard()
+        )
+
+        await CashierSalaryStates.waiting_for_cover.set()
