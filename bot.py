@@ -436,7 +436,9 @@ async def calculate_salary(message: types.Message, state: FSMContext):
     else:
         bonus_rate = 40000
 
-    kpi_bonus = actual_sales * bonus_rate
+    base_kpi_bonus = actual_sales * bonus_rate
+
+    kpi_bonus = base_kpi_bonus * (weighted_kpi / 100)
 
     cover_bonus = cover_hours * hourly_rate
 
