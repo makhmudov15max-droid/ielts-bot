@@ -3,7 +3,8 @@ from aiogram.dispatcher import FSMContext
 
 from keyboards.admin_keyboard import (
     status_keyboard,
-    main_menu_keyboard
+    main_menu_keyboard,
+    hours_keyboard
 )
 
 from states.admin_states import AdminSalaryStates
