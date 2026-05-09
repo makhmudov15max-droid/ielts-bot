@@ -49,7 +49,7 @@ async def go_home(message: types.Message, state: FSMContext):
     await state.finish()
 
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-    keyboard.add("💰 Salary")
+    keyboard.add("💰 Admin Salary")
 
     await message.answer(
         "🏠 Bosh sahifa",
@@ -93,7 +93,7 @@ async def back_home(message: types.Message, state: FSMContext):
 # START SALARY
 # =====================================
 
-@dp.message_handler(lambda message: message.text == "💰 Salary")
+@dp.message_handler(lambda message: message.text == "💰 Admin Salary")
 async def salary_start(message: types.Message):
 
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
