@@ -313,9 +313,7 @@ async def get_russian(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state=SalaryStates.waiting_for_ielts)
 async def get_ielts(message: types.Message, state: FSMContext):
-    
-    @dp.message_handler(state=SalaryStates.waiting_for_missed_work)
-async def get_missed_work(message: types.Message, state: FSMContext):
+
 
     missed_work = message.text
 
@@ -375,6 +373,9 @@ async def get_missed_hours(message: types.Message, state: FSMContext):
     )
 
     await SalaryStates.waiting_for_missed_work.set()
+
+@dp.message_handler(state=SalaryStates.waiting_for_missed_work)
+async def get_missed_work(message: types.Message, state: FSMContext):
 
 
 @dp.message_handler(state=SalaryStates.waiting_for_cover)
