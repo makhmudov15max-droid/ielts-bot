@@ -16,7 +16,9 @@ dp = Dispatcher(bot, storage=storage)
 # =========================
 
 class SalaryStates(StatesGroup):
+
     waiting_for_status = State()
+
     waiting_for_hours = State()
     waiting_for_days = State()
 
@@ -44,9 +46,26 @@ class SalaryStates(StatesGroup):
 # =========================
 
 @dp.message_handler(commands=["start"])
-async def start_cmd(message: types.Message, state: FSMContext):
+async def start_handler(message: types.Message, state: FSMContext):
 
     await state.finish()
+
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+    keyboard.add("💰 Salary")
+
+    await message.answer(
+        "🏠 Menu",
+        reply_markup=keyboard
+    )
+
+
+# =========================
+# SALARY START
+# =========================
+
+@dp.message_handler(lambda message: message.text == "💰 Salary")
+async def salary_start(message: types.Message):
 
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 
@@ -72,7 +91,9 @@ async def get_status(message: types.Message, state: FSMContext):
 
     await state.update_data(status=message.text)
 
-    await message.answer("⏰ Kunlik necha soat ishlaydi?")
+    await message.answer(
+        "⏰ Kunlik necha soat ishlaydi?"
+    )
 
     await SalaryStates.waiting_for_hours.set()
 
@@ -86,7 +107,9 @@ async def get_hours(message: types.Message, state: FSMContext):
 
     await state.update_data(hours=message.text)
 
-    await message.answer("📅 Oyda necha kun ishladi?")
+    await message.answer(
+        "📅 Oyda necha kun ishladi?"
+    )
 
     await SalaryStates.waiting_for_days.set()
 
@@ -100,7 +123,9 @@ async def get_days(message: types.Message, state: FSMContext):
 
     await state.update_data(days=message.text)
 
-    await message.answer("🎯 Individual plan nechta?")
+    await message.answer(
+        "🎯 Individual plan nechta?"
+    )
 
     await SalaryStates.waiting_for_individual_plan.set()
 
@@ -114,7 +139,9 @@ async def get_individual_plan(message: types.Message, state: FSMContext):
 
     await state.update_data(individual_plan=message.text)
 
-    await message.answer("📈 Amaldagi sotuv nechta?")
+    await message.answer(
+        "📈 Amaldagi sotuv nechta?"
+    )
 
     await SalaryStates.waiting_for_actual_sales.set()
 
@@ -128,7 +155,9 @@ async def get_actual_sales(message: types.Message, state: FSMContext):
 
     await state.update_data(actual_sales=message.text)
 
-    await message.answer("📊 Conversion plan nechta?")
+    await message.answer(
+        "📊 Conversion plan nechta?"
+    )
 
     await SalaryStates.waiting_for_conversion_plan.set()
 
@@ -142,7 +171,9 @@ async def get_conversion_plan(message: types.Message, state: FSMContext):
 
     await state.update_data(conversion_plan=message.text)
 
-    await message.answer("📊 Amaldagi conversion nechta?")
+    await message.answer(
+        "📊 Amaldagi conversion nechta?"
+    )
 
     await SalaryStates.waiting_for_actual_conversion.set()
 
@@ -156,7 +187,9 @@ async def get_actual_conversion(message: types.Message, state: FSMContext):
 
     await state.update_data(actual_conversion=message.text)
 
-    await message.answer("👥 Aktiv plan nechta?")
+    await message.answer(
+        "👥 Aktiv plan nechta?"
+    )
 
     await SalaryStates.waiting_for_active_plan.set()
 
@@ -170,7 +203,9 @@ async def get_active_plan(message: types.Message, state: FSMContext):
 
     await state.update_data(active_plan=message.text)
 
-    await message.answer("👥 Amaldagi aktiv nechta?")
+    await message.answer(
+        "👥 Amaldagi aktiv nechta?"
+    )
 
     await SalaryStates.waiting_for_actual_active.set()
 
@@ -248,11 +283,7 @@ async def get_ielts(message: types.Message, state: FSMContext):
 @dp.message_handler(state=SalaryStates.waiting_for_missed_work)
 async def get_missed_work(message: types.Message, state: FSMContext):
 
-    missed_work = message.text
-
-    await state.update_data(missed_work=missed_work)
-
-    if missed_work == "✅ Ha":
+    if message.text == "✅ Ha":
 
         await message.answer(
             "⏰ Necha soat ish qoldirdi?"
@@ -306,11 +337,7 @@ async def get_missed_hours(message: types.Message, state: FSMContext):
 @dp.message_handler(state=SalaryStates.waiting_for_cover)
 async def get_cover(message: types.Message, state: FSMContext):
 
-    cover = message.text
-
-    await state.update_data(cover=cover)
-
-    if cover == "✅ Cover qilgan":
+    if message.text == "✅ Cover qilgan":
 
         await message.answer(
             "⏰ Necha soat cover qilgan?"
@@ -338,7 +365,7 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
 
 
 # =========================
-# CALCULATE
+# CALCULATE SALARY
 # =========================
 
 async def calculate_salary(message: types.Message, state: FSMContext):
@@ -360,18 +387,16 @@ async def calculate_salary(message: types.Message, state: FSMContext):
     days = float(data.get("days", 0))
 
     missed_hours = float(data.get("missed_hours", 0))
+    cover_hours = float(data.get("cover_hours", 0))
 
     worked_hours = (hours * days) - missed_hours
 
     fixa = worked_hours * hourly_rate
 
-    russian_bonus = 500000 if data.get("russian") == "✅ Ha" else 0
-
-    ielts_bonus = 1000000 if data.get("ielts") == "✅ Ha" else 0
-
-    cover_hours = float(data.get("cover_hours", 0))
-
     cover_bonus = cover_hours * hourly_rate
+
+    russian_bonus = 500000 if data.get("russian") == "✅ Ha" else 0
+    ielts_bonus = 1000000 if data.get("ielts") == "✅ Ha" else 0
 
     individual_plan = float(data.get("individual_plan", 1))
     actual_sales = float(data.get("actual_sales", 0))
@@ -383,10 +408,14 @@ async def calculate_salary(message: types.Message, state: FSMContext):
     actual_active = float(data.get("actual_active", 0))
 
     individual_percentage = (actual_sales / individual_plan) * 100
-
     conversion_percentage = (actual_conversion / conversion_plan) * 100
-
     active_percentage = (actual_active / active_plan) * 100
+
+    weighted_kpi = (
+        (individual_percentage * 0.5) +
+        (conversion_percentage * 0.3) +
+        (active_percentage * 0.2)
+    )
 
     if individual_percentage <= 49:
         bonus_rate = 0
@@ -421,21 +450,15 @@ async def calculate_salary(message: types.Message, state: FSMContext):
     else:
         bonus_rate = 40000
 
-    weighted_kpi = (
-        (individual_percentage * 0.5) +
-        (conversion_percentage * 0.3) +
-        (active_percentage * 0.2)
-    )
-
     base_kpi_bonus = actual_sales * bonus_rate
 
     kpi_bonus = base_kpi_bonus * (weighted_kpi / 100)
 
     total_salary = (
         fixa +
+        cover_bonus +
         russian_bonus +
         ielts_bonus +
-        cover_bonus +
         kpi_bonus
     )
 
@@ -458,6 +481,10 @@ async def calculate_salary(message: types.Message, state: FSMContext):
 
     await state.finish()
 
+
+# =========================
+# RUN
+# =========================
 
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
