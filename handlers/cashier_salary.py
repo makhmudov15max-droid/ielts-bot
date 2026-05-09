@@ -344,3 +344,77 @@ def register_cashier_handlers(dp):
         )
 
         await CashierSalaryStates.waiting_for_active_debtors.set()
+
+    @dp.message_handler(state=CashierSalaryStates.waiting_for_active_debtors)
+    async def get_active_debtors(message: types.Message, state: FSMContext):
+
+        text = message.text
+
+
+        if text == "🏠 Bosh sahifa":
+
+            await go_home(message, state)
+
+            return
+
+
+        try:
+
+            active_debtors = float(text)
+
+        except:
+
+            await message.answer(
+                "❌ To'g'ri raqam kiriting."
+            )
+
+            return
+
+
+        await state.update_data(active_debtors=active_debtors)
+
+
+        await message.answer(
+            "🗂 Archive o‘quvchilar soni?",
+            reply_markup=home_keyboard()
+        )
+
+        await CashierSalaryStates.waiting_for_archive_students.set()
+
+
+
+    @dp.message_handler(state=CashierSalaryStates.waiting_for_archive_students)
+    async def get_archive_students(message: types.Message, state: FSMContext):
+
+        text = message.text
+
+
+        if text == "🏠 Bosh sahifa":
+
+            await go_home(message, state)
+
+            return
+
+
+        try:
+
+            archive_students = float(text)
+
+        except:
+
+            await message.answer(
+                "❌ To'g'ri raqam kiriting."
+            )
+
+            return
+
+
+        await state.update_data(archive_students=archive_students)
+
+
+        await message.answer(
+            "📉 Archive qarzdorlar soni?",
+            reply_markup=home_keyboard()
+        )
+
+        await CashierSalaryStates.waiting_for_archive_debtors.set()
