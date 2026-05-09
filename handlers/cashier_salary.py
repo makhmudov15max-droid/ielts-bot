@@ -101,6 +101,7 @@ def register_cashier_handlers(dp):
 
         await CashierSalaryStates.waiting_for_days.set()
 
+
     @dp.message_handler(state=CashierSalaryStates.waiting_for_days)
     async def get_days(message: types.Message, state: FSMContext):
 
@@ -156,14 +157,13 @@ def register_cashier_handlers(dp):
 
         await state.update_data(days=days)
 
-
         await message.answer(
             "📉 Ish qoldirdimi?",
             reply_markup=yes_no_keyboard()
         )
 
-
         await CashierSalaryStates.waiting_for_missed_work.set()
+
 
     @dp.message_handler(state=CashierSalaryStates.waiting_for_missed_work)
     async def get_missed_work(message: types.Message, state: FSMContext):
@@ -187,8 +187,10 @@ def register_cashier_handlers(dp):
 
             await CashierSalaryStates.waiting_for_missed_days.set()
 
+            return
 
-        else:
+
+        if text == "❌ Yo'q":
 
             await state.update_data(missed_days=0)
 
@@ -199,6 +201,12 @@ def register_cashier_handlers(dp):
 
             await CashierSalaryStates.waiting_for_cover.set()
 
+            return
+
+
+        await message.answer(
+            "❌ Tugmalardan birini tanlang."
+        )
 
 
     @dp.message_handler(state=CashierSalaryStates.waiting_for_missed_days)
@@ -229,13 +237,13 @@ def register_cashier_handlers(dp):
 
         await state.update_data(missed_days=missed_days)
 
-
         await message.answer(
-            "🔄 Cover qilganmi?",
+            "🔄 Cover qildingizmi?",
             reply_markup=yes_no_keyboard()
         )
 
         await CashierSalaryStates.waiting_for_cover.set()
+
 
     @dp.message_handler(state=CashierSalaryStates.waiting_for_cover)
     async def get_cover(message: types.Message, state: FSMContext):
@@ -259,8 +267,10 @@ def register_cashier_handlers(dp):
 
             await CashierSalaryStates.waiting_for_cover_days.set()
 
+            return
 
-        else:
+
+        if text == "❌ Yo'q":
 
             await state.update_data(cover_days=0)
 
@@ -271,6 +281,12 @@ def register_cashier_handlers(dp):
 
             await CashierSalaryStates.waiting_for_active_students.set()
 
+            return
+
+
+        await message.answer(
+            "❌ Tugmalardan birini tanlang."
+        )
 
 
     @dp.message_handler(state=CashierSalaryStates.waiting_for_cover_days)
@@ -301,14 +317,12 @@ def register_cashier_handlers(dp):
 
         await state.update_data(cover_days=cover_days)
 
-
         await message.answer(
             "👥 Aktiv o‘quvchilar soni?",
             reply_markup=home_keyboard()
         )
 
         await CashierSalaryStates.waiting_for_active_students.set()
-
 
 
     @dp.message_handler(state=CashierSalaryStates.waiting_for_active_students)
@@ -339,13 +353,13 @@ def register_cashier_handlers(dp):
 
         await state.update_data(active_students=active_students)
 
-
         await message.answer(
             "📉 Aktiv qarzdorlar soni?",
             reply_markup=home_keyboard()
         )
 
         await CashierSalaryStates.waiting_for_active_debtors.set()
+
 
     @dp.message_handler(state=CashierSalaryStates.waiting_for_active_debtors)
     async def get_active_debtors(message: types.Message, state: FSMContext):
@@ -375,14 +389,12 @@ def register_cashier_handlers(dp):
 
         await state.update_data(active_debtors=active_debtors)
 
-
         await message.answer(
             "🗂 Archive o‘quvchilar soni?",
             reply_markup=home_keyboard()
         )
 
         await CashierSalaryStates.waiting_for_archive_students.set()
-
 
 
     @dp.message_handler(state=CashierSalaryStates.waiting_for_archive_students)
@@ -413,14 +425,12 @@ def register_cashier_handlers(dp):
 
         await state.update_data(archive_students=archive_students)
 
-
         await message.answer(
             "📉 Archive qarzdorlar soni?",
             reply_markup=home_keyboard()
         )
 
         await CashierSalaryStates.waiting_for_archive_debtors.set()
-
 
 
     @dp.message_handler(state=CashierSalaryStates.waiting_for_archive_debtors)
