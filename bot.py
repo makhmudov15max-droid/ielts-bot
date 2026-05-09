@@ -7,13 +7,15 @@ from aiogram.types import ReplyKeyboardMarkup
 TOKEN = "8679587093:AAGjXpGVMiAexuNKPzRpQjASQRb8K2DYvyg"
 
 bot = Bot(token=TOKEN)
+
 storage = MemoryStorage()
+
 dp = Dispatcher(bot, storage=storage)
 
 
-# =========================
+# =====================================
 # STATES
-# =========================
+# =====================================
 
 class SalaryStates(StatesGroup):
 
@@ -41,11 +43,11 @@ class SalaryStates(StatesGroup):
     waiting_for_cover_hours = State()
 
 
-# =========================
+# =====================================
 # START
-# =========================
+# =====================================
 
-@dp.message_handler(commands=["start"])
+@dp.message_handler(commands=["start"], state="*")
 async def start_handler(message: types.Message, state: FSMContext):
 
     await state.finish()
@@ -60,136 +62,12 @@ async def start_handler(message: types.Message, state: FSMContext):
     )
 
 
-# =========================
-# SALARY START
-# =========================
+# =====================================
+# HOME BUTTON
+# =====================================
 
-@dp.message_handler(lambda message: message.text == "💰 Salary")
-async def salary_start(message: types.Message):
-
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-
-    keyboard.add("Nova")
-    keyboard.add("Prime")
-    keyboard.add("Apex")
-    keyboard.add("Leader")
-
-    await message.answer(
-        "📋 Statusni tanlang:",
-        reply_markup=keyboard
-    )
-
-    await SalaryStates.waiting_for_status.set()
-
-
-# =========================
-# STATUS
-# =========================
-
-@dp.message_handler(state=SalaryStates.waiting_for_status)
-async def get_status(message: types.Message, state: FSMContext):
-
-    await state.update_data(status=message.text)
-
-    await message.answer(
-        "⏰ Kunlik necha soat ishlaydi?"
-    )
-
-    await SalaryStates.waiting_for_hours.set()
-
-
-# =========================
-# HOURS
-# =========================
-
-@dp.message_handler(state=SalaryStates.waiting_for_status)
-async def get_status(message: types.Message, state: FSMContext):
-
-    await state.update_data(status=message.text)
-
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-
-    keyboard.add("9")
-    keyboard.add("10")
-
-    keyboard.add("6")
-    keyboard.add("7")
-
-    keyboard.add("✍️ Boshqa")
-
-    await message.answer(
-        "⏰ Kunlik necha soat ishlaydi?",
-        reply_markup=keyboard
-    )
-
-    await SalaryStates.waiting_for_hours.set()
-
-
-# =========================
-# HOURS
-# =========================
-
-@dp.message_handler(state=SalaryStates.waiting_for_hours)
-async def get_hours(message: types.Message, state: FSMContext):
-
-    if message.text == "✍️ Boshqa":
-
-        back_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-
-        back_keyboard.add("🏠 Bosh sahifa")
-
-        await message.answer(
-            "👤 Admin necha soat ishlaydi?\n\n"
-            "✍️ Soatni manual kiriting:",
-            reply_markup=back_keyboard
-        )
-
-        return
-
-    await state.update_data(hours=message.text)
-
-    await message.answer(
-        "📅 Oyda necha kun ishladi?"
-    )
-
-    await SalaryStates.waiting_for_days.set()
-
-
-# =========================
-# MANUAL HOURS INPUT
-# =========================
-
-@dp.message_handler(
-    lambda message: message.text not in ["🏠 Bosh sahifa"],
-    state=SalaryStates.waiting_for_hours
-)
-async def manual_hours_input(message: types.Message, state: FSMContext):
-
-    try:
-
-        hours = float(message.text)
-
-        await state.update_data(hours=hours)
-
-        await message.answer(
-            "📅 Oyda necha kun ishladi?"
-        )
-
-        await SalaryStates.waiting_for_days.set()
-
-    except:
-
-        await message.answer(
-            "❌ Faqat raqam kiriting."
-        )
-
-
-# =========================
-# BACK TO HOME
-# =========================
-
-@dp.message_handler(lambda message: message.text == "🏠 Bosh sahifa")
-async def back_to_home(message: types.Message, state: FSMContext):
+@dp.message_handler(lambda message: message.text == "🏠 Bosh sahifa", state="*")
+async def back_home(message: types.Message, state: FSMContext):
 
     await state.finish()
 
@@ -203,9 +81,116 @@ async def back_to_home(message: types.Message, state: FSMContext):
     )
 
 
-# =========================
+# =====================================
+# START SALARY
+# =====================================
+
+@dp.message_handler(lambda message: message.text == "💰 Salary")
+async def salary_start(message: types.Message):
+
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+    keyboard.add("Nova")
+    keyboard.add("Prime")
+
+    keyboard.add("Apex")
+    keyboard.add("Leader")
+
+    await message.answer(
+        "📋 Statusni tanlang:",
+        reply_markup=keyboard
+    )
+
+    await SalaryStates.waiting_for_status.set()
+
+
+# =====================================
+# STATUS
+# =====================================
+
+@dp.message_handler(state=SalaryStates.waiting_for_status)
+async def get_status(message: types.Message, state: FSMContext):
+
+    await state.update_data(status=message.text)
+
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+    keyboard.add("9 soat")
+    keyboard.add("10 soat")
+
+    keyboard.add("6 soat")
+    keyboard.add("7 soat")
+
+    keyboard.add("✍️ Boshqa soat")
+
+    await message.answer(
+        "⏰ Kunlik necha soat ishlaydi?",
+        reply_markup=keyboard
+    )
+
+    await SalaryStates.waiting_for_hours.set()
+
+
+# =====================================
+# HOURS
+# =====================================
+
+@dp.message_handler(state=SalaryStates.waiting_for_hours)
+async def get_hours(message: types.Message, state: FSMContext):
+
+    text = message.text
+
+    if text == "✍️ Boshqa soat":
+
+        back_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+        back_keyboard.add("🏠 Bosh sahifa")
+
+        await message.answer(
+            "👤 Admin necha soat ishlaydi?\n\n"
+            "✍️ Soatni manual kiriting:",
+            reply_markup=back_keyboard
+        )
+
+        return
+
+    if text == "9 soat":
+        hours = 9
+
+    elif text == "10 soat":
+        hours = 10
+
+    elif text == "6 soat":
+        hours = 6
+
+    elif text == "7 soat":
+        hours = 7
+
+    else:
+
+        try:
+            hours = float(text)
+
+        except:
+
+            await message.answer(
+                "❌ Faqat raqam kiriting."
+            )
+
+            return
+
+    await state.update_data(hours=hours)
+
+    await message.answer(
+        "📅 Oyda necha kun ishladi?"
+    )
+
+    await SalaryStates.waiting_for_days.set()
+
+
+# =====================================
 # DAYS
-# =========================
+# =====================================
 
 @dp.message_handler(state=SalaryStates.waiting_for_days)
 async def get_days(message: types.Message, state: FSMContext):
@@ -219,9 +204,9 @@ async def get_days(message: types.Message, state: FSMContext):
     await SalaryStates.waiting_for_individual_plan.set()
 
 
-# =========================
+# =====================================
 # INDIVIDUAL PLAN
-# =========================
+# =====================================
 
 @dp.message_handler(state=SalaryStates.waiting_for_individual_plan)
 async def get_individual_plan(message: types.Message, state: FSMContext):
@@ -235,9 +220,9 @@ async def get_individual_plan(message: types.Message, state: FSMContext):
     await SalaryStates.waiting_for_actual_sales.set()
 
 
-# =========================
+# =====================================
 # ACTUAL SALES
-# =========================
+# =====================================
 
 @dp.message_handler(state=SalaryStates.waiting_for_actual_sales)
 async def get_actual_sales(message: types.Message, state: FSMContext):
@@ -251,9 +236,9 @@ async def get_actual_sales(message: types.Message, state: FSMContext):
     await SalaryStates.waiting_for_conversion_plan.set()
 
 
-# =========================
+# =====================================
 # CONVERSION PLAN
-# =========================
+# =====================================
 
 @dp.message_handler(state=SalaryStates.waiting_for_conversion_plan)
 async def get_conversion_plan(message: types.Message, state: FSMContext):
@@ -267,9 +252,9 @@ async def get_conversion_plan(message: types.Message, state: FSMContext):
     await SalaryStates.waiting_for_actual_conversion.set()
 
 
-# =========================
+# =====================================
 # ACTUAL CONVERSION
-# =========================
+# =====================================
 
 @dp.message_handler(state=SalaryStates.waiting_for_actual_conversion)
 async def get_actual_conversion(message: types.Message, state: FSMContext):
@@ -283,9 +268,9 @@ async def get_actual_conversion(message: types.Message, state: FSMContext):
     await SalaryStates.waiting_for_active_plan.set()
 
 
-# =========================
+# =====================================
 # ACTIVE PLAN
-# =========================
+# =====================================
 
 @dp.message_handler(state=SalaryStates.waiting_for_active_plan)
 async def get_active_plan(message: types.Message, state: FSMContext):
@@ -299,9 +284,9 @@ async def get_active_plan(message: types.Message, state: FSMContext):
     await SalaryStates.waiting_for_actual_active.set()
 
 
-# =========================
+# =====================================
 # ACTUAL ACTIVE
-# =========================
+# =====================================
 
 @dp.message_handler(state=SalaryStates.waiting_for_actual_active)
 async def get_actual_active(message: types.Message, state: FSMContext):
@@ -321,9 +306,9 @@ async def get_actual_active(message: types.Message, state: FSMContext):
     await SalaryStates.waiting_for_russian.set()
 
 
-# =========================
+# =====================================
 # RUSSIAN
-# =========================
+# =====================================
 
 @dp.message_handler(state=SalaryStates.waiting_for_russian)
 async def get_russian(message: types.Message, state: FSMContext):
@@ -343,9 +328,9 @@ async def get_russian(message: types.Message, state: FSMContext):
     await SalaryStates.waiting_for_ielts.set()
 
 
-# =========================
+# =====================================
 # IELTS
-# =========================
+# =====================================
 
 @dp.message_handler(state=SalaryStates.waiting_for_ielts)
 async def get_ielts(message: types.Message, state: FSMContext):
@@ -365,9 +350,9 @@ async def get_ielts(message: types.Message, state: FSMContext):
     await SalaryStates.waiting_for_missed_work.set()
 
 
-# =========================
+# =====================================
 # MISSED WORK
-# =========================
+# =====================================
 
 @dp.message_handler(state=SalaryStates.waiting_for_missed_work)
 async def get_missed_work(message: types.Message, state: FSMContext):
@@ -397,9 +382,9 @@ async def get_missed_work(message: types.Message, state: FSMContext):
         await SalaryStates.waiting_for_cover.set()
 
 
-# =========================
+# =====================================
 # MISSED HOURS
-# =========================
+# =====================================
 
 @dp.message_handler(state=SalaryStates.waiting_for_missed_hours)
 async def get_missed_hours(message: types.Message, state: FSMContext):
@@ -419,9 +404,9 @@ async def get_missed_hours(message: types.Message, state: FSMContext):
     await SalaryStates.waiting_for_cover.set()
 
 
-# =========================
+# =====================================
 # COVER
-# =========================
+# =====================================
 
 @dp.message_handler(state=SalaryStates.waiting_for_cover)
 async def get_cover(message: types.Message, state: FSMContext):
@@ -441,9 +426,9 @@ async def get_cover(message: types.Message, state: FSMContext):
         await calculate_salary(message, state)
 
 
-# =========================
+# =====================================
 # COVER HOURS
-# =========================
+# =====================================
 
 @dp.message_handler(state=SalaryStates.waiting_for_cover_hours)
 async def get_cover_hours(message: types.Message, state: FSMContext):
@@ -453,9 +438,9 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
     await calculate_salary(message, state)
 
 
-# =========================
+# =====================================
 # CALCULATE SALARY
-# =========================
+# =====================================
 
 async def calculate_salary(message: types.Message, state: FSMContext):
 
@@ -578,9 +563,9 @@ async def calculate_salary(message: types.Message, state: FSMContext):
     await state.finish()
 
 
-# =========================
+# =====================================
 # RUN
-# =========================
+# =====================================
 
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
