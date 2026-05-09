@@ -285,12 +285,12 @@ def register_admin_handlers(dp):
         text = message.text
 
         if text == "🏠 Bosh sahifa":
-        await go_home(message, state)
-        return
+            await go_home(message, state)
+            return
 
         if text == "✅ Ha":
 
-        await message.answer(
+            await message.answer(
             "⏰ Necha soat ish qoldirdi?",
             reply_markup=home_keyboard()
         )
