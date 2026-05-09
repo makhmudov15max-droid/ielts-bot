@@ -328,15 +328,17 @@ async def get_ielts(message: types.Message, state: FSMContext):
 
     await SalaryStates.waiting_for_missed_work.set()
 
-        keyboard.add("✅ Cover qilgan")
-        keyboard.add("❌ Cover qilmagan")
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 
-        await message.answer(
-            "🔄 Cover qilganmi?",
-            reply_markup=keyboard
-        )
+    keyboard.add("✅ Cover qilgan")
+    keyboard.add("❌ Cover qilmagan")
 
-        await SalaryStates.waiting_for_cover.set()
+    await message.answer(
+        "🔄 Cover qilganmi?",
+        reply_markup=keyboard
+    )
+
+    await SalaryStates.waiting_for_cover.set()
 
 @dp.message_handler(state=SalaryStates.waiting_for_missed_hours)
 async def get_missed_hours(message: types.Message, state: FSMContext):
