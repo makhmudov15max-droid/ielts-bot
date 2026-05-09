@@ -470,7 +470,7 @@ await message.answer(
     f"Weighted: {weighted_kpi}"
 )
         
-    base_kpi_bonus = actual_sales * bonus_rate
+base_kpi_bonus = actual_sales * bonus_rate
 
     kpi_bonus = base_kpi_bonus * (weighted_kpi / 100)
 
