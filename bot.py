@@ -7,6 +7,10 @@ from handlers.admin_salary import register_admin_handlers
 
 from keyboards.admin_keyboard import main_menu_keyboard
 
+from handlers.cashier_salary import register_cashier_handlers
+
+register_cashier_handlers(dp)
+
 
 bot = Bot(token=TOKEN)
 
