@@ -132,3 +132,114 @@ def register_admin_handlers(dp):
         )
 
         await AdminSalaryStates.waiting_for_individual_plan.set()
+
+
+    @dp.message_handler(state=AdminSalaryStates.waiting_for_individual_plan)
+    async def get_individual_plan(message: types.Message, state: FSMContext):
+
+        if message.text == "🏠 Bosh sahifa":
+            await go_home(message, state)
+            return
+
+        await state.update_data(individual_plan=message.text)
+
+        await message.answer(
+            "📈 Amaldagi sotuv nechta?"
+        )
+
+        await AdminSalaryStates.waiting_for_actual_sales.set()
+
+
+    @dp.message_handler(state=AdminSalaryStates.waiting_for_actual_sales)
+    async def get_actual_sales(message: types.Message, state: FSMContext):
+
+        if message.text == "🏠 Bosh sahifa":
+            await go_home(message, state)
+            return
+
+        await state.update_data(actual_sales=message.text)
+
+        await message.answer(
+            "📊 Conversion plan nechta?",
+            reply_markup=conversion_keyboard()
+        )
+
+        await AdminSalaryStates.waiting_for_conversion_plan.set()
+
+
+    @dp.message_handler(state=AdminSalaryStates.waiting_for_conversion_plan)
+    async def get_conversion_plan(message: types.Message, state: FSMContext):
+
+        text = message.text
+
+        if text == "🏠 Bosh sahifa":
+            await go_home(message, state)
+            return
+
+        if text == "50%":
+            conversion_plan = 50
+
+        else:
+
+            await message.answer(
+                "❌ Tugma orqali tanlang."
+            )
+
+            return
+
+        await state.update_data(conversion_plan=conversion_plan)
+
+        await message.answer(
+            "📊 Amaldagi conversion nechta?"
+        )
+
+        await AdminSalaryStates.waiting_for_actual_conversion.set()
+
+
+    @dp.message_handler(state=AdminSalaryStates.waiting_for_actual_conversion)
+    async def get_actual_conversion(message: types.Message, state: FSMContext):
+
+        if message.text == "🏠 Bosh sahifa":
+            await go_home(message, state)
+            return
+
+        await state.update_data(actual_conversion=message.text)
+
+        await message.answer(
+            "👥 Aktiv plan nechta?"
+        )
+
+        await AdminSalaryStates.waiting_for_active_plan.set()
+
+
+    @dp.message_handler(state=AdminSalaryStates.waiting_for_active_plan)
+    async def get_active_plan(message: types.Message, state: FSMContext):
+
+        if message.text == "🏠 Bosh sahifa":
+            await go_home(message, state)
+            return
+
+        await state.update_data(active_plan=message.text)
+
+        await message.answer(
+            "👥 Amaldagi aktiv nechta?"
+        )
+
+        await AdminSalaryStates.waiting_for_actual_active.set()
+
+
+    @dp.message_handler(state=AdminSalaryStates.waiting_for_actual_active)
+    async def get_actual_active(message: types.Message, state: FSMContext):
+
+        if message.text == "🏠 Bosh sahifa":
+            await go_home(message, state)
+            return
+
+        await state.update_data(actual_active=message.text)
+
+        await message.answer(
+            "🌍 Rus tilini biladimi?",
+            reply_markup=yes_no_keyboard()
+        )
+
+        await AdminSalaryStates.waiting_for_russian.set()
