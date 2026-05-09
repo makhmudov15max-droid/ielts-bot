@@ -1,7 +1,19 @@
-from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram import Bot, Dispatcher, executor, types
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
+from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import ReplyKeyboardMarkup
 
+TOKEN = "TOKENINGIZNI_QOYING"
+
+bot = Bot(token=TOKEN)
+storage = MemoryStorage()
+dp = Dispatcher(bot, storage=storage)
+
+
+# =========================
+# STATES
+# =========================
 
 class SalaryStates(StatesGroup):
     waiting_for_status = State()
@@ -27,8 +39,14 @@ class SalaryStates(StatesGroup):
     waiting_for_cover_hours = State()
 
 
-@dp.message_handler(commands=["salary"])
-async def salary_start(message: types.Message):
+# =========================
+# START
+# =========================
+
+@dp.message_handler(commands=["start"])
+async def start_cmd(message: types.Message, state: FSMContext):
+
+    await state.finish()
 
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 
@@ -45,6 +63,10 @@ async def salary_start(message: types.Message):
     await SalaryStates.waiting_for_status.set()
 
 
+# =========================
+# STATUS
+# =========================
+
 @dp.message_handler(state=SalaryStates.waiting_for_status)
 async def get_status(message: types.Message, state: FSMContext):
 
@@ -54,6 +76,10 @@ async def get_status(message: types.Message, state: FSMContext):
 
     await SalaryStates.waiting_for_hours.set()
 
+
+# =========================
+# HOURS
+# =========================
 
 @dp.message_handler(state=SalaryStates.waiting_for_hours)
 async def get_hours(message: types.Message, state: FSMContext):
@@ -65,6 +91,10 @@ async def get_hours(message: types.Message, state: FSMContext):
     await SalaryStates.waiting_for_days.set()
 
 
+# =========================
+# DAYS
+# =========================
+
 @dp.message_handler(state=SalaryStates.waiting_for_days)
 async def get_days(message: types.Message, state: FSMContext):
 
@@ -74,6 +104,10 @@ async def get_days(message: types.Message, state: FSMContext):
 
     await SalaryStates.waiting_for_individual_plan.set()
 
+
+# =========================
+# INDIVIDUAL PLAN
+# =========================
 
 @dp.message_handler(state=SalaryStates.waiting_for_individual_plan)
 async def get_individual_plan(message: types.Message, state: FSMContext):
@@ -85,6 +119,10 @@ async def get_individual_plan(message: types.Message, state: FSMContext):
     await SalaryStates.waiting_for_actual_sales.set()
 
 
+# =========================
+# ACTUAL SALES
+# =========================
+
 @dp.message_handler(state=SalaryStates.waiting_for_actual_sales)
 async def get_actual_sales(message: types.Message, state: FSMContext):
 
@@ -94,6 +132,10 @@ async def get_actual_sales(message: types.Message, state: FSMContext):
 
     await SalaryStates.waiting_for_conversion_plan.set()
 
+
+# =========================
+# CONVERSION PLAN
+# =========================
 
 @dp.message_handler(state=SalaryStates.waiting_for_conversion_plan)
 async def get_conversion_plan(message: types.Message, state: FSMContext):
@@ -105,6 +147,10 @@ async def get_conversion_plan(message: types.Message, state: FSMContext):
     await SalaryStates.waiting_for_actual_conversion.set()
 
 
+# =========================
+# ACTUAL CONVERSION
+# =========================
+
 @dp.message_handler(state=SalaryStates.waiting_for_actual_conversion)
 async def get_actual_conversion(message: types.Message, state: FSMContext):
 
@@ -115,6 +161,10 @@ async def get_actual_conversion(message: types.Message, state: FSMContext):
     await SalaryStates.waiting_for_active_plan.set()
 
 
+# =========================
+# ACTIVE PLAN
+# =========================
+
 @dp.message_handler(state=SalaryStates.waiting_for_active_plan)
 async def get_active_plan(message: types.Message, state: FSMContext):
 
@@ -124,6 +174,10 @@ async def get_active_plan(message: types.Message, state: FSMContext):
 
     await SalaryStates.waiting_for_actual_active.set()
 
+
+# =========================
+# ACTUAL ACTIVE
+# =========================
 
 @dp.message_handler(state=SalaryStates.waiting_for_actual_active)
 async def get_actual_active(message: types.Message, state: FSMContext):
@@ -143,6 +197,10 @@ async def get_actual_active(message: types.Message, state: FSMContext):
     await SalaryStates.waiting_for_russian.set()
 
 
+# =========================
+# RUSSIAN
+# =========================
+
 @dp.message_handler(state=SalaryStates.waiting_for_russian)
 async def get_russian(message: types.Message, state: FSMContext):
 
@@ -161,6 +219,10 @@ async def get_russian(message: types.Message, state: FSMContext):
     await SalaryStates.waiting_for_ielts.set()
 
 
+# =========================
+# IELTS
+# =========================
+
 @dp.message_handler(state=SalaryStates.waiting_for_ielts)
 async def get_ielts(message: types.Message, state: FSMContext):
 
@@ -178,6 +240,10 @@ async def get_ielts(message: types.Message, state: FSMContext):
 
     await SalaryStates.waiting_for_missed_work.set()
 
+
+# =========================
+# MISSED WORK
+# =========================
 
 @dp.message_handler(state=SalaryStates.waiting_for_missed_work)
 async def get_missed_work(message: types.Message, state: FSMContext):
@@ -211,6 +277,10 @@ async def get_missed_work(message: types.Message, state: FSMContext):
         await SalaryStates.waiting_for_cover.set()
 
 
+# =========================
+# MISSED HOURS
+# =========================
+
 @dp.message_handler(state=SalaryStates.waiting_for_missed_hours)
 async def get_missed_hours(message: types.Message, state: FSMContext):
 
@@ -228,6 +298,10 @@ async def get_missed_hours(message: types.Message, state: FSMContext):
 
     await SalaryStates.waiting_for_cover.set()
 
+
+# =========================
+# COVER
+# =========================
 
 @dp.message_handler(state=SalaryStates.waiting_for_cover)
 async def get_cover(message: types.Message, state: FSMContext):
@@ -251,6 +325,10 @@ async def get_cover(message: types.Message, state: FSMContext):
         await calculate_salary(message, state)
 
 
+# =========================
+# COVER HOURS
+# =========================
+
 @dp.message_handler(state=SalaryStates.waiting_for_cover_hours)
 async def get_cover_hours(message: types.Message, state: FSMContext):
 
@@ -258,6 +336,10 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
 
     await calculate_salary(message, state)
 
+
+# =========================
+# CALCULATE
+# =========================
 
 async def calculate_salary(message: types.Message, state: FSMContext):
 
@@ -276,6 +358,7 @@ async def calculate_salary(message: types.Message, state: FSMContext):
 
     hours = float(data.get("hours", 0))
     days = float(data.get("days", 0))
+
     missed_hours = float(data.get("missed_hours", 0))
 
     worked_hours = (hours * days) - missed_hours
@@ -283,9 +366,11 @@ async def calculate_salary(message: types.Message, state: FSMContext):
     fixa = worked_hours * hourly_rate
 
     russian_bonus = 500000 if data.get("russian") == "✅ Ha" else 0
+
     ielts_bonus = 1000000 if data.get("ielts") == "✅ Ha" else 0
 
     cover_hours = float(data.get("cover_hours", 0))
+
     cover_bonus = cover_hours * hourly_rate
 
     individual_plan = float(data.get("individual_plan", 1))
@@ -298,29 +383,41 @@ async def calculate_salary(message: types.Message, state: FSMContext):
     actual_active = float(data.get("actual_active", 0))
 
     individual_percentage = (actual_sales / individual_plan) * 100
+
     conversion_percentage = (actual_conversion / conversion_plan) * 100
+
     active_percentage = (actual_active / active_plan) * 100
 
     if individual_percentage <= 49:
         bonus_rate = 0
+
     elif individual_percentage <= 60:
         bonus_rate = 5000
+
     elif individual_percentage <= 70:
         bonus_rate = 6000
+
     elif individual_percentage <= 80:
         bonus_rate = 10000
+
     elif individual_percentage <= 90:
         bonus_rate = 15000
+
     elif individual_percentage <= 95:
         bonus_rate = 18000
+
     elif individual_percentage <= 100:
         bonus_rate = 25000
+
     elif individual_percentage <= 110:
         bonus_rate = 30000
+
     elif individual_percentage <= 120:
         bonus_rate = 32000
+
     elif individual_percentage <= 130:
         bonus_rate = 35000
+
     else:
         bonus_rate = 40000
 
@@ -360,3 +457,7 @@ async def calculate_salary(message: types.Message, state: FSMContext):
     )
 
     await state.finish()
+
+
+if __name__ == "__main__":
+    executor.start_polling(dp, skip_updates=True)
