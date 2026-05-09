@@ -33,15 +33,18 @@ def register_admin_handlers(dp):
         await AdminSalaryStates.waiting_for_status.set()
 
 
-    @dp.message_handler(state=AdminSalaryStates.waiting_for_status)
-    async def get_status(message: types.Message, state: FSMContext):
+@dp.message_handler(state=AdminSalaryStates.waiting_for_status)
+async def get_status(message: types.Message, state: FSMContext):
 
-        if message.text == "🏠 Bosh sahifa":
-            await go_home(message, state)
-            return
+    if message.text == "🏠 Bosh sahifa":
+        await go_home(message, state)
+        return
 
-        await state.update_data(status=message.text)
+    await state.update_data(status=message.text)
 
-        await message.answer(
-            f"✅ Tanlandi: {message.text}"
-        )
+    await message.answer(
+        "⏰ Kunlik necha soat ishlaydi?",
+        reply_markup=hours_keyboard()
+    )
+
+    await AdminSalaryStates.waiting_for_hours.set()
