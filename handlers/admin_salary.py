@@ -243,3 +243,147 @@ def register_admin_handlers(dp):
         )
 
         await AdminSalaryStates.waiting_for_russian.set()
+
+
+    @dp.message_handler(state=AdminSalaryStates.waiting_for_russian)
+    async def get_russian(message: types.Message, state: FSMContext):
+
+        if message.text == "🏠 Bosh sahifa":
+            await go_home(message, state)
+            return
+
+        await state.update_data(russian=message.text)
+
+        await message.answer(
+            "🎓 IELTS 7+ bormi?",
+            reply_markup=yes_no_keyboard()
+        )
+
+        await AdminSalaryStates.waiting_for_ielts.set()
+
+
+    @dp.message_handler(state=AdminSalaryStates.waiting_for_ielts)
+    async def get_ielts(message: types.Message, state: FSMContext):
+
+        if message.text == "🏠 Bosh sahifa":
+            await go_home(message, state)
+            return
+
+        await state.update_data(ielts=message.text)
+
+        await message.answer(
+            "📉 Ish qoldirdimi?",
+            reply_markup=yes_no_keyboard()
+        )
+
+        await AdminSalaryStates.waiting_for_missed_work.set()
+
+
+    @dp.message_handler(state=AdminSalaryStates.waiting_for_missed_work)
+    async def get_missed_work(message: types.Message, state: FSMContext):
+
+        if message.text == "🏠 Bosh sahifa":
+            await go_home(message, state)
+            return
+
+        if message.text == "✅ Ha":
+
+            await message.answer(
+                "⏰ Necha soat ish qoldirdi?"
+            )
+
+            await AdminSalaryStates.waiting_for_missed_hours.set()
+
+        else:
+
+            await state.update_data(missed_hours=0)
+
+            await message.answer(
+                "🔄 Cover qilganmi?",
+                reply_markup=cover_keyboard()
+            )
+
+            await AdminSalaryStates.waiting_for_cover.set()
+
+
+    @dp.message_handler(state=AdminSalaryStates.waiting_for_missed_hours)
+    async def get_missed_hours(message: types.Message, state: FSMContext):
+
+        if message.text == "🏠 Bosh sahifa":
+            await go_home(message, state)
+            return
+
+        await state.update_data(missed_hours=message.text)
+
+        await message.answer(
+            "🔄 Cover qilganmi?",
+            reply_markup=cover_keyboard()
+        )
+
+        await AdminSalaryStates.waiting_for_cover.set()
+
+
+    @dp.message_handler(state=AdminSalaryStates.waiting_for_cover)
+    async def get_cover(message: types.Message, state: FSMContext):
+
+        if message.text == "🏠 Bosh sahifa":
+            await go_home(message, state)
+            return
+
+        if message.text == "✅ Cover qilgan":
+
+            await message.answer(
+                "⏰ Necha soat cover qilgan?"
+            )
+
+            await AdminSalaryStates.waiting_for_cover_hours.set()
+
+        else:
+
+            await state.update_data(cover_hours=0)
+
+            data = await state.get_data()
+
+            result = await calculate_admin_salary(data)
+
+            await message.answer(
+                f"💰 JAMI OYLIK: {result['total_salary']:,.0f} UZS",
+                reply_markup=main_menu_keyboard()
+            )
+
+            await state.finish()
+
+
+    @dp.message_handler(state=AdminSalaryStates.waiting_for_cover_hours)
+    async def get_cover_hours(message: types.Message, state: FSMContext):
+
+        if message.text == "🏠 Bosh sahifa":
+            await go_home(message, state)
+            return
+
+        await state.update_data(cover_hours=message.text)
+
+        data = await state.get_data()
+
+        result = await calculate_admin_salary(data)
+
+        await message.answer(
+            f"📈 Individual KPI: {result['individual_percentage']:.1f}%\n"
+            f"📊 Conversion KPI: {result['conversion_percentage']:.1f}%\n"
+            f"👥 Active KPI: {result['active_percentage']:.1f}%\n\n"
+
+            f"🏆 Weighted KPI: {result['weighted_kpi']:.1f}%\n\n"
+
+            f"🔥 KPI Bonus: {result['kpi_bonus']:,.0f} UZS\n"
+            f"🔄 Cover Bonus: +{result['cover_bonus']:,.0f} UZS\n"
+            f"📉 Jarima: -{result['penalty']:,.0f} UZS\n\n"
+
+            f"💵 Fiksa: {result['fixa']:,.0f} UZS\n"
+            f"🌍 Rus bonusi: +{result['russian_bonus']:,.0f} UZS\n"
+            f"🎓 IELTS bonusi: +{result['ielts_bonus']:,.0f} UZS\n\n"
+
+            f"💰 JAMI OYLIK: {result['total_salary']:,.0f} UZS",
+            reply_markup=main_menu_keyboard()
+        )
+
+        await state.finish()
