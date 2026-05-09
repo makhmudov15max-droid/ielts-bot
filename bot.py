@@ -1,3 +1,5 @@
+from states.admin_states import AdminSalaryStates
+
 # =====================================
 # GLOBAL HOME FUNCTION
 # =====================================
@@ -65,14 +67,14 @@ async def salary_start(message: types.Message):
         reply_markup=keyboard
     )
 
-    await SalaryStates.waiting_for_status.set()
+    await AdminSalaryStates.waiting_for_status.set()
 
 
 # =====================================
 # STATUS
 # =====================================
 
-@dp.message_handler(state=SalaryStates.waiting_for_status)
+@dp.message_handler(state=AdminSalaryStates.waiting_for_status)
 async def get_status(message: types.Message, state: FSMContext):
 
     if message.text == "🏠 Bosh sahifa":
@@ -93,14 +95,14 @@ async def get_status(message: types.Message, state: FSMContext):
         reply_markup=keyboard
     )
 
-    await SalaryStates.waiting_for_hours.set()
+    await AdminSalaryStates.waiting_for_hours.set()
 
 
 # =====================================
 # HOURS
 # =====================================
 
-@dp.message_handler(state=SalaryStates.waiting_for_hours)
+@dp.message_handler(state=AdminSalaryStates.waiting_for_hours)
 async def get_hours(message: types.Message, state: FSMContext):
 
     text = message.text
@@ -154,14 +156,14 @@ async def get_hours(message: types.Message, state: FSMContext):
         reply_markup=keyboard
     )
 
-    await SalaryStates.waiting_for_days.set()
+    await AdminSalaryStates.waiting_for_days.set()
 
 
 # =====================================
 # DAYS
 # =====================================
 
-@dp.message_handler(state=SalaryStates.waiting_for_days)
+@dp.message_handler(state=AdminSalaryStates.waiting_for_days)
 async def get_days(message: types.Message, state: FSMContext):
 
     text = message.text
@@ -208,14 +210,14 @@ async def get_days(message: types.Message, state: FSMContext):
         reply_markup=home_keyboard()
     )
 
-    await SalaryStates.waiting_for_individual_plan.set()
+    await AdminSalaryStates.waiting_for_individual_plan.set()
 
 
 # =====================================
 # INDIVIDUAL PLAN
 # =====================================
 
-@dp.message_handler(state=SalaryStates.waiting_for_individual_plan)
+@dp.message_handler(state=AdminSalaryStates.waiting_for_individual_plan)
 async def get_individual_plan(message: types.Message, state: FSMContext):
 
     if message.text == "🏠 Bosh sahifa":
@@ -229,14 +231,14 @@ async def get_individual_plan(message: types.Message, state: FSMContext):
         reply_markup=home_keyboard()
     )
 
-    await SalaryStates.waiting_for_actual_sales.set()
+    await AdminSalaryStates.waiting_for_actual_sales.set()
 
 
 # =====================================
 # ACTUAL SALES
 # =====================================
 
-@dp.message_handler(state=SalaryStates.waiting_for_actual_sales)
+@dp.message_handler(state=AdminSalaryStates.waiting_for_actual_sales)
 async def get_actual_sales(message: types.Message, state: FSMContext):
 
     if message.text == "🏠 Bosh sahifa":
@@ -256,14 +258,14 @@ async def get_actual_sales(message: types.Message, state: FSMContext):
         reply_markup=keyboard
     )
 
-    await SalaryStates.waiting_for_conversion_plan.set()
+    await AdminSalaryStates.waiting_for_conversion_plan.set()
 
 
 # =====================================
 # CONVERSION PLAN
 # =====================================
 
-@dp.message_handler(state=SalaryStates.waiting_for_conversion_plan)
+@dp.message_handler(state=AdminSalaryStates.waiting_for_conversion_plan)
 async def get_conversion_plan(message: types.Message, state: FSMContext):
 
     text = message.text
@@ -304,14 +306,14 @@ async def get_conversion_plan(message: types.Message, state: FSMContext):
         reply_markup=home_keyboard()
     )
 
-    await SalaryStates.waiting_for_actual_conversion.set()
+    await AdminSalaryStates.waiting_for_actual_conversion.set()
 
 
 # =====================================
 # ACTUAL CONVERSION
 # =====================================
 
-@dp.message_handler(state=SalaryStates.waiting_for_actual_conversion)
+@dp.message_handler(state=AdminSalaryStates.waiting_for_actual_conversion)
 async def get_actual_conversion(message: types.Message, state: FSMContext):
 
     if message.text == "🏠 Bosh sahifa":
@@ -325,14 +327,14 @@ async def get_actual_conversion(message: types.Message, state: FSMContext):
         reply_markup=home_keyboard()
     )
 
-    await SalaryStates.waiting_for_active_plan.set()
+    await AdminSalaryStates.waiting_for_active_plan.set()
 
 
 # =====================================
 # ACTIVE PLAN
 # =====================================
 
-@dp.message_handler(state=SalaryStates.waiting_for_active_plan)
+@dp.message_handler(state=AdminSalaryStates.waiting_for_active_plan)
 async def get_active_plan(message: types.Message, state: FSMContext):
 
     if message.text == "🏠 Bosh sahifa":
@@ -346,14 +348,14 @@ async def get_active_plan(message: types.Message, state: FSMContext):
         reply_markup=home_keyboard()
     )
 
-    await SalaryStates.waiting_for_actual_active.set()
+    await AdminSalaryStates.waiting_for_actual_active.set()
 
 
 # =====================================
 # ACTUAL ACTIVE
 # =====================================
 
-@dp.message_handler(state=SalaryStates.waiting_for_actual_active)
+@dp.message_handler(state=AdminSalaryStates.waiting_for_actual_active)
 async def get_actual_active(message: types.Message, state: FSMContext):
 
     if message.text == "🏠 Bosh sahifa":
@@ -372,14 +374,14 @@ async def get_actual_active(message: types.Message, state: FSMContext):
         reply_markup=keyboard
     )
 
-    await SalaryStates.waiting_for_russian.set()
+    await AdminSalaryStates.waiting_for_russian.set()
 
 
 # =====================================
 # RUSSIAN
 # =====================================
 
-@dp.message_handler(state=SalaryStates.waiting_for_russian)
+@dp.message_handler(state=AdminSalaryStates.waiting_for_russian)
 async def get_russian(message: types.Message, state: FSMContext):
 
     if message.text == "🏠 Bosh sahifa":
@@ -398,14 +400,14 @@ async def get_russian(message: types.Message, state: FSMContext):
         reply_markup=keyboard
     )
 
-    await SalaryStates.waiting_for_ielts.set()
+    await AdminSalaryStates.waiting_for_ielts.set()
 
 
 # =====================================
 # IELTS
 # =====================================
 
-@dp.message_handler(state=SalaryStates.waiting_for_ielts)
+@dp.message_handler(state=AdminSalaryStates.waiting_for_ielts)
 async def get_ielts(message: types.Message, state: FSMContext):
 
     if message.text == "🏠 Bosh sahifa":
@@ -424,14 +426,14 @@ async def get_ielts(message: types.Message, state: FSMContext):
         reply_markup=keyboard
     )
 
-    await SalaryStates.waiting_for_missed_work.set()
+    await AdminSalaryStates.waiting_for_missed_work.set()
 
 
 # =====================================
 # MISSED WORK
 # =====================================
 
-@dp.message_handler(state=SalaryStates.waiting_for_missed_work)
+@dp.message_handler(state=AdminSalaryStates.waiting_for_missed_work)
 async def get_missed_work(message: types.Message, state: FSMContext):
 
     if message.text == "🏠 Bosh sahifa":
@@ -445,7 +447,7 @@ async def get_missed_work(message: types.Message, state: FSMContext):
             reply_markup=home_keyboard()
         )
 
-        await SalaryStates.waiting_for_missed_hours.set()
+        await AdminSalaryStates.waiting_for_missed_hours.set()
 
     else:
 
@@ -461,14 +463,14 @@ async def get_missed_work(message: types.Message, state: FSMContext):
             reply_markup=keyboard
         )
 
-        await SalaryStates.waiting_for_cover.set()
+        await AdminSalaryStates.waiting_for_cover.set()
 
 
 # =====================================
 # MISSED HOURS
 # =====================================
 
-@dp.message_handler(state=SalaryStates.waiting_for_missed_hours)
+@dp.message_handler(state=AdminSalaryStates.waiting_for_missed_hours)
 async def get_missed_hours(message: types.Message, state: FSMContext):
 
     if message.text == "🏠 Bosh sahifa":
@@ -487,14 +489,14 @@ async def get_missed_hours(message: types.Message, state: FSMContext):
         reply_markup=keyboard
     )
 
-    await SalaryStates.waiting_for_cover.set()
+    await AdminSalaryStates.waiting_for_cover.set()
 
 
 # =====================================
 # COVER
 # =====================================
 
-@dp.message_handler(state=SalaryStates.waiting_for_cover)
+@dp.message_handler(state=AdminSalaryStates.waiting_for_cover)
 async def get_cover(message: types.Message, state: FSMContext):
 
     if message.text == "🏠 Bosh sahifa":
@@ -508,7 +510,7 @@ async def get_cover(message: types.Message, state: FSMContext):
             reply_markup=home_keyboard()
         )
 
-        await SalaryStates.waiting_for_cover_hours.set()
+        await AdminSalaryStates.waiting_for_cover_hours.set()
 
     else:
 
@@ -521,7 +523,7 @@ async def get_cover(message: types.Message, state: FSMContext):
 # COVER HOURS
 # =====================================
 
-@dp.message_handler(state=SalaryStates.waiting_for_cover_hours)
+@dp.message_handler(state=AdminSalaryStates.waiting_for_cover_hours)
 async def get_cover_hours(message: types.Message, state: FSMContext):
 
     if message.text == "🏠 Bosh sahifa":
