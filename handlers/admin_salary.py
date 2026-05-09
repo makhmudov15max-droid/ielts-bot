@@ -1,46 +1,22 @@
-from aiogram import types
-from aiogram.dispatcher import FSMContext
-
-from keyboards.admin_keyboard import (
-    main_menu_keyboard,
-    status_keyboard
-)
-
-from states.admin_states import AdminSalaryStates
+from aiogram.types import ReplyKeyboardMarkup
 
 
-async def go_home(message: types.Message, state: FSMContext):
+def main_menu_keyboard():
 
-    await state.finish()
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 
-    await message.answer(
-        "🏠 Bosh sahifa",
-        reply_markup=main_menu_keyboard()
-    )
+    keyboard.add("💰 Admin Salary")
+    keyboard.add("💵 Cashier Salary")
 
-
-def register_admin_handlers(dp):
-
-    @dp.message_handler(lambda message: message.text == "💰 Admin Salary")
-    async def salary_start(message: types.Message):
-
-        await message.answer(
-            "📋 Statusni tanlang:",
-            reply_markup=status_keyboard()
-        )
-
-        await AdminSalaryStates.waiting_for_status.set()
+    return keyboard
 
 
-    @dp.message_handler(state=AdminSalaryStates.waiting_for_status)
-    async def get_status(message: types.Message, state: FSMContext):
+def status_keyboard():
 
-        if message.text == "🏠 Bosh sahifa":
-            await go_home(message, state)
-            return
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 
-        await state.update_data(status=message.text)
+    keyboard.add("Nova", "Prime")
+    keyboard.add("Apex", "Leader")
+    keyboard.add("🏠 Bosh sahifa")
 
-        await message.answer(
-            f"✅ Tanlandi: {message.text}"
-        )
+    return keyboard
