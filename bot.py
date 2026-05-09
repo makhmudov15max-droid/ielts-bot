@@ -102,8 +102,49 @@ async def get_status(message: types.Message, state: FSMContext):
 # HOURS
 # =========================
 
+@dp.message_handler(state=SalaryStates.waiting_for_status)
+async def get_status(message: types.Message, state: FSMContext):
+
+    await state.update_data(status=message.text)
+
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+    keyboard.add("9")
+    keyboard.add("10")
+
+    keyboard.add("6")
+    keyboard.add("7")
+
+    keyboard.add("✍️ Boshqa")
+
+    await message.answer(
+        "⏰ Kunlik necha soat ishlaydi?",
+        reply_markup=keyboard
+    )
+
+    await SalaryStates.waiting_for_hours.set()
+
+
+# =========================
+# HOURS
+# =========================
+
 @dp.message_handler(state=SalaryStates.waiting_for_hours)
 async def get_hours(message: types.Message, state: FSMContext):
+
+    if message.text == "✍️ Boshqa":
+
+        back_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+        back_keyboard.add("🏠 Bosh sahifa")
+
+        await message.answer(
+            "👤 Admin necha soat ishlaydi?\n\n"
+            "✍️ Soatni manual kiriting:",
+            reply_markup=back_keyboard
+        )
+
+        return
 
     await state.update_data(hours=message.text)
 
@@ -112,6 +153,54 @@ async def get_hours(message: types.Message, state: FSMContext):
     )
 
     await SalaryStates.waiting_for_days.set()
+
+
+# =========================
+# MANUAL HOURS INPUT
+# =========================
+
+@dp.message_handler(
+    lambda message: message.text not in ["🏠 Bosh sahifa"],
+    state=SalaryStates.waiting_for_hours
+)
+async def manual_hours_input(message: types.Message, state: FSMContext):
+
+    try:
+
+        hours = float(message.text)
+
+        await state.update_data(hours=hours)
+
+        await message.answer(
+            "📅 Oyda necha kun ishladi?"
+        )
+
+        await SalaryStates.waiting_for_days.set()
+
+    except:
+
+        await message.answer(
+            "❌ Faqat raqam kiriting."
+        )
+
+
+# =========================
+# BACK TO HOME
+# =========================
+
+@dp.message_handler(lambda message: message.text == "🏠 Bosh sahifa")
+async def back_to_home(message: types.Message, state: FSMContext):
+
+    await state.finish()
+
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+    keyboard.add("💰 Salary")
+
+    await message.answer(
+        "🏠 Bosh sahifa",
+        reply_markup=keyboard
+    )
 
 
 # =========================
