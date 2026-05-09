@@ -111,10 +111,35 @@ async def daily_handler(message: types.Message):
 
     await message.answer(report)
 
+class SalaryStates(StatesGroup):
+
+    waiting_for_name = State()
+    waiting_for_status = State()
+    waiting_for_hours = State()
+    waiting_for_days = State()
+
+    waiting_for_individual_plan = State()
+    waiting_for_actual_sales = State()
+
+    waiting_for_conversion_plan = State()
+    waiting_for_actual_conversion = State()
+
+    waiting_for_active_plan = State()
+    waiting_for_team_active = State()
+
+    waiting_for_russian = State()
+    waiting_for_ielts = State()
+
+    waiting_for_cover = State()
+    waiting_for_cover_hours = State()
+
+
 @dp.message_handler(lambda message: message.text == "💰 Salary Panel")
 async def salary_panel(message: types.Message):
 
-    await message.answer("👤 Admin ism familiyasini kiriting:")
+    await message.answer(
+        "👤 Admin ism familiyasini kiriting:"
+    )
 
     await SalaryStates.waiting_for_name.set()
 
@@ -122,20 +147,18 @@ async def salary_panel(message: types.Message):
 @dp.message_handler(state=SalaryStates.waiting_for_name)
 async def get_admin_name(message: types.Message, state: FSMContext):
 
-    admin_name = message.text
+    await state.update_data(admin_name=message.text)
 
-    await state.update_data(admin_name=admin_name)
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 
-    status_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-
-    status_keyboard.add("Nova")
-    status_keyboard.add("Prime")
-    status_keyboard.add("Apex")
-    status_keyboard.add("Leader")
+    keyboard.add("Nova")
+    keyboard.add("Prime")
+    keyboard.add("Apex")
+    keyboard.add("Leader")
 
     await message.answer(
-        f"✅ Admin: {admin_name}\n\n🏆 Statusni tanlang:",
-        reply_markup=status_keyboard
+        "🏆 Statusni tanlang:",
+        reply_markup=keyboard
     )
 
     await SalaryStates.waiting_for_status.set()
@@ -144,30 +167,23 @@ async def get_admin_name(message: types.Message, state: FSMContext):
 @dp.message_handler(state=SalaryStates.waiting_for_status)
 async def get_status(message: types.Message, state: FSMContext):
 
-    status = message.text
-
-    await state.update_data(status=status)
-
-    hours_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+    await state.update_data(status=message.text)
 
     await message.answer(
-    f"🏆 Status: {status}\n\n⏰ Ish soatini kiriting:",
-    reply_markup=types.ReplyKeyboardRemove()
-)
+        "⏰ Ish soatini kiriting:"
+    )
 
     await SalaryStates.waiting_for_hours.set()
+
 
 @dp.message_handler(state=SalaryStates.waiting_for_hours)
 async def get_hours(message: types.Message, state: FSMContext):
 
-    hours = message.text
-
-    await state.update_data(hours=hours)
+    await state.update_data(hours=message.text)
 
     await message.answer(
-    f"⏰ Ish soati: {hours} soat\n\n📅 Ish kunlari sonini kiriting:",
-    reply_markup=types.ReplyKeyboardRemove()
-)
+        "📅 Ish kunlari sonini kiriting:"
+    )
 
     await SalaryStates.waiting_for_days.set()
 
@@ -175,12 +191,10 @@ async def get_hours(message: types.Message, state: FSMContext):
 @dp.message_handler(state=SalaryStates.waiting_for_days)
 async def get_days(message: types.Message, state: FSMContext):
 
-    days = message.text
-
-    await state.update_data(days=days)
+    await state.update_data(days=message.text)
 
     await message.answer(
-        f"📅 Ish kunlari: {days} kun\n\n🎯 Individual plan kiriting:"
+        "🎯 Individual plan:"
     )
 
     await SalaryStates.waiting_for_individual_plan.set()
@@ -189,38 +203,34 @@ async def get_days(message: types.Message, state: FSMContext):
 @dp.message_handler(state=SalaryStates.waiting_for_individual_plan)
 async def get_individual_plan(message: types.Message, state: FSMContext):
 
-    individual_plan = message.text
-
-    await state.update_data(individual_plan=individual_plan)
+    await state.update_data(individual_plan=message.text)
 
     await message.answer(
-        f"🎯 Individual plan: {individual_plan}\n\n✅ Amaldagi sotuv sonini kiriting:"
+        "💸 Actual sales:"
     )
 
     await SalaryStates.waiting_for_actual_sales.set()
 
+
 @dp.message_handler(state=SalaryStates.waiting_for_actual_sales)
 async def get_actual_sales(message: types.Message, state: FSMContext):
 
-    actual_sales = message.text
-
-    await state.update_data(actual_sales=actual_sales)
+    await state.update_data(actual_sales=message.text)
 
     await message.answer(
-        f"✅ Amaldagi sotuv: {actual_sales}\n\n📈 Konversiya planini kiriting:"
+        "📊 Conversion plan:"
     )
 
     await SalaryStates.waiting_for_conversion_plan.set()
 
+
 @dp.message_handler(state=SalaryStates.waiting_for_conversion_plan)
 async def get_conversion_plan(message: types.Message, state: FSMContext):
 
-    conversion_plan = message.text
-
-    await state.update_data(conversion_plan=conversion_plan)
+    await state.update_data(conversion_plan=message.text)
 
     await message.answer(
-        f"📈 Konversiya plani: {conversion_plan}%\n\n📊 Amaldagi konversiyani kiriting:"
+        "📈 Actual conversion:"
     )
 
     await SalaryStates.waiting_for_actual_conversion.set()
@@ -229,25 +239,22 @@ async def get_conversion_plan(message: types.Message, state: FSMContext):
 @dp.message_handler(state=SalaryStates.waiting_for_actual_conversion)
 async def get_actual_conversion(message: types.Message, state: FSMContext):
 
-    actual_conversion = message.text
-
-    await state.update_data(actual_conversion=actual_conversion)
+    await state.update_data(actual_conversion=message.text)
 
     await message.answer(
-    f"📊 Amaldagi konversiya: {actual_conversion}%\n\n🔔 Aktiv plan kiriting:"
-)
+        "👥 Active students plan:"
+    )
 
     await SalaryStates.waiting_for_active_plan.set()
+
 
 @dp.message_handler(state=SalaryStates.waiting_for_active_plan)
 async def get_active_plan(message: types.Message, state: FSMContext):
 
-    active_plan = message.text
-
-    await state.update_data(active_plan=active_plan)
+    await state.update_data(active_plan=message.text)
 
     await message.answer(
-        f"🔔 Aktiv plan: {active_plan}\n\n👥 Jamoaviy aktiv o'quvchilar sonini kiriting:"
+        "👥 Actual active students:"
     )
 
     await SalaryStates.waiting_for_team_active.set()
@@ -256,20 +263,16 @@ async def get_active_plan(message: types.Message, state: FSMContext):
 @dp.message_handler(state=SalaryStates.waiting_for_team_active)
 async def get_team_active(message: types.Message, state: FSMContext):
 
-    team_active = message.text
-
     await state.update_data(actual_active=message.text)
 
-    await state.update_data(team_active=team_active)
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 
-    russian_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-
-    russian_keyboard.add("✅ Ha")
-    russian_keyboard.add("❌ Yo'q")
+    keyboard.add("✅ Ha")
+    keyboard.add("❌ Yo'q")
 
     await message.answer(
-        f"👥 Jamoaviy aktiv o'quvchilar: {team_active}\n\n🌍 Rus tilini biladimi?",
-        reply_markup=russian_keyboard
+        "🌍 Rus tilini biladimi?",
+        reply_markup=keyboard
     )
 
     await SalaryStates.waiting_for_russian.set()
@@ -278,18 +281,16 @@ async def get_team_active(message: types.Message, state: FSMContext):
 @dp.message_handler(state=SalaryStates.waiting_for_russian)
 async def get_russian(message: types.Message, state: FSMContext):
 
-    russian = message.text
+    await state.update_data(russian=message.text)
 
-    await state.update_data(russian=russian)
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 
-    ielts_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-
-    ielts_keyboard.add("✅ Ha")
-    ielts_keyboard.add("❌ Yo'q")
+    keyboard.add("✅ Ha")
+    keyboard.add("❌ Yo'q")
 
     await message.answer(
-        f"🌍 Rus tili: {russian}\n\n🎓 IELTS 7+ bormi?",
-        reply_markup=ielts_keyboard
+        "🎓 IELTS 7+ bormi?",
+        reply_markup=keyboard
     )
 
     await SalaryStates.waiting_for_ielts.set()
@@ -298,32 +299,16 @@ async def get_russian(message: types.Message, state: FSMContext):
 @dp.message_handler(state=SalaryStates.waiting_for_ielts)
 async def get_ielts(message: types.Message, state: FSMContext):
 
-    ielts = message.text
+    await state.update_data(ielts=message.text)
 
-    await state.update_data(ielts=ielts)
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 
-    await message.answer(
-        f"🎓 IELTS: {ielts}\n\n⏳ Necha soat ish qoldirdi?"
-    )
-
-    await SalaryStates.waiting_for_missed_hours.set()
-
-
-@dp.message_handler(state=SalaryStates.waiting_for_missed_hours)
-async def get_missed_hours(message: types.Message, state: FSMContext):
-
-    missed_hours = message.text
-
-    await state.update_data(missed_hours=missed_hours)
-
-    cover_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-
-    cover_keyboard.add("✅ Cover qilgan")
-    cover_keyboard.add("❌ Cover qilmagan")
+    keyboard.add("✅ Cover qilgan")
+    keyboard.add("❌ Cover qilmagan")
 
     await message.answer(
-        f"⏳ Qoldirilgan soat: {missed_hours}\n\n🔄 Cover qilganmi?",
-        reply_markup=cover_keyboard
+        "🔄 Cover qilganmi?",
+        reply_markup=keyboard
     )
 
     await SalaryStates.waiting_for_cover.set()
@@ -346,42 +331,30 @@ async def get_cover(message: types.Message, state: FSMContext):
 
     else:
 
-        data = await state.get_data()
+        await state.update_data(cover_hours=0)
 
-        hours = int(data.get("hours", 0))
-        days = int(data.get("days", 0))
-
-        status = data.get("status")
-        hours = int(data.get("hours"))
-        days = int(data.get("days"))
-
-    rates = {
-        "Nova": 11000,
-        "Prime": 12000,
-        "Apex": 13000,
-        "Leader": 15000
-    }
-
-    data = await state.get_data()
-
-    status = data.get("status")
-    
-    hourly_rate = rates.get(status, 0)
-
-    fixa = hourly_rate * hours * days
-
-    await get_cover_hours(message, state)
-    return
+        await calculate_salary(message, state)
 
 
 @dp.message_handler(state=SalaryStates.waiting_for_cover_hours)
 async def get_cover_hours(message: types.Message, state: FSMContext):
 
-    cover_hours = message.text
+    await state.update_data(cover_hours=message.text)
 
-    await state.update_data(cover_hours=cover_hours)
+    await calculate_salary(message, state)
+
+
+async def calculate_salary(message: types.Message, state: FSMContext):
 
     data = await state.get_data()
+
+    status = data.get("status")
+
+    hours = int(data.get("hours", 0))
+    days = int(data.get("days", 0))
+
+    individual_plan = float(data.get("individual_plan", 0))
+    actual_sales = float(data.get("actual_sales", 0))
 
     conversion_plan = float(data.get("conversion_plan", 0))
     actual_conversion = float(data.get("actual_conversion", 0))
@@ -389,9 +362,10 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
     active_plan = float(data.get("active_plan", 0))
     actual_active = float(data.get("actual_active", 0))
 
-    status = data.get("status")
-    hours = int(data.get("hours"))
-    days = int(data.get("days"))
+    cover_hours = float(data.get("cover_hours", 0))
+
+    russian = data.get("russian")
+    ielts = data.get("ielts")
 
     rates = {
         "Nova": 11000,
@@ -400,102 +374,86 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
         "Leader": 15000
     }
 
-    data = await state.get_data()
-
-    status = data.get("status")
     hourly_rate = rates.get(status, 0)
 
     fixa = hourly_rate * hours * days
 
-    russian = data.get("russian")
-    ielts = data.get("ielts")
-
     russian_bonus = 500000 if russian == "✅ Ha" else 0
     ielts_bonus = 1000000 if ielts == "✅ Ha" else 0
 
-    
-    
-    individual_plan = int(data.get("individual_plan"))
-    actual_sales = int(data.get("actual_sales"))
-
     individual_percentage = (actual_sales / individual_plan) * 100
-
     conversion_percentage = (actual_conversion / conversion_plan) * 100
-
     active_percentage = (actual_active / active_plan) * 100
 
-    if individual_percentage <= 49:
+    weighted_kpi = (
+        (individual_percentage * 0.5) +
+        (conversion_percentage * 0.3) +
+        (active_percentage * 0.2)
+    )
+
+    if weighted_kpi <= 49:
         bonus_rate = 0
 
-    elif individual_percentage <= 60:
+    elif weighted_kpi <= 60:
         bonus_rate = 5000
 
-    elif individual_percentage <= 70:
+    elif weighted_kpi <= 70:
         bonus_rate = 6000
 
-    elif individual_percentage <= 80:
+    elif weighted_kpi <= 80:
         bonus_rate = 10000
 
-    elif individual_percentage <= 90:
+    elif weighted_kpi <= 90:
         bonus_rate = 15000
 
-    elif individual_percentage <= 95:
+    elif weighted_kpi <= 95:
         bonus_rate = 18000
 
-    elif individual_percentage <= 100:
+    elif weighted_kpi <= 100:
         bonus_rate = 25000
 
-    elif individual_percentage <= 110:
+    elif weighted_kpi <= 110:
         bonus_rate = 30000
 
-    elif individual_percentage <= 120:
+    elif weighted_kpi <= 120:
         bonus_rate = 32000
 
-    elif individual_percentage <= 130:
+    elif weighted_kpi <= 130:
         bonus_rate = 35000
 
     else:
         bonus_rate = 40000
 
-weighted_kpi = (
-    (individual_percentage * 0.5) +
-    (conversion_percentage * 0.3) +
-    (active_percentage * 0.2)
-)
+    kpi_bonus = actual_sales * bonus_rate
 
-    await message.answer(
-        f"Individual: {individual_percentage}\n"
-        f"Conversion: {conversion_percentage}\n"
-        f"Active: {active_percentage}\n"
-        f"Weighted: {weighted_kpi}"
-)
-        
-base_kpi_bonus = actual_sales * bonus_rate
+    cover_bonus = cover_hours * hourly_rate
 
-kpi_bonus = base_kpi_bonus * (weighted_kpi / 100)
-
-cover_hours = int(data.get("cover_hours", 0))
-
-cover_bonus = cover_hours * hourly_rate
-
-total_salary = (
-    fixa +
-    russian_bonus +
-    ielts_bonus +
-    cover_bonus +
-    kpi_bonus
+    total_salary = (
+        fixa +
+        russian_bonus +
+        ielts_bonus +
+        cover_bonus +
+        kpi_bonus
     )
 
-await message.answer(f"📈 Individual KPI: {individual_percentage:.1f}%\n\n"
-                         f"🔥 KPI Bonus: {kpi_bonus:,.0f} UZS\n\n"
-                         f"🔄 Cover bonus: +{cover_bonus:,.0f} UZS\n\n"
-        f"💵 Fiksa: {fixa:,} UZS\n\n"
-        f"🌍 Rus bonusi: +{russian_bonus:,} UZS\n"
-        f"🎓 IELTS bonusi: +{ielts_bonus:,} UZS\n\n"
+    await message.answer(
+        f"📈 Individual KPI: {individual_percentage:.1f}%\n"
+        f"📊 Conversion KPI: {conversion_percentage:.1f}%\n"
+        f"👥 Active KPI: {active_percentage:.1f}%\n\n"
+
+        f"🏆 Weighted KPI: {weighted_kpi:.1f}%\n\n"
+
+        f"🔥 KPI Bonus: {kpi_bonus:,.0f} UZS\n"
+        f"🔄 Cover bonus: +{cover_bonus:,.0f} UZS\n\n"
+
+        f"💵 Fiksa: {fixa:,.0f} UZS\n"
+        f"🌍 Rus bonusi: +{russian_bonus:,.0f} UZS\n"
+        f"🎓 IELTS bonusi: +{ielts_bonus:,.0f} UZS\n\n"
+
         f"💰 JAMI OYLIK: {total_salary:,.0f} UZS"
     )
 
-await state.finish()
+    await state.finish()
 
 # TEST AUTO REPORT
 @dp.message_handler(commands=["testreport"])
