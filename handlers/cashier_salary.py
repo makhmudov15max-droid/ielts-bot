@@ -418,3 +418,65 @@ def register_cashier_handlers(dp):
         )
 
         await CashierSalaryStates.waiting_for_archive_debtors.set()
+
+from calculators.cashier_calc import calculate_cashier_salary
+
+
+
+    @dp.message_handler(state=CashierSalaryStates.waiting_for_archive_debtors)
+    async def get_archive_debtors(message: types.Message, state: FSMContext):
+
+        text = message.text
+
+
+        if text == "🏠 Bosh sahifa":
+
+            await go_home(message, state)
+
+            return
+
+
+        try:
+
+            archive_debtors = float(text)
+
+        except:
+
+            await message.answer(
+                "❌ To'g'ri raqam kiriting."
+            )
+
+            return
+
+
+        await state.update_data(
+            archive_debtors=archive_debtors
+        )
+
+
+        data = await state.get_data()
+
+        result = await calculate_cashier_salary(data)
+
+
+        await message.answer(
+
+            f"💵 Kunlik maosh: {result['daily_salary']:,.0f} UZS\n\n"
+
+            f"💰 Fiks maosh: {result['worked_salary']:,.0f} UZS\n"
+
+            f"📉 Qarzdorlik foizi: {result['debt_percentage']:.2f}%\n"
+
+            f"🚀 Multiplier: {result['multiplier']}x\n\n"
+
+            f"🔄 Cover bonus: +{result['cover_bonus']:,.0f} UZS\n"
+
+            f"📉 Jarima: -{result['missed_penalty']:,.0f} UZS\n\n"
+
+            f"🏆 JAMI OYLIK: {result['final_salary']:,.0f} UZS",
+
+            reply_markup=main_menu_keyboard()
+        )
+
+
+        await state.finish()
