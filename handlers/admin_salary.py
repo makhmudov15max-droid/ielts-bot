@@ -43,7 +43,7 @@ async def go_home(message: types.Message, state: FSMContext):
 
 
 # =====================================
-# REGISTER HANDLERS
+# REGISTER
 # =====================================
 
 def register_admin_handlers(dp):
@@ -540,17 +540,23 @@ def register_admin_handlers(dp):
             result = await calculate_admin_salary(data)
 
             await message.answer(
-                f"📈 Individual KPI: {result['individual_percentage']:.1f}%\n"
-                f"📊 Conversion KPI: {result['conversion_percentage']:.1f}%\n"
-                f"👥 Active KPI: {result['active_percentage']:.1f}%\n\n"
+                f"📋 ADMIN SALARY\n\n"
+
+                f"👤 {data['status']} | {data['hours']} soat | {data['days']} kun\n\n"
+
+                f"📈 Individual: {result['individual_percentage']:.1f}%\n"
+                f"📊 Conversion: {result['conversion_percentage']:.1f}%\n"
+                f"👥 Active: {result['active_percentage']:.1f}%\n"
                 f"🏆 Weighted KPI: {result['weighted_kpi']:.1f}%\n\n"
-                f"🔥 KPI Bonus: {result['kpi_bonus']:,.0f} UZS\n"
-                f"🔄 Cover Bonus: +{result['cover_bonus']:,.0f} UZS\n"
-                f"📉 Jarima: -{result['penalty']:,.0f} UZS\n\n"
-                f"💵 Fiksa: {result['fixa']:,.0f} UZS\n"
-                f"🌍 Rus bonusi: +{result['russian_bonus']:,.0f} UZS\n"
-                f"🎓 IELTS bonusi: +{result['ielts_bonus']:,.0f} UZS\n\n"
-                f"💰 JAMI OYLIK: {result['total_salary']:,.0f} UZS",
+
+                f"💵 Fiksa: {result['fixa']:,.0f}\n"
+                f"🔥 KPI Bonus: +{result['kpi_bonus']:,.0f}\n"
+                f"🌍 Rus bonus: +{result['russian_bonus']:,.0f}\n"
+                f"🎓 IELTS bonus: +{result['ielts_bonus']:,.0f}\n"
+                f"🔄 Cover: +{result['cover_bonus']:,.0f}\n"
+                f"📉 Jarima: -{result['penalty']:,.0f}\n\n"
+
+                f"💰 JAMI: {result['total_salary']:,.0f} UZS",
                 reply_markup=main_menu_keyboard()
             )
 
@@ -597,17 +603,23 @@ def register_admin_handlers(dp):
         result = await calculate_admin_salary(data)
 
         await message.answer(
-            f"📈 Individual KPI: {result['individual_percentage']:.1f}%\n"
-            f"📊 Conversion KPI: {result['conversion_percentage']:.1f}%\n"
-            f"👥 Active KPI: {result['active_percentage']:.1f}%\n\n"
+            f"📋 ADMIN SALARY\n\n"
+
+            f"👤 {data['status']} | {data['hours']} soat | {data['days']} kun\n\n"
+
+            f"📈 Individual: {result['individual_percentage']:.1f}%\n"
+            f"📊 Conversion: {result['conversion_percentage']:.1f}%\n"
+            f"👥 Active: {result['active_percentage']:.1f}%\n"
             f"🏆 Weighted KPI: {result['weighted_kpi']:.1f}%\n\n"
-            f"🔥 KPI Bonus: {result['kpi_bonus']:,.0f} UZS\n"
-            f"🔄 Cover Bonus: +{result['cover_bonus']:,.0f} UZS\n"
-            f"📉 Jarima: -{result['penalty']:,.0f} UZS\n\n"
-            f"💵 Fiksa: {result['fixa']:,.0f} UZS\n"
-            f"🌍 Rus bonusi: +{result['russian_bonus']:,.0f} UZS\n"
-            f"🎓 IELTS bonusi: +{result['ielts_bonus']:,.0f} UZS\n\n"
-            f"💰 JAMI OYLIK: {result['total_salary']:,.0f} UZS",
+
+            f"💵 Fiksa: {result['fixa']:,.0f}\n"
+            f"🔥 KPI Bonus: +{result['kpi_bonus']:,.0f}\n"
+            f"🌍 Rus bonus: +{result['russian_bonus']:,.0f}\n"
+            f"🎓 IELTS bonus: +{result['ielts_bonus']:,.0f}\n"
+            f"🔄 Cover: +{result['cover_bonus']:,.0f}\n"
+            f"📉 Jarima: -{result['penalty']:,.0f}\n\n"
+
+            f"💰 JAMI: {result['total_salary']:,.0f} UZS",
             reply_markup=main_menu_keyboard()
         )
 
