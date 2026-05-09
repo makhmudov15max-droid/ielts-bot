@@ -495,7 +495,7 @@ await message.answer(f"📈 Individual KPI: {individual_percentage:.1f}%\n\n"
         f"💰 JAMI OYLIK: {total_salary:,.0f} UZS"
     )
 
-    await state.finish()
+await state.finish()
 
 # TEST AUTO REPORT
 @dp.message_handler(commands=["testreport"])
