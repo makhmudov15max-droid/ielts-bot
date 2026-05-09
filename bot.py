@@ -287,9 +287,15 @@ async def get_actual_sales(message: types.Message, state: FSMContext):
 
     await state.update_data(actual_sales=message.text)
 
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+    keyboard.add("50%")
+    keyboard.add("✍️ Boshqa")
+    keyboard.add("🏠 Bosh sahifa")
+
     await message.answer(
         "📊 Conversion plan nechta?",
-        reply_markup=home_keyboard()
+        reply_markup=keyboard
     )
 
     await SalaryStates.waiting_for_conversion_plan.set()
@@ -302,11 +308,38 @@ async def get_actual_sales(message: types.Message, state: FSMContext):
 @dp.message_handler(state=SalaryStates.waiting_for_conversion_plan)
 async def get_conversion_plan(message: types.Message, state: FSMContext):
 
-    if message.text == "🏠 Bosh sahifa":
+    text = message.text
+
+    if text == "🏠 Bosh sahifa":
         await go_home(message, state)
         return
 
-    await state.update_data(conversion_plan=message.text)
+    if text == "50%":
+        conversion_plan = 50
+
+    elif text == "✍️ Boshqa":
+
+        await message.answer(
+            "✍️ Conversion plan kiriting:",
+            reply_markup=home_keyboard()
+        )
+
+        return
+
+    else:
+
+        try:
+            conversion_plan = float(text)
+
+        except:
+
+            await message.answer(
+                "❌ Faqat raqam kiriting."
+            )
+
+            return
+
+    await state.update_data(conversion_plan=conversion_plan)
 
     await message.answer(
         "📊 Amaldagi conversion nechta?",
