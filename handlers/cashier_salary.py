@@ -234,3 +234,113 @@ def register_cashier_handlers(dp):
         )
 
         await CashierSalaryStates.waiting_for_cover.set()
+
+    @dp.message_handler(state=CashierSalaryStates.waiting_for_cover)
+    async def get_cover(message: types.Message, state: FSMContext):
+
+        text = message.text
+
+
+        if text == "🏠 Bosh sahifa":
+
+            await go_home(message, state)
+
+            return
+
+
+        if text == "✅ Ha":
+
+            await message.answer(
+                "🔄 Necha kun cover qildingiz?",
+                reply_markup=home_keyboard()
+            )
+
+            await CashierSalaryStates.waiting_for_cover_days.set()
+
+
+        else:
+
+            await state.update_data(cover_days=0)
+
+            await message.answer(
+                "👥 Aktiv o‘quvchilar soni?",
+                reply_markup=home_keyboard()
+            )
+
+            await CashierSalaryStates.waiting_for_active_students.set()
+
+
+
+    @dp.message_handler(state=CashierSalaryStates.waiting_for_cover_days)
+    async def get_cover_days(message: types.Message, state: FSMContext):
+
+        text = message.text
+
+
+        if text == "🏠 Bosh sahifa":
+
+            await go_home(message, state)
+
+            return
+
+
+        try:
+
+            cover_days = float(text)
+
+        except:
+
+            await message.answer(
+                "❌ To'g'ri raqam kiriting."
+            )
+
+            return
+
+
+        await state.update_data(cover_days=cover_days)
+
+
+        await message.answer(
+            "👥 Aktiv o‘quvchilar soni?",
+            reply_markup=home_keyboard()
+        )
+
+        await CashierSalaryStates.waiting_for_active_students.set()
+
+
+
+    @dp.message_handler(state=CashierSalaryStates.waiting_for_active_students)
+    async def get_active_students(message: types.Message, state: FSMContext):
+
+        text = message.text
+
+
+        if text == "🏠 Bosh sahifa":
+
+            await go_home(message, state)
+
+            return
+
+
+        try:
+
+            active_students = float(text)
+
+        except:
+
+            await message.answer(
+                "❌ To'g'ri raqam kiriting."
+            )
+
+            return
+
+
+        await state.update_data(active_students=active_students)
+
+
+        await message.answer(
+            "📉 Aktiv qarzdorlar soni?",
+            reply_markup=home_keyboard()
+        )
+
+        await CashierSalaryStates.waiting_for_active_debtors.set()
