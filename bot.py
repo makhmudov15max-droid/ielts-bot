@@ -17,7 +17,9 @@ dp = Dispatcher(bot, storage=storage)
 
 
 @dp.message_handler(commands=["start"])
-async def start_handler(message: types.Message):
+async def start_handler(message: types.Message, state: FSMContext):
+
+    await state.finish()
 
     await message.answer(
         "🏠 Bosh sahifa",
