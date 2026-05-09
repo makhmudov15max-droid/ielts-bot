@@ -472,13 +472,13 @@ await message.answer(
         
 base_kpi_bonus = actual_sales * bonus_rate
 
-    kpi_bonus = base_kpi_bonus * (weighted_kpi / 100)
+kpi_bonus = base_kpi_bonus * (weighted_kpi / 100)
 
-    cover_hours = int(data.get("cover_hours", 0))
+cover_hours = int(data.get("cover_hours", 0))
 
-    cover_bonus = cover_hours * hourly_rate
+cover_bonus = cover_hours * hourly_rate
 
-    total_salary = (
+total_salary = (
     fixa +
     russian_bonus +
     ielts_bonus +
