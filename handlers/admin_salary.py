@@ -1,5 +1,6 @@
 from aiogram import types
 from aiogram.dispatcher import FSMContext
+from aiogram.types import ReplyKeyboardMarkup
 
 from keyboards.admin_keyboard import (
     main_menu_keyboard,
@@ -12,9 +13,24 @@ from keyboards.admin_keyboard import (
 )
 
 from states.admin_states import AdminSalaryStates
-
 from calculators.admin_calc import calculate_admin_salary
 
+
+# =====================================
+# HOME KEYBOARD
+# =====================================
+
+def home_keyboard():
+
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+    keyboard.add("🏠 Bosh sahifa")
+
+    return keyboard
+
+
+# =====================================
+# GO HOME
+# =====================================
 
 async def go_home(message: types.Message, state: FSMContext):
 
@@ -26,8 +42,16 @@ async def go_home(message: types.Message, state: FSMContext):
     )
 
 
+# =====================================
+# REGISTER HANDLERS
+# =====================================
+
 def register_admin_handlers(dp):
 
+
+    # =====================================
+    # START
+    # =====================================
 
     @dp.message_handler(lambda message: message.text == "💰 Admin Salary")
     async def salary_start(message: types.Message):
@@ -40,14 +64,20 @@ def register_admin_handlers(dp):
         await AdminSalaryStates.waiting_for_status.set()
 
 
+    # =====================================
+    # STATUS
+    # =====================================
+
     @dp.message_handler(state=AdminSalaryStates.waiting_for_status)
     async def get_status(message: types.Message, state: FSMContext):
 
-        if message.text == "🏠 Bosh sahifa":
+        text = message.text
+
+        if text == "🏠 Bosh sahifa":
             await go_home(message, state)
             return
 
-        await state.update_data(status=message.text)
+        await state.update_data(status=text)
 
         await message.answer(
             "⏰ Kunlik necha soat ishlaydi?",
@@ -56,6 +86,10 @@ def register_admin_handlers(dp):
 
         await AdminSalaryStates.waiting_for_hours.set()
 
+
+    # =====================================
+    # HOURS
+    # =====================================
 
     @dp.message_handler(state=AdminSalaryStates.waiting_for_hours)
     async def get_hours(message: types.Message, state: FSMContext):
@@ -96,6 +130,10 @@ def register_admin_handlers(dp):
         await AdminSalaryStates.waiting_for_days.set()
 
 
+    # =====================================
+    # DAYS
+    # =====================================
+
     @dp.message_handler(state=AdminSalaryStates.waiting_for_days)
     async def get_days(message: types.Message, state: FSMContext):
 
@@ -128,44 +166,86 @@ def register_admin_handlers(dp):
         await state.update_data(days=days)
 
         await message.answer(
-            "🎯 Individual plan nechta?"
+            "🎯 Individual plan nechta?",
+            reply_markup=home_keyboard()
         )
 
         await AdminSalaryStates.waiting_for_individual_plan.set()
 
 
+    # =====================================
+    # INDIVIDUAL PLAN
+    # =====================================
+
     @dp.message_handler(state=AdminSalaryStates.waiting_for_individual_plan)
     async def get_individual_plan(message: types.Message, state: FSMContext):
 
-        if message.text == "🏠 Bosh sahifa":
+        text = message.text
+
+        if text == "🏠 Bosh sahifa":
             await go_home(message, state)
             return
 
-        await state.update_data(individual_plan=message.text)
+        try:
+            value = float(text)
+
+        except:
+
+            await message.answer(
+                "❌ To'g'ri raqam kiriting.",
+                reply_markup=home_keyboard()
+            )
+
+            return
+
+        await state.update_data(individual_plan=value)
 
         await message.answer(
-            "📈 Amaldagi sotuv nechta?"
+            "📈 Amaldagi sotuv nechta?",
+            reply_markup=home_keyboard()
         )
 
         await AdminSalaryStates.waiting_for_actual_sales.set()
 
 
+    # =====================================
+    # ACTUAL SALES
+    # =====================================
+
     @dp.message_handler(state=AdminSalaryStates.waiting_for_actual_sales)
     async def get_actual_sales(message: types.Message, state: FSMContext):
 
-        if message.text == "🏠 Bosh sahifa":
+        text = message.text
+
+        if text == "🏠 Bosh sahifa":
             await go_home(message, state)
             return
 
-        await state.update_data(actual_sales=message.text)
+        try:
+            value = float(text)
+
+        except:
+
+            await message.answer(
+                "❌ To'g'ri raqam kiriting.",
+                reply_markup=home_keyboard()
+            )
+
+            return
+
+        await state.update_data(actual_sales=value)
 
         await message.answer(
-            "📊 Conversion plan nechta?",
+            "📊 Conversion plan nechchi?",
             reply_markup=conversion_keyboard()
         )
 
         await AdminSalaryStates.waiting_for_conversion_plan.set()
 
+
+    # =====================================
+    # CONVERSION PLAN
+    # =====================================
 
     @dp.message_handler(state=AdminSalaryStates.waiting_for_conversion_plan)
     async def get_conversion_plan(message: types.Message, state: FSMContext):
@@ -190,52 +270,109 @@ def register_admin_handlers(dp):
         await state.update_data(conversion_plan=conversion_plan)
 
         await message.answer(
-            "📊 Amaldagi conversion nechta?"
+            "📊 Amaldagi conversion nechchi?",
+            reply_markup=home_keyboard()
         )
 
         await AdminSalaryStates.waiting_for_actual_conversion.set()
 
 
+    # =====================================
+    # ACTUAL CONVERSION
+    # =====================================
+
     @dp.message_handler(state=AdminSalaryStates.waiting_for_actual_conversion)
     async def get_actual_conversion(message: types.Message, state: FSMContext):
 
-        if message.text == "🏠 Bosh sahifa":
+        text = message.text
+
+        if text == "🏠 Bosh sahifa":
             await go_home(message, state)
             return
 
-        await state.update_data(actual_conversion=message.text)
+        try:
+            value = float(text)
+
+        except:
+
+            await message.answer(
+                "❌ To'g'ri raqam kiriting.",
+                reply_markup=home_keyboard()
+            )
+
+            return
+
+        await state.update_data(actual_conversion=value)
 
         await message.answer(
-            "👥 Aktiv plan nechta?"
+            "👥 Aktiv plan nechchi?",
+            reply_markup=home_keyboard()
         )
 
         await AdminSalaryStates.waiting_for_active_plan.set()
 
 
+    # =====================================
+    # ACTIVE PLAN
+    # =====================================
+
     @dp.message_handler(state=AdminSalaryStates.waiting_for_active_plan)
     async def get_active_plan(message: types.Message, state: FSMContext):
 
-        if message.text == "🏠 Bosh sahifa":
+        text = message.text
+
+        if text == "🏠 Bosh sahifa":
             await go_home(message, state)
             return
 
-        await state.update_data(active_plan=message.text)
+        try:
+            value = float(text)
+
+        except:
+
+            await message.answer(
+                "❌ To'g'ri raqam kiriting.",
+                reply_markup=home_keyboard()
+            )
+
+            return
+
+        await state.update_data(active_plan=value)
 
         await message.answer(
-            "👥 Amaldagi aktiv nechta?"
+            "👥 Amaldagi aktiv nechchi?",
+            reply_markup=home_keyboard()
         )
 
         await AdminSalaryStates.waiting_for_actual_active.set()
 
 
+    # =====================================
+    # ACTUAL ACTIVE
+    # =====================================
+
     @dp.message_handler(state=AdminSalaryStates.waiting_for_actual_active)
     async def get_actual_active(message: types.Message, state: FSMContext):
 
-        if message.text == "🏠 Bosh sahifa":
+        text = message.text
+
+        if text == "🏠 Bosh sahifa":
             await go_home(message, state)
             return
 
-        await state.update_data(actual_active=message.text)
+        try:
+            value = float(text)
+
+        except:
+
+            await message.answer(
+                "❌ To'g'ri raqam kiriting.",
+                reply_markup=home_keyboard()
+            )
+
+            return
+
+        await state.update_data(actual_active=value)
 
         await message.answer(
             "🌍 Rus tilini biladimi?",
@@ -245,14 +382,20 @@ def register_admin_handlers(dp):
         await AdminSalaryStates.waiting_for_russian.set()
 
 
+    # =====================================
+    # RUSSIAN
+    # =====================================
+
     @dp.message_handler(state=AdminSalaryStates.waiting_for_russian)
     async def get_russian(message: types.Message, state: FSMContext):
 
-        if message.text == "🏠 Bosh sahifa":
+        text = message.text
+
+        if text == "🏠 Bosh sahifa":
             await go_home(message, state)
             return
 
-        await state.update_data(russian=message.text)
+        await state.update_data(russian=text)
 
         await message.answer(
             "🎓 IELTS 7+ bormi?",
@@ -262,14 +405,20 @@ def register_admin_handlers(dp):
         await AdminSalaryStates.waiting_for_ielts.set()
 
 
+    # =====================================
+    # IELTS
+    # =====================================
+
     @dp.message_handler(state=AdminSalaryStates.waiting_for_ielts)
     async def get_ielts(message: types.Message, state: FSMContext):
 
-        if message.text == "🏠 Bosh sahifa":
+        text = message.text
+
+        if text == "🏠 Bosh sahifa":
             await go_home(message, state)
             return
 
-        await state.update_data(ielts=message.text)
+        await state.update_data(ielts=text)
 
         await message.answer(
             "📉 Ish qoldirdimi?",
@@ -278,6 +427,10 @@ def register_admin_handlers(dp):
 
         await AdminSalaryStates.waiting_for_missed_work.set()
 
+
+    # =====================================
+    # MISSED WORK
+    # =====================================
 
     @dp.message_handler(state=AdminSalaryStates.waiting_for_missed_work)
     async def get_missed_work(message: types.Message, state: FSMContext):
@@ -291,91 +444,94 @@ def register_admin_handlers(dp):
         if text == "✅ Ha":
 
             await message.answer(
-            "⏰ Necha soat ish qoldirdi?",
-            reply_markup=home_keyboard()
-        )
+                "⏰ Necha soat ish qoldirdi?",
+                reply_markup=home_keyboard()
+            )
 
-        await AdminSalaryStates.waiting_for_missed_hours.set()
+            await AdminSalaryStates.waiting_for_missed_hours.set()
 
-        return
+            return
 
-    elif text == "❌ Yo'q":
+        elif text == "❌ Yo'q":
 
-        await state.update_data(missed_hours=0)
+            await state.update_data(missed_hours=0)
 
-        keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+            await message.answer(
+                "🔄 Cover qilganmi?",
+                reply_markup=cover_keyboard()
+            )
 
-        keyboard.add("✅ Cover qilgan", "❌ Cover qilmagan")
-        keyboard.add("🏠 Bosh sahifa")
+            await AdminSalaryStates.waiting_for_cover.set()
 
-        await message.answer(
-            "🔄 Cover qilganmi?",
-            reply_markup=keyboard
-        )
+            return
 
-        await AdminSalaryStates.waiting_for_cover.set()
+        else:
 
-        return
+            await message.answer(
+                "❌ Variantlardan birini tanlang."
+            )
 
-    else:
 
-        await message.answer(
-            "❌ Variantlardan birini tanlang."
-        )
-
+    # =====================================
+    # MISSED HOURS
+    # =====================================
 
     @dp.message_handler(state=AdminSalaryStates.waiting_for_missed_hours)
     async def get_missed_hours(message: types.Message, state: FSMContext):
 
-    text = message.text
+        text = message.text
 
-    if text == "🏠 Bosh sahifa":
-        await go_home(message, state)
-        return
+        if text == "🏠 Bosh sahifa":
+            await go_home(message, state)
+            return
 
-    try:
-        value = float(text)
+        try:
+            value = float(text)
 
-    except:
+        except:
+
+            await message.answer(
+                "❌ To'g'ri raqam kiriting.",
+                reply_markup=home_keyboard()
+            )
+
+            return
+
+        await state.update_data(missed_hours=value)
 
         await message.answer(
-            "❌ To'g'ri raqam kiriting.",
-            reply_markup=home_keyboard()
+            "🔄 Cover qilganmi?",
+            reply_markup=cover_keyboard()
         )
 
-        return
+        await AdminSalaryStates.waiting_for_cover.set()
 
-    await state.update_data(missed_hours=value)
 
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-
-    keyboard.add("✅ Cover qilgan", "❌ Cover qilmagan")
-    keyboard.add("🏠 Bosh sahifa")
-
-    await message.answer(
-        "🔄 Cover qilganmi?",
-        reply_markup=keyboard
-    )
-
-    await AdminSalaryStates.waiting_for_cover.set()
-
+    # =====================================
+    # COVER
+    # =====================================
 
     @dp.message_handler(state=AdminSalaryStates.waiting_for_cover)
     async def get_cover(message: types.Message, state: FSMContext):
 
-        if message.text == "🏠 Bosh sahifa":
+        text = message.text
+
+        if text == "🏠 Bosh sahifa":
             await go_home(message, state)
             return
 
-        if message.text == "✅ Cover qilgan":
+        if text == "✅ Cover qilgan":
 
             await message.answer(
-                "⏰ Necha soat cover qilgan?"
+                "⏰ Necha soat cover qilgan?",
+                reply_markup=home_keyboard()
             )
 
             await AdminSalaryStates.waiting_for_cover_hours.set()
 
-        else:
+            return
+
+        elif text == "❌ Cover qilmagan":
 
             await state.update_data(cover_hours=0)
 
@@ -384,21 +540,57 @@ def register_admin_handlers(dp):
             result = await calculate_admin_salary(data)
 
             await message.answer(
+                f"📈 Individual KPI: {result['individual_percentage']:.1f}%\n"
+                f"📊 Conversion KPI: {result['conversion_percentage']:.1f}%\n"
+                f"👥 Active KPI: {result['active_percentage']:.1f}%\n\n"
+                f"🏆 Weighted KPI: {result['weighted_kpi']:.1f}%\n\n"
+                f"🔥 KPI Bonus: {result['kpi_bonus']:,.0f} UZS\n"
+                f"🔄 Cover Bonus: +{result['cover_bonus']:,.0f} UZS\n"
+                f"📉 Jarima: -{result['penalty']:,.0f} UZS\n\n"
+                f"💵 Fiksa: {result['fixa']:,.0f} UZS\n"
+                f"🌍 Rus bonusi: +{result['russian_bonus']:,.0f} UZS\n"
+                f"🎓 IELTS bonusi: +{result['ielts_bonus']:,.0f} UZS\n\n"
                 f"💰 JAMI OYLIK: {result['total_salary']:,.0f} UZS",
                 reply_markup=main_menu_keyboard()
             )
 
             await state.finish()
 
+            return
+
+        else:
+
+            await message.answer(
+                "❌ Variantlardan birini tanlang."
+            )
+
+
+    # =====================================
+    # COVER HOURS
+    # =====================================
 
     @dp.message_handler(state=AdminSalaryStates.waiting_for_cover_hours)
     async def get_cover_hours(message: types.Message, state: FSMContext):
 
-        if message.text == "🏠 Bosh sahifa":
+        text = message.text
+
+        if text == "🏠 Bosh sahifa":
             await go_home(message, state)
             return
 
-        await state.update_data(cover_hours=message.text)
+        try:
+            value = float(text)
+
+        except:
+
+            await message.answer(
+                "❌ To'g'ri raqam kiriting.",
+                reply_markup=home_keyboard()
+            )
+
+            return
+
+        await state.update_data(cover_hours=value)
 
         data = await state.get_data()
 
@@ -408,17 +600,13 @@ def register_admin_handlers(dp):
             f"📈 Individual KPI: {result['individual_percentage']:.1f}%\n"
             f"📊 Conversion KPI: {result['conversion_percentage']:.1f}%\n"
             f"👥 Active KPI: {result['active_percentage']:.1f}%\n\n"
-
             f"🏆 Weighted KPI: {result['weighted_kpi']:.1f}%\n\n"
-
             f"🔥 KPI Bonus: {result['kpi_bonus']:,.0f} UZS\n"
             f"🔄 Cover Bonus: +{result['cover_bonus']:,.0f} UZS\n"
             f"📉 Jarima: -{result['penalty']:,.0f} UZS\n\n"
-
             f"💵 Fiksa: {result['fixa']:,.0f} UZS\n"
             f"🌍 Rus bonusi: +{result['russian_bonus']:,.0f} UZS\n"
             f"🎓 IELTS bonusi: +{result['ielts_bonus']:,.0f} UZS\n\n"
-
             f"💰 JAMI OYLIK: {result['total_salary']:,.0f} UZS",
             reply_markup=main_menu_keyboard()
         )
