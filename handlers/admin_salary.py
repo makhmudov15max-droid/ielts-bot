@@ -282,45 +282,82 @@ def register_admin_handlers(dp):
     @dp.message_handler(state=AdminSalaryStates.waiting_for_missed_work)
     async def get_missed_work(message: types.Message, state: FSMContext):
 
-        if message.text == "🏠 Bosh sahifa":
-            await go_home(message, state)
-            return
+        text = message.text
 
-        if message.text == "✅ Ha":
+        if text == "🏠 Bosh sahifa":
+        await go_home(message, state)
+        return
 
-            await message.answer(
-                "⏰ Necha soat ish qoldirdi?"
-            )
+        if text == "✅ Ha":
 
-            await AdminSalaryStates.waiting_for_missed_hours.set()
+        await message.answer(
+            "⏰ Necha soat ish qoldirdi?",
+            reply_markup=home_keyboard()
+        )
 
-        else:
+        await AdminSalaryStates.waiting_for_missed_hours.set()
 
-            await state.update_data(missed_hours=0)
+        return
 
-            await message.answer(
-                "🔄 Cover qilganmi?",
-                reply_markup=cover_keyboard()
-            )
+    elif text == "❌ Yo'q":
 
-            await AdminSalaryStates.waiting_for_cover.set()
+        await state.update_data(missed_hours=0)
+
+        keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+        keyboard.add("✅ Cover qilgan", "❌ Cover qilmagan")
+        keyboard.add("🏠 Bosh sahifa")
+
+        await message.answer(
+            "🔄 Cover qilganmi?",
+            reply_markup=keyboard
+        )
+
+        await AdminSalaryStates.waiting_for_cover.set()
+
+        return
+
+    else:
+
+        await message.answer(
+            "❌ Variantlardan birini tanlang."
+        )
 
 
     @dp.message_handler(state=AdminSalaryStates.waiting_for_missed_hours)
     async def get_missed_hours(message: types.Message, state: FSMContext):
 
-        if message.text == "🏠 Bosh sahifa":
-            await go_home(message, state)
-            return
+    text = message.text
 
-        await state.update_data(missed_hours=message.text)
+    if text == "🏠 Bosh sahifa":
+        await go_home(message, state)
+        return
+
+    try:
+        value = float(text)
+
+    except:
 
         await message.answer(
-            "🔄 Cover qilganmi?",
-            reply_markup=cover_keyboard()
+            "❌ To'g'ri raqam kiriting.",
+            reply_markup=home_keyboard()
         )
 
-        await AdminSalaryStates.waiting_for_cover.set()
+        return
+
+    await state.update_data(missed_hours=value)
+
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
+    keyboard.add("✅ Cover qilgan", "❌ Cover qilmagan")
+    keyboard.add("🏠 Bosh sahifa")
+
+    await message.answer(
+        "🔄 Cover qilganmi?",
+        reply_markup=keyboard
+    )
+
+    await AdminSalaryStates.waiting_for_cover.set()
 
 
     @dp.message_handler(state=AdminSalaryStates.waiting_for_cover)
