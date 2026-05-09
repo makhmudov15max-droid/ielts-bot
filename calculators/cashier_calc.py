@@ -31,10 +31,9 @@ async def calculate_cashier_salary(data):
     worked_salary = daily_salary * days
 
 
-    missed_penalty = missed_days * daily_salary
+    missed_penalty = missed_days * 15000
 
-
-    cover_bonus = cover_days * daily_salary
+    cover_bonus = cover_days * 15000
 
 
     total_students = active_students + archive_students
