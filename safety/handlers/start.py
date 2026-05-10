@@ -2,6 +2,7 @@ from aiogram import types
 
 from safety.loader import dp, bot
 from safety.config import OWNER_ID
+from aiogram.types import ReplyKeyboardRemove
 
 from safety.keyboards.contact_keyboard import contact_keyboard
 from safety.keyboards.menu_keyboard import get_menu
@@ -25,7 +26,11 @@ async def start_command(message: types.Message):
     if user_id in users:
 
         role = users[user_id]["role"]
-
+        await message.answer(
+            "✅ Menu yuklandi",
+            reply_markup=ReplyKeyboardRemove()
+        )
+        
         await message.answer(
             "🏠 Bosh sahifa",
             reply_markup=get_menu(role)
