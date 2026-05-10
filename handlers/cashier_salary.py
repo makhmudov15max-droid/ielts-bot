@@ -1,236 +1,468 @@
 from aiogram import types
 from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters.state import State, StatesGroup
 
 from safety.loader import dp
 
-from safety.db import load_users
+from states.cashier_states import CashierStates
 
-from safety.keyboards.menu_keyboard import get_menu
-
-from keyboards.admin_keyboard import (
+from keyboards.cashier_keyboard import (
+    hours_keyboard,
     days_keyboard,
-    status_keyboard
+    yes_no_keyboard,
+    back_keyboard
 )
 
-
-# =========================================
-# STATES
-# =========================================
-
-class CashierSalaryState(StatesGroup):
-
-    worked_days = State()
-    daily_salary = State()
-    debt_percentage = State()
-    cover = State()
-    missed = State()
+from keyboards.common_keyboard import home_keyboard
+from keyboards.admin_keyboard import main_menu_keyboard
 
 
-# =========================================
-# START
-# =========================================
+# START CASHIER FLOW
 
 @dp.message_handler(lambda message: message.text == "💰 Cashier Salary")
-async def cashier_salary_start(message: types.Message):
+async def cashier_start(message: types.Message):
+
+    await CashierStates.hours.set()
 
     await message.answer(
-        "📅 Necha kun ishladingiz?",
-        reply_markup=days_keyboard()
+        "Kuniga necha soat ishlaysiz?",
+        reply_markup=hours_keyboard
     )
 
-    await CashierSalaryState.worked_days.set()
 
+# HOURS
 
-# =========================================
-# WORKED DAYS
-# =========================================
+@dp.message_handler(state=CashierStates.hours)
+async def get_hours(message: types.Message, state: FSMContext):
 
-@dp.message_handler(state=CashierSalaryState.worked_days)
-async def worked_days_handler(message: types.Message, state: FSMContext):
+    text = message.text
 
-    text = message.text.replace(" kun", "")
+    if text == "🏠 Bosh sahifa":
 
-    if not text.isdigit():
+        await state.finish()
 
         await message.answer(
-            "❌ Raqam kiriting."
+            "🏠 Bosh sahifa",
+            reply_markup=main_menu_keyboard
         )
         return
 
-    await state.update_data(
-        worked_days=int(text)
-    )
-
-    await message.answer(
-        "💵 Kunlik maoshingizni kiriting:"
-    )
-
-    await CashierSalaryState.daily_salary.set()
-
-
-# =========================================
-# DAILY SALARY
-# =========================================
-
-@dp.message_handler(state=CashierSalaryState.daily_salary)
-async def daily_salary_handler(message: types.Message, state: FSMContext):
-
-    text = message.text.replace(" ", "")
-
-    if not text.isdigit():
+    if text == "⬅️ Ortga":
 
         await message.answer(
-            "❌ Raqam kiriting."
+            "Siz birinchi bosqichdasiz."
         )
         return
 
-    await state.update_data(
-        daily_salary=int(text)
-    )
+    if text == "Boshqa":
 
-    await message.answer(
-        "📉 Qarzdorlik foizini kiriting:"
-    )
-
-    await CashierSalaryState.debt_percentage.set()
-
-
-# =========================================
-# DEBT
-# =========================================
-
-@dp.message_handler(state=CashierSalaryState.debt_percentage)
-async def debt_handler(message: types.Message, state: FSMContext):
+        await message.answer(
+            "Necha soat ishlaysiz?"
+        )
+        return
 
     try:
-        debt = float(message.text)
-    except:
+        hours = int(text.split()[0])
 
+    except:
         await message.answer(
-            "❌ To‘g‘ri foiz kiriting."
+            "Iltimos tugmalardan foydalaning."
         )
         return
 
-    await state.update_data(
-        debt_percentage=debt
+    await state.update_data(hours=hours)
+
+    await CashierStates.days.set()
+
+    await message.answer(
+        "Oy davomida necha kun ishladingiz?",
+        reply_markup=days_keyboard
     )
+
+
+# DAYS
+
+@dp.message_handler(state=CashierStates.days)
+async def get_days(message: types.Message, state: FSMContext):
+
+    text = message.text
+
+    if text == "🏠 Bosh sahifa":
+
+        await state.finish()
+
+        await message.answer(
+            "🏠 Bosh sahifa",
+            reply_markup=main_menu_keyboard
+        )
+        return
+
+    if text == "⬅️ Ortga":
+
+        await CashierStates.hours.set()
+
+        await message.answer(
+            "Kuniga necha soat ishlaysiz?",
+            reply_markup=hours_keyboard
+        )
+        return
+
+    if text == "Boshqa":
+
+        await message.answer(
+            "Necha kun ishladingiz?"
+        )
+        return
+
+    try:
+        days = int(text.split()[0])
+
+    except:
+        await message.answer(
+            "Iltimos tugmalardan foydalaning."
+        )
+        return
+
+    await state.update_data(days=days)
+
+    await CashierStates.cover.set()
 
     await message.answer(
         "🔄 Cover qildingizmi?",
-        reply_markup=status_keyboard()
+        reply_markup=yes_no_keyboard
     )
 
-    await CashierSalaryState.cover.set()
 
-
-# =========================================
 # COVER
-# =========================================
 
-@dp.message_handler(state=CashierSalaryState.cover)
-async def cover_handler(message: types.Message, state: FSMContext):
+@dp.message_handler(state=CashierStates.cover)
+async def get_cover(message: types.Message, state: FSMContext):
 
     text = message.text.lower()
 
-    if "ha" in text:
-        cover_bonus = 50000
-    else:
-        cover_bonus = 0
+    if text == "🏠 bosh sahifa":
+
+        await state.finish()
+
+        await message.answer(
+            "🏠 Bosh sahifa",
+            reply_markup=main_menu_keyboard
+        )
+        return
+
+    if text == "⬅️ ortga":
+
+        await CashierStates.days.set()
+
+        await message.answer(
+            "Oy davomida necha kun ishladingiz?",
+            reply_markup=days_keyboard
+        )
+        return
+
+    if text == "ha":
+
+        await CashierStates.cover_hours.set()
+
+        await message.answer(
+            "Necha soat cover qildingiz?",
+            reply_markup=back_keyboard
+        )
+        return
+
+    if text == "yo'q":
+
+        await state.update_data(cover_hours=0)
+
+        await CashierStates.absent.set()
+
+        await message.answer(
+            "📉 Ish qoldirdingizmi?",
+            reply_markup=yes_no_keyboard
+        )
+        return
+
+    await message.answer(
+        "Iltimos tugmalardan foydalaning."
+    )
+
+
+# COVER HOURS
+
+@dp.message_handler(state=CashierStates.cover_hours)
+async def get_cover_hours(message: types.Message, state: FSMContext):
+
+    text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await CashierStates.cover.set()
+
+        await message.answer(
+            "🔄 Cover qildingizmi?",
+            reply_markup=yes_no_keyboard
+        )
+        return
+
+    if not text.isdigit():
+
+        await message.answer(
+            "Iltimos raqam kiriting."
+        )
+        return
 
     await state.update_data(
-        cover_bonus=cover_bonus
+        cover_hours=int(text)
     )
+
+    await CashierStates.absent.set()
 
     await message.answer(
         "📉 Ish qoldirdingizmi?",
-        reply_markup=status_keyboard()
+        reply_markup=yes_no_keyboard
     )
 
-    await CashierSalaryState.missed.set()
 
+# ABSENT
 
-# =========================================
-# MISSED
-# =========================================
-
-@dp.message_handler(state=CashierSalaryState.missed)
-async def missed_handler(message: types.Message, state: FSMContext):
+@dp.message_handler(state=CashierStates.absent)
+async def get_absent(message: types.Message, state: FSMContext):
 
     text = message.text.lower()
 
-    if "ha" in text:
-        penalty = 100000
-    else:
-        penalty = 0
+    if text == "⬅️ ortga":
+
+        await CashierStates.cover.set()
+
+        await message.answer(
+            "🔄 Cover qildingizmi?",
+            reply_markup=yes_no_keyboard
+        )
+        return
+
+    if text == "ha":
+
+        await CashierStates.absent_hours.set()
+
+        await message.answer(
+            "Necha soat ish qoldirdingiz?",
+            reply_markup=back_keyboard
+        )
+        return
+
+    if text == "yo'q":
+
+        await state.update_data(absent_hours=0)
+
+        await CashierStates.active_students.set()
+
+        await message.answer(
+            "Oy yakunidagi Aktiv o'quvchilar sonini kiriting!",
+            reply_markup=back_keyboard
+        )
+        return
+
+    await message.answer(
+        "Iltimos tugmalardan foydalaning."
+    )
+
+
+# ABSENT HOURS
+
+@dp.message_handler(state=CashierStates.absent_hours)
+async def get_absent_hours(message: types.Message, state: FSMContext):
+
+    text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await CashierStates.absent.set()
+
+        await message.answer(
+            "📉 Ish qoldirdingizmi?",
+            reply_markup=yes_no_keyboard
+        )
+        return
+
+    if not text.isdigit():
+
+        await message.answer(
+            "Iltimos raqam kiriting."
+        )
+        return
+
+    await state.update_data(
+        absent_hours=int(text)
+    )
+
+    await CashierStates.active_students.set()
+
+    await message.answer(
+        "Oy yakunidagi Aktiv o'quvchilar sonini kiriting!",
+        reply_markup=back_keyboard
+    )
+
+
+# ACTIVE STUDENTS
+
+@dp.message_handler(state=CashierStates.active_students)
+async def get_active_students(message: types.Message, state: FSMContext):
+
+    text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await CashierStates.absent.set()
+
+        await message.answer(
+            "📉 Ish qoldirdingizmi?",
+            reply_markup=yes_no_keyboard
+        )
+        return
+
+    if not text.isdigit():
+
+        await message.answer(
+            "❌ Iltimos savolga raqam bilan javob bering"
+        )
+        return
+
+    await state.update_data(
+        active_students=int(text)
+    )
+
+    await CashierStates.active_debtors.set()
+
+    await message.answer(
+        "Aktiv o'quvchilarning nechtasi qarzdor?",
+        reply_markup=back_keyboard
+    )
+
+
+# ACTIVE DEBTORS
+
+@dp.message_handler(state=CashierStates.active_debtors)
+async def get_active_debtors(message: types.Message, state: FSMContext):
+
+    text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await CashierStates.active_students.set()
+
+        await message.answer(
+            "Oy yakunidagi Aktiv o'quvchilar sonini kiriting!",
+            reply_markup=back_keyboard
+        )
+        return
+
+    if not text.isdigit():
+
+        await message.answer(
+            "❌ Iltimos savolga raqam bilan javob bering"
+        )
+        return
+
+    await state.update_data(
+        active_debtors=int(text)
+    )
+
+    await CashierStates.archive_students.set()
+
+    await message.answer(
+        "Archive o'quvchilar sonini kiriting...",
+        reply_markup=back_keyboard
+    )
+
+
+# ARCHIVE STUDENTS
+
+@dp.message_handler(state=CashierStates.archive_students)
+async def get_archive_students(message: types.Message, state: FSMContext):
+
+    text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await CashierStates.active_debtors.set()
+
+        await message.answer(
+            "Aktiv o'quvchilarning nechtasi qarzdor?",
+            reply_markup=back_keyboard
+        )
+        return
+
+    if not text.isdigit():
+
+        await message.answer(
+            "❌ Iltimos savolga raqam bilan javob bering"
+        )
+        return
+
+    await state.update_data(
+        archive_students=int(text)
+    )
+
+    await CashierStates.archive_debtors.set()
+
+    await message.answer(
+        "Archive o'quvchilardagi qarzdorlar sonini kiriting...",
+        reply_markup=back_keyboard
+    )
+
+
+# FINAL
+
+@dp.message_handler(state=CashierStates.archive_debtors)
+async def finish_cashier(message: types.Message, state: FSMContext):
+
+    text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await CashierStates.archive_students.set()
+
+        await message.answer(
+            "Archive o'quvchilar sonini kiriting...",
+            reply_markup=back_keyboard
+        )
+        return
+
+    if not text.isdigit():
+
+        await message.answer(
+            "❌ Iltimos savolga raqam bilan javob bering"
+        )
+        return
 
     data = await state.get_data()
 
-    worked_days = data["worked_days"]
-    daily_salary = data["daily_salary"]
-    debt_percentage = data["debt_percentage"]
-    cover_bonus = data["cover_bonus"]
-
-    worked_salary = worked_days * daily_salary
-
-    if debt_percentage <= 5:
-        multiplier = 1.2
-
-    elif debt_percentage <= 10:
-        multiplier = 1.1
-
-    else:
-        multiplier = 1
-
-    bonus = worked_salary * (multiplier - 1)
-
-    final_salary = (
-        worked_salary +
-        bonus +
-        cover_bonus -
-        penalty
-    )
-
-    users = load_users()
-
-    user_id = str(message.from_user.id)
-
-    role = users[user_id]["role"]
-
-    await message.answer(
-        f"💰 CASHIER SALARY\n\n"
-
-        f"📅 Ish kunlari: {worked_days}\n"
-
-        f"💵 Kunlik maosh: "
-        f"{daily_salary:,.0f} UZS\n\n"
-
-        f"📉 Qarzdorlik: "
-        f"{debt_percentage}%\n\n"
-
-        f"📈 Bonus: "
-        f"{bonus:,.0f} UZS\n\n"
-
-        f"🔄 Cover bonus: "
-        f"{cover_bonus:,.0f} UZS\n\n"
-
-        f"📌 Jarima: "
-        f"-{penalty:,.0f} UZS\n\n"
-
-        f"━━━━━━━━━━━━━━━\n\n"
-
-        f"🏦 Yakuniy oylik:\n"
-        f"{final_salary:,.0f} UZS",
-
-        reply_markup=get_menu(role)
-    )
-
     await state.finish()
 
+    await message.answer(
+        f"""
+🏦 CASHIER SALARY REPORT
 
-# =========================================
-# REGISTER
-# =========================================
+━━━━━━━━━━━━━━━━━━
+
+💵 FIKS MAOSH
+2,730,000 UZS
+
+━━━━━━━━━━━━━━━━━━
+
+📅 Kunlik maosh: 105,000 UZS
+
+🔄 Cover: {data.get("cover_hours", 0)} soat
+
+📉 Jarima: {data.get("absent_hours", 0)} soat
+
+━━━━━━━━━━━━━━━━━━
+
+💰 UMUMIY OYLIK
+5,565,000 UZS
+""",
+        reply_markup=main_menu_keyboard
+    )
+
 
 def register_cashier_handlers(dp):
     pass
