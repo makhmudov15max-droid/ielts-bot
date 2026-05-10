@@ -12,3 +12,11 @@ class AdminSalaryStates(StatesGroup):
     individual_plan = State()
 
     actual_sales = State()
+
+    conversion_plan = State()
+
+    actual_conversion = State()
+
+    active_plan = State()
+
+    actual_active = State()
