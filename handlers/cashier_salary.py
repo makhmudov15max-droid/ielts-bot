@@ -639,7 +639,3 @@ async def finish_cashier(message: types.Message, state: FSMContext):
 """,
         reply_markup=main_menu_keyboard
     )
-
-
-def register_cashier_handlers(dp):
-    pass
