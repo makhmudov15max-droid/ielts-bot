@@ -1,5 +1,5 @@
 from aiogram import types
-from loader import dp, bot
+from safety.loader import dp, bot
 
 from safety.db import load_users (
     load_users,
