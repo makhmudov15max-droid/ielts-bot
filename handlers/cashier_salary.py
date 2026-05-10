@@ -484,46 +484,43 @@ def register_cashier_handlers(dp):
             debt_emoji = "🔴"
 
 
-        await message.answer(
+        users = load_users()
 
-            f"🏦 CASHIER SALARY REPORT\n\n"
+user_id = str(message.from_user.id)
 
-            f"━━━━━━━━━━━━━━━━━━\n\n"
+role = users[user_id]["role"]
 
-            f"💵 FIKS MAOSH\n"
-            f"{result['worked_salary']:,.0f} UZS\n\n"
+await message.answer(
+    f"🏦 CASHIER SALARY REPORT\n\n"
 
-            f"━━━━━━━━━━━━━━━━━━\n\n"
+    f"━━━━━━━━━━━━━━━━━━\n\n"
 
-            f"📅 Kunlik maosh: "
-            f"{result['daily_salary']:,.0f} UZS\n\n"
+    f"💵 FIKS MAOSH\n"
+    f"{result['worked_salary']:,.0f} UZS\n\n"
 
-            f"{debt_emoji} Qarzdorlik foizi: "
-            f"{result['debt_percentage']:.2f}%\n\n"
+    f"━━━━━━━━━━━━━━━━━━\n\n"
 
-            f"📈 Bonus koeffitsienti: "
-            f"{result['multiplier']}x\n\n"
+    f"📅 Kunlik maosh: "
+    f"{result['daily_salary']:,.0f} UZS\n\n"
 
-            f"🔄 Cover bonusi: "
-            f"+{result['cover_bonus']:,.0f} UZS\n\n"
+    f"{debt_emoji} Qarzdorlik foizi: "
+    f"{result['debt_percentage']:.2f}%\n\n"
 
-            f"📉 Jarima: "
-            f"-{result['missed_penalty']:,.0f} UZS\n\n"
+    f"📈 Bonus koeffitsienti: "
+    f"{result['multiplier']}x\n\n"
 
-            f"━━━━━━━━━━━━━━━━━━\n\n"
+    f"🔄 Cover bonusi: "
+    f"+{result['cover_bonus']:,.0f} UZS\n\n"
 
-            users = load_users()
+    f"📉 Jarima: "
+    f"-{result['missed_penalty']:,.0f} UZS\n\n"
 
-            user_id = str(message.from_user.id)
+    f"━━━━━━━━━━━━━━━━━━\n\n"
 
-            role = users[user_id]["role"]
+    f"💰 UMUMIY OYLIK\n"
+    f"{result['final_salary']:,.0f} UZS",
 
-        await message.answer(
-            
-            f"💰 UMUMIY OYLIK\n"
-            f"{result['final_salary']:,.0f} UZS",
-
-            reply_markup=get_menu(role)
+    reply_markup=get_menu(role)
 )
 
-        await state.finish()
+await state.finish()
