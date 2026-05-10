@@ -1,7 +1,9 @@
 from aiogram import types
-from safety.loader import dp, bot
 
-from safety.db import load_users (
+from safety.loader import dp, bot
+from safety.config import OWNER_ID
+
+from safety.db import (
     load_users,
     save_users,
     load_pending,
@@ -9,29 +11,43 @@ from safety.db import load_users (
 )
 
 
-@dp.callback_query_handler(lambda c: c.data.startswith("role_"))
-async def approve_user(callback: types.CallbackQuery):
+@dp.message_handler(commands=["approve"])
+async def approve_user(message: types.Message):
 
-    data = callback.data.split("_")
+    if message.from_user.id != OWNER_ID:
+        return
 
-    role = data[1]
-    user_id = data[2]
+    args = message.get_args().split()
 
-    users = load_users()
+    if len(args) != 2:
+
+        await message.answer(
+            "❌ Format:\n/approve USER_ID ROLE"
+        )
+        return
+
+    user_id = args[0]
+    role = args[1]
+
     pending = load_pending()
 
-    user_data = pending[user_id]
+    if user_id not in pending:
+
+        await message.answer(
+            "❌ User pending listda yo‘q."
+        )
+        return
+
+    users = load_users()
 
     users[user_id] = {
-        "name": user_data["name"],
-        "username": user_data["username"],
-        "phone": user_data["phone"],
         "role": role
     }
 
     save_users(users)
 
     del pending[user_id]
+
     save_pending(pending)
 
     await bot.send_message(
@@ -39,27 +55,6 @@ async def approve_user(callback: types.CallbackQuery):
         f"✅ Siz tasdiqlandingiz.\nRole: {role}"
     )
 
-    await callback.message.edit_text(
-        f"✅ User approved\nRole: {role}"
-    )
-
-
-@dp.callback_query_handler(lambda c: c.data.startswith("reject_"))
-async def reject_user(callback: types.CallbackQuery):
-
-    user_id = callback.data.split("_")[1]
-
-    pending = load_pending()
-
-    del pending[user_id]
-
-    save_pending(pending)
-
-    await bot.send_message(
-        int(user_id),
-        "❌ Sizning so‘rovingiz rad etildi."
-    )
-
-    await callback.message.edit_text(
-        "❌ User rejected"
+    await message.answer(
+        "✅ User muvaffaqiyatli tasdiqlandi."
     )
