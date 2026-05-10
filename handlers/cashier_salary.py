@@ -15,7 +15,9 @@ from keyboards.cashier_keyboard import (
 from keyboards.admin_keyboard import main_menu_keyboard
 
 
+# =========================
 # START
+# =========================
 
 @dp.message_handler(lambda message: message.text == "💰 Cashier Salary")
 async def cashier_start(message: types.Message):
@@ -28,7 +30,9 @@ async def cashier_start(message: types.Message):
     )
 
 
+# =========================
 # HOURS
+# =========================
 
 @dp.message_handler(state=CashierStates.hours)
 async def get_hours(message: types.Message, state: FSMContext):
@@ -60,6 +64,7 @@ async def get_hours(message: types.Message, state: FSMContext):
         return
 
     try:
+
         hours = int(text.split()[0])
 
     except:
@@ -79,7 +84,9 @@ async def get_hours(message: types.Message, state: FSMContext):
     )
 
 
+# =========================
 # DAYS
+# =========================
 
 @dp.message_handler(state=CashierStates.days)
 async def get_days(message: types.Message, state: FSMContext):
@@ -114,6 +121,7 @@ async def get_days(message: types.Message, state: FSMContext):
         return
 
     try:
+
         days = int(text.split()[0])
 
     except:
@@ -133,7 +141,9 @@ async def get_days(message: types.Message, state: FSMContext):
     )
 
 
+# =========================
 # COVER
+# =========================
 
 @dp.message_handler(state=CashierStates.cover)
 async def get_cover(message: types.Message, state: FSMContext):
@@ -187,7 +197,9 @@ async def get_cover(message: types.Message, state: FSMContext):
     )
 
 
+# =========================
 # COVER HOURS
+# =========================
 
 @dp.message_handler(state=CashierStates.cover_hours)
 async def get_cover_hours(message: types.Message, state: FSMContext):
@@ -233,7 +245,9 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
     )
 
 
+# =========================
 # ABSENT
+# =========================
 
 @dp.message_handler(state=CashierStates.absent)
 async def get_absent(message: types.Message, state: FSMContext):
@@ -287,7 +301,9 @@ async def get_absent(message: types.Message, state: FSMContext):
     )
 
 
+# =========================
 # ABSENT HOURS
+# =========================
 
 @dp.message_handler(state=CashierStates.absent_hours)
 async def get_absent_hours(message: types.Message, state: FSMContext):
@@ -333,7 +349,9 @@ async def get_absent_hours(message: types.Message, state: FSMContext):
     )
 
 
+# =========================
 # ACTIVE STUDENTS
+# =========================
 
 @dp.message_handler(state=CashierStates.active_students)
 async def get_active_students(message: types.Message, state: FSMContext):
@@ -379,7 +397,9 @@ async def get_active_students(message: types.Message, state: FSMContext):
     )
 
 
+# =========================
 # ACTIVE DEBTORS
+# =========================
 
 @dp.message_handler(state=CashierStates.active_debtors)
 async def get_active_debtors(message: types.Message, state: FSMContext):
@@ -425,7 +445,9 @@ async def get_active_debtors(message: types.Message, state: FSMContext):
     )
 
 
+# =========================
 # ARCHIVE STUDENTS
+# =========================
 
 @dp.message_handler(state=CashierStates.archive_students)
 async def get_archive_students(message: types.Message, state: FSMContext):
@@ -471,7 +493,9 @@ async def get_archive_students(message: types.Message, state: FSMContext):
     )
 
 
+# =========================
 # FINAL
+# =========================
 
 @dp.message_handler(state=CashierStates.archive_debtors)
 async def finish_cashier(message: types.Message, state: FSMContext):
@@ -505,11 +529,13 @@ async def finish_cashier(message: types.Message, state: FSMContext):
         )
         return
 
+
+    # DATA
+
     data = await state.get_data()
 
     archive_debtors = int(text)
 
-    hours = data.get("hours", 0)
     days = data.get("days", 0)
 
     cover_hours = data.get("cover_hours", 0)
@@ -521,6 +547,9 @@ async def finish_cashier(message: types.Message, state: FSMContext):
     active_debtors = data.get("active_debtors", 0)
 
     archive_students = data.get("archive_students", 0)
+
+
+    # CALCULATION
 
     daily_salary = 105000
 
@@ -547,6 +576,7 @@ async def finish_cashier(message: types.Message, state: FSMContext):
 
         debt_percent = 0
 
+
     if debt_percent <= 2:
 
         bonus_coef = 2.0
@@ -563,6 +593,7 @@ async def finish_cashier(message: types.Message, state: FSMContext):
 
         bonus_coef = 1.0
 
+
     bonus = fix_salary * (
         bonus_coef - 1
     )
@@ -578,7 +609,13 @@ async def finish_cashier(message: types.Message, state: FSMContext):
         penalty
     )
 
+
+    # FINISH
+
     await state.finish()
+
+
+    # RESULT
 
     await message.answer(
         f"""
