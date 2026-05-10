@@ -1,29 +1,26 @@
-from aiogram import executor
+import logging
 
-from safety.loader import dp
+from aiogram import Bot, Dispatcher, executor
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
-from handlers.admin_salary import router as admin_salary_router
-
-dp.include_router(admin_salary_router)
-
-
-# SAFETY HANDLERS
-
-import safety.handlers.start
-import safety.handlers.approvals
+from config import TOKEN
 
 
-# MAIN HANDLERS
+logging.basicConfig(level=logging.INFO)
 
-#import handlers.admin_salary
+bot = Bot(token=TOKEN)
+
+storage = MemoryStorage()
+
+dp = Dispatcher(bot, storage=storage)
+
+
+# handlers
+import handlers.start
 import handlers.cashier_salary
+import handlers.admin_salary
+import handlers.approvals
 
-
-# START BOT
 
 if __name__ == "__main__":
-
-    executor.start_polling(
-        dp,
-        skip_updates=True
-    )
+    executor.start_polling(dp, skip_updates=True)
