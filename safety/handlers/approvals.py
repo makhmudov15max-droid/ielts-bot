@@ -36,7 +36,7 @@ async def contact_handler(message: types.Message):
 
         full_name = message.from_user.full_name
 
-        username = message.from_user.username
+        username = message.from_user.username or "username yo'q"
 
         phone = message.contact.phone_number
 
@@ -115,43 +115,49 @@ Siz bloklangansiz.
 
             InlineKeyboardButton(
                 "👨‍💼 Admin",
-                callback_data=f"approve_admin_{user_id}"
+                callback_data=f"approve_admin:{user_id}"
             ),
 
             InlineKeyboardButton(
                 "💰 Kassir",
-                callback_data=f"approve_cashier_{user_id}"
+                callback_data=f"approve_cashier:{user_id}"
             ),
 
             InlineKeyboardButton(
                 "📊 Kordinator",
-                callback_data=f"approve_manager_{user_id}"
+                callback_data=f"approve_manager:{user_id}"
             ),
 
             InlineKeyboardButton(
                 "❌ Rad etish",
-                callback_data=f"reject_{user_id}"
+                callback_data=f"reject:{user_id}"
             )
         )
 
 
         # =========================================
-        # SEND OWNER
+        # SEND TO OWNER
         # =========================================
 
         await bot.send_message(
             OWNER_ID,
 
             f"""
-🆕 Yangi foydalanuvchi
+🆕 YANGI FOYDALANUVCHI
 
-👤 Ism: {full_name}
+━━━━━━━━━━━━━━━━━━
 
-📛 Username: @{username}
+👤 Ism:
+{full_name}
 
-📞 Telefon: {phone}
+📛 Username:
+@{username}
 
-🆔 ID: {user_id}
+📞 Telefon:
+{phone}
+
+🆔 ID:
+{user_id}
 """,
 
             reply_markup=keyboard
@@ -159,7 +165,7 @@ Siz bloklangansiz.
 
 
         # =========================================
-        # WAIT MESSAGE
+        # USER WAIT MESSAGE
         # =========================================
 
         await message.answer(
@@ -189,20 +195,25 @@ async def approve_user(callback: types.CallbackQuery):
         print("APPROVE BOSILDI")
 
 
-        data = callback.data.split("_")
+        # =========================================
+        # PARSE CALLBACK
+        # =========================================
 
-        print(data)
+        data = callback.data.replace(
+            "approve_",
+            ""
+        )
+
+        role, user_id = data.split(":")
+
+        print(role, user_id)
 
 
-        role = data[1]
-
-        user_id = data[2]
-
+        # =========================================
+        # LOAD USERS
+        # =========================================
 
         users = load_users()
-
-        print("USERS LOADED")
-
 
         users[user_id] = {
             "role": role
@@ -210,8 +221,12 @@ async def approve_user(callback: types.CallbackQuery):
 
         save_users(users)
 
-        print("USERS SAVED")
+        print("USER SAVED")
 
+
+        # =========================================
+        # DELETE PENDING
+        # =========================================
 
         pending = load_pending()
 
@@ -224,7 +239,27 @@ async def approve_user(callback: types.CallbackQuery):
         print("PENDING CLEARED")
 
 
-        role_text = role.title()
+        # =========================================
+        # ROLE TEXT
+        # =========================================
+
+        role_text = ""
+
+        if role == "admin":
+
+            role_text = "👨‍💼 Admin"
+
+        elif role == "cashier":
+
+            role_text = "💰 Kassir"
+
+        elif role == "manager":
+
+            role_text = "📊 Kordinator"
+
+        else:
+
+            role_text = role.title()
 
 
         # =========================================
@@ -235,7 +270,9 @@ async def approve_user(callback: types.CallbackQuery):
             int(user_id),
 
             f"""
-✅ So‘rovingiz tasdiqlandi.
+✅ SO‘ROV TASDIQLANDI
+
+━━━━━━━━━━━━━━━━━━
 
 🎭 Role:
 {role_text}
@@ -299,13 +336,13 @@ async def approve_user(callback: types.CallbackQuery):
 # =========================================
 
 @dp.callback_query_handler(
-    lambda c: c.data.startswith("reject_")
+    lambda c: c.data.startswith("reject:")
 )
 async def reject_user(callback: types.CallbackQuery):
 
     try:
 
-        user_id = callback.data.split("_")[1]
+        user_id = callback.data.split(":")[1]
 
 
         # =========================================
@@ -342,7 +379,9 @@ async def reject_user(callback: types.CallbackQuery):
             int(user_id),
 
             """
-❌ So‘rovingiz rad etildi.
+❌ SO‘ROV RAD ETILDI
+
+━━━━━━━━━━━━━━━━━━
 
 Admin bilan bog‘laning.
 """
@@ -350,7 +389,7 @@ Admin bilan bog‘laning.
 
 
         # =========================================
-        # CALLBACK
+        # CALLBACK ANSWER
         # =========================================
 
         await callback.answer(
@@ -359,7 +398,7 @@ Admin bilan bog‘laning.
 
 
         # =========================================
-        # EDIT MESSAGE
+        # EDIT OWNER MESSAGE
         # =========================================
 
         try:
