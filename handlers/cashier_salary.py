@@ -1,526 +1,229 @@
 from aiogram import types
 from aiogram.dispatcher import FSMContext
+from aiogram.dispatcher.filters.state import State, StatesGroup
+
+from safety.loader import dp
 from safety.keyboards.menu_keyboard import get_menu
 from safety.db import load_users
 
-from states.cashier_states import CashierSalaryStates
 
-from calculators.cashier_calc import calculate_cashier_salary
+# =========================
+# STATES
+# =========================
 
-from keyboards.admin_keyboard import main_menu_keyboard
+class CashierSalaryState(StatesGroup):
 
-from keyboards.cashier_keyboard import (
-    cashier_hours_keyboard,
-    cashier_days_keyboard,
-    yes_no_keyboard,
-    home_keyboard
-)
+    worked_days = State()
+    daily_salary = State()
+    debt_percentage = State()
+    cover_count = State()
+    missed_days = State()
 
 
-async def go_home(message: types.Message, state: FSMContext):
+# =========================
+# START
+# =========================
 
-    await state.finish()
+@dp.message_handler(lambda message: message.text == "💰 Cashier Salary")
+async def cashier_salary_start(message: types.Message):
 
     await message.answer(
-        "🏠 Bosh sahifa",
+        "📅 Necha kun ishladingiz?"
+    )
+
+    await CashierSalaryState.worked_days.set()
+
+
+# =========================
+# WORKED DAYS
+# =========================
+
+@dp.message_handler(state=CashierSalaryState.worked_days)
+async def worked_days_handler(message: types.Message, state: FSMContext):
+
+    if not message.text.isdigit():
+
+        await message.answer(
+            "❌ Raqam kiriting."
+        )
+        return
+
+    await state.update_data(
+        worked_days=int(message.text)
+    )
+
+    await message.answer(
+        "💵 Kunlik maoshingizni kiriting:"
+    )
+
+    await CashierSalaryState.daily_salary.set()
+
+
+# =========================
+# DAILY SALARY
+# =========================
+
+@dp.message_handler(state=CashierSalaryState.daily_salary)
+async def daily_salary_handler(message: types.Message, state: FSMContext):
+
+    if not message.text.isdigit():
+
+        await message.answer(
+            "❌ Raqam kiriting."
+        )
+        return
+
+    await state.update_data(
+        daily_salary=int(message.text)
+    )
+
+    await message.answer(
+        "📉 Qarzdorlik foizini kiriting:"
+    )
+
+    await CashierSalaryState.debt_percentage.set()
+
+
+# =========================
+# DEBT %
+# =========================
+
+@dp.message_handler(state=CashierSalaryState.debt_percentage)
+async def debt_handler(message: types.Message, state: FSMContext):
+
+    try:
+        debt = float(message.text)
+    except:
+        await message.answer(
+            "❌ To‘g‘ri foiz kiriting."
+        )
+        return
+
+    await state.update_data(
+        debt_percentage=debt
+    )
+
+    await message.answer(
+        "🔄 Nechta cover qildingiz?"
+    )
+
+    await CashierSalaryState.cover_count.set()
+
+
+# =========================
+# COVER
+# =========================
+
+@dp.message_handler(state=CashierSalaryState.cover_count)
+async def cover_handler(message: types.Message, state: FSMContext):
+
+    if not message.text.isdigit():
+
+        await message.answer(
+            "❌ Raqam kiriting."
+        )
+        return
+
+    await state.update_data(
+        cover_count=int(message.text)
+    )
+
+    await message.answer(
+        "📌 Necha kun qoldirdingiz?"
+    )
+
+    await CashierSalaryState.missed_days.set()
+
+
+# =========================
+# FINAL
+# =========================
+
+@dp.message_handler(state=CashierSalaryState.missed_days)
+async def final_handler(message: types.Message, state: FSMContext):
+
+    if not message.text.isdigit():
+
+        await message.answer(
+            "❌ Raqam kiriting."
+        )
+        return
+
+    missed_days = int(message.text)
+
+    data = await state.get_data()
+
+    worked_days = data["worked_days"]
+    daily_salary = data["daily_salary"]
+    debt_percentage = data["debt_percentage"]
+    cover_count = data["cover_count"]
+
+    # =========================
+    # CALCULATIONS
+    # =========================
+
+    worked_salary = worked_days * daily_salary
+
+    if debt_percentage <= 5:
+        multiplier = 1.2
+    elif debt_percentage <= 10:
+        multiplier = 1.1
+    else:
+        multiplier = 1
+
+    bonus = worked_salary * (multiplier - 1)
+
+    cover_bonus = cover_count * 50000
+
+    missed_penalty = missed_days * 100000
+
+    final_salary = (
+        worked_salary +
+        bonus +
+        cover_bonus -
+        missed_penalty
+    )
+
+    # =========================
+    # ROLE MENU
+    # =========================
+
+    users = load_users()
+
+    user_id = str(message.from_user.id)
+
+    role = users[user_id]["role"]
+
+    # =========================
+    # RESULT
+    # =========================
+
+    await message.answer(
+        f"💰 CASHIER SALARY\n\n"
+
+        f"📅 Ish kunlari: {worked_days}\n"
+        f"💵 Kunlik maosh: {daily_salary:,} UZS\n\n"
+
+        f"📉 Qarzdorlik: {debt_percentage}%\n"
+        f"📈 Bonus: {bonus:,.0f} UZS\n\n"
+
+        f"🔄 Cover bonus: {cover_bonus:,} UZS\n"
+        f"📌 Jarima: -{missed_penalty:,} UZS\n\n"
+
+        f"━━━━━━━━━━━━━━━\n\n"
+
+        f"🏦 Yakuniy oylik:\n"
+        f"{final_salary:,.0f} UZS",
+
         reply_markup=get_menu(role)
     )
 
+    await state.finish()
+
+
+# =========================
+# REGISTER
+# =========================
 
 def register_cashier_handlers(dp):
-
-
-    @dp.message_handler(text="💰 Cashier Salary")
-    async def cashier_start(message: types.Message):
-
-        await message.answer(
-            "⏰ Kunlik ish soati?",
-            reply_markup=cashier_hours_keyboard()
-        )
-
-        await CashierSalaryStates.waiting_for_hours.set()
-
-
-    @dp.message_handler(state=CashierSalaryStates.waiting_for_hours)
-    async def get_hours(message: types.Message, state: FSMContext):
-
-        text = message.text
-
-
-        if text == "🏠 Bosh sahifa":
-
-            await go_home(message, state)
-
-            return
-
-
-        if text == "6 soat":
-
-            hours = 6
-
-        elif text == "7 soat":
-
-            hours = 7
-
-        elif text == "8 soat":
-
-            hours = 8
-
-        elif text == "9 soat":
-
-            hours = 9
-
-        elif text == "✍️ Boshqa":
-
-            await message.answer(
-                "⏰ Necha soat ishlaydi?",
-                reply_markup=home_keyboard()
-            )
-
-            return
-
-        else:
-
-            try:
-
-                hours = float(text)
-
-            except:
-
-                await message.answer(
-                    "❌ To'g'ri raqam kiriting."
-                )
-
-                return
-
-
-        await state.update_data(hours=hours)
-
-        await message.answer(
-            "📅 Bu oy necha kun ishladilar?",
-            reply_markup=cashier_days_keyboard()
-        )
-
-        await CashierSalaryStates.waiting_for_days.set()
-
-
-    @dp.message_handler(state=CashierSalaryStates.waiting_for_days)
-    async def get_days(message: types.Message, state: FSMContext):
-
-        text = message.text
-
-
-        if text == "🏠 Bosh sahifa":
-
-            await go_home(message, state)
-
-            return
-
-
-        if text == "24 kun":
-
-            days = 24
-
-        elif text == "25 kun":
-
-            days = 25
-
-        elif text == "26 kun":
-
-            days = 26
-
-        elif text == "27 kun":
-
-            days = 27
-
-        elif text == "✍️ Boshqa":
-
-            await message.answer(
-                "📅 Necha kun ishladi?",
-                reply_markup=home_keyboard()
-            )
-
-            return
-
-        else:
-
-            try:
-
-                days = float(text)
-
-            except:
-
-                await message.answer(
-                    "❌ To'g'ri raqam kiriting."
-                )
-
-                return
-
-
-        await state.update_data(days=days)
-
-        await message.answer(
-            "📉 Ish qoldirdimi?",
-            reply_markup=yes_no_keyboard()
-        )
-
-        await CashierSalaryStates.waiting_for_missed_work.set()
-
-
-    @dp.message_handler(state=CashierSalaryStates.waiting_for_missed_work)
-    async def get_missed_work(message: types.Message, state: FSMContext):
-
-        text = message.text
-
-
-        if text == "🏠 Bosh sahifa":
-
-            await go_home(message, state)
-
-            return
-
-
-        if text == "✅ Ha":
-
-            await message.answer(
-                "📉 Necha soat ishga chiqmadingiz?",
-                reply_markup=home_keyboard()
-            )
-
-            await CashierSalaryStates.waiting_for_missed_days.set()
-
-            return
-
-
-        if text == "❌ Yo'q":
-
-            await state.update_data(missed_days=0)
-
-            await message.answer(
-                "🔄 Cover qildingizmi?",
-                reply_markup=yes_no_keyboard()
-            )
-
-            await CashierSalaryStates.waiting_for_cover.set()
-
-            return
-
-
-        await message.answer(
-            "❌ Tugmalardan birini tanlang."
-        )
-
-
-    @dp.message_handler(state=CashierSalaryStates.waiting_for_missed_days)
-    async def get_missed_days(message: types.Message, state: FSMContext):
-
-        text = message.text
-
-
-        if text == "🏠 Bosh sahifa":
-
-            await go_home(message, state)
-
-            return
-
-
-        try:
-
-            missed_days = float(text)
-
-        except:
-
-            await message.answer(
-                "❌ To'g'ri raqam kiriting."
-            )
-
-            return
-
-
-        await state.update_data(missed_days=missed_days)
-
-        await message.answer(
-            "🔄 Cover qildingizmi?",
-            reply_markup=yes_no_keyboard()
-        )
-
-        await CashierSalaryStates.waiting_for_cover.set()
-
-
-    @dp.message_handler(state=CashierSalaryStates.waiting_for_cover)
-    async def get_cover(message: types.Message, state: FSMContext):
-
-        text = message.text
-
-
-        if text == "🏠 Bosh sahifa":
-
-            await go_home(message, state)
-
-            return
-
-
-        if text == "✅ Ha":
-
-            await message.answer(
-                "🔄 Necha soat cover qildingiz?",
-                reply_markup=home_keyboard()
-            )
-
-            await CashierSalaryStates.waiting_for_cover_days.set()
-
-            return
-
-
-        if text == "❌ Yo'q":
-
-            await state.update_data(cover_days=0)
-
-            await message.answer(
-                "👥 Aktiv o‘quvchilar soni?",
-                reply_markup=home_keyboard()
-            )
-
-            await CashierSalaryStates.waiting_for_active_students.set()
-
-            return
-
-
-        await message.answer(
-            "❌ Tugmalardan birini tanlang."
-        )
-
-
-    @dp.message_handler(state=CashierSalaryStates.waiting_for_cover_days)
-    async def get_cover_days(message: types.Message, state: FSMContext):
-
-        text = message.text
-
-
-        if text == "🏠 Bosh sahifa":
-
-            await go_home(message, state)
-
-            return
-
-
-        try:
-
-            cover_days = float(text)
-
-        except:
-
-            await message.answer(
-                "❌ To'g'ri raqam kiriting."
-            )
-
-            return
-
-
-        await state.update_data(cover_days=cover_days)
-
-        await message.answer(
-            "👥 Aktiv o‘quvchilar soni?",
-            reply_markup=home_keyboard()
-        )
-
-        await CashierSalaryStates.waiting_for_active_students.set()
-
-
-    @dp.message_handler(state=CashierSalaryStates.waiting_for_active_students)
-    async def get_active_students(message: types.Message, state: FSMContext):
-
-        text = message.text
-
-
-        if text == "🏠 Bosh sahifa":
-
-            await go_home(message, state)
-
-            return
-
-
-        try:
-
-            active_students = float(text)
-
-        except:
-
-            await message.answer(
-                "❌ To'g'ri raqam kiriting."
-            )
-
-            return
-
-
-        await state.update_data(active_students=active_students)
-
-        await message.answer(
-            "📉 Aktiv qarzdorlar soni?",
-            reply_markup=home_keyboard()
-        )
-
-        await CashierSalaryStates.waiting_for_active_debtors.set()
-
-
-    @dp.message_handler(state=CashierSalaryStates.waiting_for_active_debtors)
-    async def get_active_debtors(message: types.Message, state: FSMContext):
-
-        text = message.text
-
-
-        if text == "🏠 Bosh sahifa":
-
-            await go_home(message, state)
-
-            return
-
-
-        try:
-
-            active_debtors = float(text)
-
-        except:
-
-            await message.answer(
-                "❌ To'g'ri raqam kiriting."
-            )
-
-            return
-
-
-        await state.update_data(active_debtors=active_debtors)
-
-        await message.answer(
-            "🗂 Archive o‘quvchilar soni?",
-            reply_markup=home_keyboard()
-        )
-
-        await CashierSalaryStates.waiting_for_archive_students.set()
-
-
-    @dp.message_handler(state=CashierSalaryStates.waiting_for_archive_students)
-    async def get_archive_students(message: types.Message, state: FSMContext):
-
-        text = message.text
-
-
-        if text == "🏠 Bosh sahifa":
-
-            await go_home(message, state)
-
-            return
-
-
-        try:
-
-            archive_students = float(text)
-
-        except:
-
-            await message.answer(
-                "❌ To'g'ri raqam kiriting."
-            )
-
-            return
-
-
-        await state.update_data(archive_students=archive_students)
-
-        await message.answer(
-            "📉 Archive qarzdorlar soni?",
-            reply_markup=home_keyboard()
-        )
-
-        await CashierSalaryStates.waiting_for_archive_debtors.set()
-
-
-    @dp.message_handler(state=CashierSalaryStates.waiting_for_archive_debtors)
-    async def get_archive_debtors(message: types.Message, state: FSMContext):
-
-        text = message.text
-
-
-        if text == "🏠 Bosh sahifa":
-
-            await go_home(message, state)
-
-            return
-
-
-        try:
-
-            archive_debtors = float(text)
-
-        except:
-
-            await message.answer(
-                "❌ To'g'ri raqam kiriting."
-            )
-
-            return
-
-
-        await state.update_data(
-            archive_debtors=archive_debtors
-        )
-
-
-        data = await state.get_data()
-
-        result = await calculate_cashier_salary(data)
-
-
-        debt_emoji = "🟢"
-
-
-        if result['debt_percentage'] >= 10:
-
-            debt_emoji = "🟡"
-
-
-        if result['debt_percentage'] >= 20:
-
-            debt_emoji = "🔴"
-
-
-        users = load_users()
-
-user_id = str(message.from_user.id)
-
-role = users[user_id]["role"]
-
-await message.answer(
-    f"🏦 CASHIER SALARY REPORT\n\n"
-
-    f"━━━━━━━━━━━━━━━━━━\n\n"
-
-    f"💵 FIKS MAOSH\n"
-    f"{result['worked_salary']:,.0f} UZS\n\n"
-
-    f"━━━━━━━━━━━━━━━━━━\n\n"
-
-    f"📅 Kunlik maosh: "
-    f"{result['daily_salary']:,.0f} UZS\n\n"
-
-    f"{debt_emoji} Qarzdorlik foizi: "
-    f"{result['debt_percentage']:.2f}%\n\n"
-
-    f"📈 Bonus koeffitsienti: "
-    f"{result['multiplier']}x\n\n"
-
-    f"🔄 Cover bonusi: "
-    f"+{result['cover_bonus']:,.0f} UZS\n\n"
-
-    f"📉 Jarima: "
-    f"-{result['missed_penalty']:,.0f} UZS\n\n"
-
-    f"━━━━━━━━━━━━━━━━━━\n\n"
-
-    f"💰 UMUMIY OYLIK\n"
-    f"{result['final_salary']:,.0f} UZS",
-
-    reply_markup=get_menu(role)
-)
-
-await state.finish()
+    pass
