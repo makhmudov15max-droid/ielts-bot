@@ -68,3 +68,9 @@ admin_menu.row(
 # =========================================
 
 main_menu_keyboard = owner_menu
+
+# =========================================
+# OLD COMPATIBILITY
+# =========================================
+
+status_keyboard = owner_menu
