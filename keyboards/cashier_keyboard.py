@@ -4,7 +4,9 @@ from aiogram.types import (
 )
 
 
-# HOURS KEYBOARD
+# =========================
+# HOURS
+# =========================
 
 hours_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
@@ -25,12 +27,14 @@ hours_keyboard.row(
 )
 
 hours_keyboard.row(
-    KeyboardButton("🏠 Bosh sahifa"),
-    KeyboardButton("⬅️ Ortga")
+    KeyboardButton("⬅️ Ortga"),
+    KeyboardButton("🏠 Bosh sahifa")
 )
 
 
-# DAYS KEYBOARD
+# =========================
+# DAYS
+# =========================
 
 days_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
@@ -47,17 +51,22 @@ days_keyboard.row(
 )
 
 days_keyboard.row(
-    KeyboardButton("28 kun"),
+    KeyboardButton("28 kun")
+)
+
+days_keyboard.row(
     KeyboardButton("Boshqa")
 )
 
 days_keyboard.row(
-    KeyboardButton("🏠 Bosh sahifa"),
-    KeyboardButton("⬅️ Ortga")
+    KeyboardButton("⬅️ Ortga"),
+    KeyboardButton("🏠 Bosh sahifa")
 )
 
 
+# =========================
 # YES / NO
+# =========================
 
 yes_no_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
@@ -69,18 +78,20 @@ yes_no_keyboard.row(
 )
 
 yes_no_keyboard.row(
-    KeyboardButton("🏠 Bosh sahifa"),
-    KeyboardButton("⬅️ Ortga")
+    KeyboardButton("⬅️ Ortga"),
+    KeyboardButton("🏠 Bosh sahifa")
 )
 
 
-# BACK KEYBOARD
+# =========================
+# BACK
+# =========================
 
 back_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
 back_keyboard.row(
-    KeyboardButton("🏠 Bosh sahifa"),
-    KeyboardButton("⬅️ Ortga")
+    KeyboardButton("⬅️ Ortga"),
+    KeyboardButton("🏠 Bosh sahifa")
 )
