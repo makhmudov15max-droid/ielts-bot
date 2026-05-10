@@ -7,35 +7,30 @@ from safety.db import (
     load_users,
     save_users,
     load_pending,
-    save_pending
+    save_pending,
+    load_blocked,
+    save_blocked
 )
 
 
-@dp.message_handler(commands=["approve"])
-async def approve_user(message: types.Message):
+@dp.callback_query_handler(lambda c: c.data.startswith("approve_"))
+async def approve_user(callback: types.CallbackQuery):
 
-    if message.from_user.id != OWNER_ID:
+    if callback.from_user.id != OWNER_ID:
         return
 
-    args = message.get_args().split()
+    data = callback.data.split(":")
 
-    if len(args) != 2:
+    role_data = data[0]
+    user_id = data[1]
 
-        await message.answer(
-            "❌ Format:\n/approve USER_ID ROLE"
-        )
-        return
-
-    user_id = args[0]
-    role = args[1]
+    role = role_data.replace("approve_", "")
 
     pending = load_pending()
 
     if user_id not in pending:
 
-        await message.answer(
-            "❌ User pending listda yo‘q."
-        )
+        await callback.answer("User topilmadi", show_alert=True)
         return
 
     users = load_users()
@@ -55,6 +50,41 @@ async def approve_user(message: types.Message):
         f"✅ Siz tasdiqlandingiz.\nRole: {role}"
     )
 
-    await message.answer(
-        "✅ User muvaffaqiyatli tasdiqlandi."
+    await callback.message.edit_text(
+        f"✅ User tasdiqlandi.\n\n"
+        f"🆔 {user_id}\n"
+        f"🎭 Role: {role}"
+    )
+
+
+@dp.callback_query_handler(lambda c: c.data.startswith("reject"))
+async def reject_user(callback: types.CallbackQuery):
+
+    if callback.from_user.id != OWNER_ID:
+        return
+
+    user_id = callback.data.split(":")[1]
+
+    blocked = load_blocked()
+
+    blocked[user_id] = True
+
+    save_blocked(blocked)
+
+    pending = load_pending()
+
+    if user_id in pending:
+
+        del pending[user_id]
+
+    save_pending(pending)
+
+    await bot.send_message(
+        int(user_id),
+        "❌ Sizning so‘rovingiz rad etildi."
+    )
+
+    await callback.message.edit_text(
+        f"❌ User rad etildi.\n\n"
+        f"🆔 {user_id}"
     )
