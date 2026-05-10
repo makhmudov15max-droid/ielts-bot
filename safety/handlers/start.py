@@ -1,9 +1,9 @@
 from aiogram import types
+
 from safety.loader import dp, bot
 from safety.config import OWNER_ID
 
 from safety.keyboards.contact_keyboard import contact_keyboard
-from safety.keyboards.role_keyboard import role_keyboard
 from safety.keyboards.menu_keyboard import get_menu
 
 from safety.db import (
@@ -13,39 +13,39 @@ from safety.db import (
     save_pending
 )
 
+
 @dp.message_handler(commands=["start"])
 async def start_command(message: types.Message):
 
     user_id = str(message.from_user.id)
 
     users = load_users()
-    pending = load_pending()
 
-    # APPROVED USER
+    # Agar user approved bo‘lsa
     if user_id in users:
 
         role = users[user_id]["role"]
 
         await message.answer(
-            f"✅ Xush kelibsiz\nRole: {role}",
+            "🏠 Bosh sahifa",
             reply_markup=get_menu(role)
         )
-
         return
 
-    # PENDING USER
+    # Pending userlarni tekshirish
+    pending = load_pending()
+
     if user_id in pending:
 
         await message.answer(
-            "⏳ So‘rovingiz ko‘rib chiqilmoqda."
+            "⏳ So‘rovingiz adminga yuborilgan.\nTasdiqlanishini kuting."
         )
-
         return
 
-    # NEW USER
+    # Telefon raqam so‘rash
     await message.answer(
-        "📱 Davom etish uchun raqamingizni yuboring",
-        reply_markup=contact_keyboard
+        "📱 Telefon raqamingizni yuboring:",
+        reply_markup=contact_keyboard()
     )
 
 
@@ -56,11 +56,8 @@ async def get_contact(message: types.Message):
 
     pending = load_pending()
 
-    if user_id in pending:
-        return
-
     pending[user_id] = {
-        "name": message.from_user.full_name,
+        "full_name": message.from_user.full_name,
         "username": message.from_user.username,
         "phone": message.contact.phone_number
     }
@@ -68,19 +65,15 @@ async def get_contact(message: types.Message):
     save_pending(pending)
 
     text = (
-        f"🆕 Yangi foydalanuvchi\n\n"
+        f"🆕 Yangi foydalanuvchi!\n\n"
         f"👤 Ism: {message.from_user.full_name}\n"
         f"📛 Username: @{message.from_user.username}\n"
-        f"🆔 ID: {user_id}\n"
-        f"📱 {message.contact.phone_number}"
+        f"📞 Telefon: {message.contact.phone_number}\n"
+        f"🆔 ID: {message.from_user.id}"
     )
 
-    await bot.send_message(
-        OWNER_ID,
-        text,
-        reply_markup=role_keyboard(user_id)
-    )
+    await bot.send_message(OWNER_ID, text)
 
     await message.answer(
-        "✅ So‘rovingiz yuborildi.\nTasdiqlanishni kuting."
+        "✅ So‘rovingiz yuborildi.\nAdmin tasdiqlashini kuting."
     )
