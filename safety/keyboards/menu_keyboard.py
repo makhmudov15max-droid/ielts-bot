@@ -7,23 +7,40 @@ def get_menu(role):
         resize_keyboard=True
     )
 
+    # MANAGER
     if role == "manager":
 
-        keyboard.add("📊 Admin Salary")
-        keyboard.add("💰 Kassir Salary")
-        keyboard.add("👥 Users")
+        keyboard.add(
+            KeyboardButton("📊 Admin Salary")
+        )
 
+        keyboard.add(
+            KeyboardButton("💰 Cashier Salary")
+        )
+
+    # ADMIN
     elif role == "admin":
 
-        keyboard.add("📊 Admin Salary")
+        keyboard.add(
+            KeyboardButton("📊 Admin Salary")
+        )
 
-    elif role == "cashier":
+    # KASSIR
+    elif role == "kassir":
 
-        keyboard.add("💰 Kassir Salary")
+        keyboard.add(
+            KeyboardButton("💰 Cashier Salary")
+        )
 
-    elif role == "coordinator":
+    # KORDINATOR
+    elif role == "kordinator":
 
-        keyboard.add("📊 Admin Salary")
-        keyboard.add("💰 Kassir Salary")
+        keyboard.add(
+            KeyboardButton("📊 Admin Salary")
+        )
+
+        keyboard.add(
+            KeyboardButton("💰 Cashier Salary")
+        )
 
     return keyboard
