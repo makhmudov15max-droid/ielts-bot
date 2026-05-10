@@ -539,16 +539,32 @@ async def finish_cashier(message: types.Message, state: FSMContext):
 
 
     # =========================
-    # SALARY
+    # DAILY SALARY
     # =========================
 
-    daily_salary = hours * 15000
+    if hours <= 8:
+
+        daily_salary = hours * 15000
+
+    else:
+
+        extra_hours = hours - 8
+
+        daily_salary = (
+            (8 * 15000) +
+            (extra_hours * 20000)
+        )
+
+
+    # =========================
+    # FIX SALARY
+    # =========================
 
     fix_salary = daily_salary * days
 
 
     # =========================
-    # DEBT
+    # DEBT PERCENT
     # =========================
 
     total_students = (
@@ -614,7 +630,7 @@ async def finish_cashier(message: types.Message, state: FSMContext):
 
 
     # =========================
-    # BONUS
+    # FINAL CALCULATION
     # =========================
 
     total_salary = (
