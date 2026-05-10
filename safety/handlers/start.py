@@ -2,9 +2,9 @@ from aiogram import types
 from safety.loader import dp, bot
 from safety.config import OWNER_ID
 
-from keyboards.contact_keyboard import contact_keyboard
-from keyboards.role_keyboard import role_keyboard
-from keyboards.menu_keyboard import get_menu
+from safety.keyboards.contact_keyboard import contact_keyboard
+from safety.keyboards.role_keyboard import role_keyboard
+from safety.keyboards.menu_keyboard import get_menu
 
 from safety.db import (
     load_users,
