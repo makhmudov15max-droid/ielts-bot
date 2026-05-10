@@ -14,8 +14,9 @@ from keyboards.cashier_keyboard import (
 
 from keyboards.admin_keyboard import main_menu_keyboard
 
+
 # =========================
-# PROFESSIONAL UI MESSAGES
+# UI TEXTS
 # =========================
 
 START_TEXT = """
@@ -109,104 +110,9 @@ SUCCESS_TEXT = """
 # STICKERS
 # =========================
 
-START_STICKER = "CAACAgIAAxkBAAIBQ2gAAZ0k2..."
-SUCCESS_STICKER = "CAACAgIAAxkBAAIBRGgAAZ0mA..."
-
-
-# =========================
-# START EXAMPLE
-# =========================
-
-@dp.message_handler(lambda message: message.text == "💰 Cashier Salary")
-async def cashier_start(message: types.Message):
-
-    await message.answer_sticker(
-        START_STICKER
-    )
-
-    await CashierStates.hours.set()
-
-    await message.answer(
-        START_TEXT,
-        reply_markup=hours_keyboard
-    )
-
-
-# =========================
-# DAYS EXAMPLE
-# =========================
-
-await message.answer(
-    DAYS_TEXT,
-    reply_markup=days_keyboard
-)
-
-
-# =========================
-# COVER EXAMPLE
-# =========================
-
-await message.answer(
-    COVER_TEXT,
-    reply_markup=yes_no_keyboard
-)
-
-
-# =========================
-# ACTIVE EXAMPLE
-# =========================
-
-await message.answer(
-    ACTIVE_TEXT,
-    reply_markup=back_keyboard
-)
-
-
-# =========================
-# FINAL RESULT
-# =========================
-
-await message.answer_sticker(
-    SUCCESS_STICKER
-)
-
-await message.answer(
-    SUCCESS_TEXT
-)
-
-await message.answer(
-    f"""
-🏦 CASHIER SALARY REPORT
-
-━━━━━━━━━━━━━━━━━━
-
-💵 FIKS MAOSH
-{fix_salary:,.0f} UZS
-
-━━━━━━━━━━━━━━━━━━
-
-📅 Kunlik maosh:
-{daily_salary:,.0f} UZS
-
-🟢 Qarzdorlik foizi:
-{debt_percent:.2f}%
-
-📈 Bonus koeffitsienti:
-{bonus_coef}x
-
-🔄 Cover bonusi:
-+{cover_bonus:,.0f} UZS
-
-📉 Jarima:
--{penalty:,.0f} UZS
-
-━━━━━━━━━━━━━━━━━━
-
-💰 UMUMIY OYLIK
-{final_salary:,.0f} UZS
-""",
-    reply_markup=main_menu_keyboard
-)
+# @StickerIDBot orqali almashtirasan
+START_STICKER = "CAACAgIAAxkBAAEDummyStart"
+SUCCESS_STICKER = "CAACAgIAAxkBAAEDummyFinish"
 
 
 # =========================
@@ -216,10 +122,17 @@ await message.answer(
 @dp.message_handler(lambda message: message.text == "💰 Cashier Salary")
 async def cashier_start(message: types.Message):
 
+    try:
+        await message.answer_sticker(
+            START_STICKER
+        )
+    except:
+        pass
+
     await CashierStates.hours.set()
 
     await message.answer(
-        "Kuniga necha soat ishlaysiz?",
+        START_TEXT,
         reply_markup=hours_keyboard
     )
 
@@ -232,6 +145,7 @@ async def cashier_start(message: types.Message):
 async def get_hours(message: types.Message, state: FSMContext):
 
     text = message.text
+
 
     if text == "🏠 Bosh sahifa":
 
@@ -257,7 +171,7 @@ async def get_hours(message: types.Message, state: FSMContext):
         await CashierStates.custom_hours.set()
 
         await message.answer(
-            "Necha soat ishlaysiz?\n\nRaqam kiriting.",
+            "⏱ Necha soat ishlaysiz?\n\nRaqam kiriting.",
             reply_markup=back_keyboard
         )
         return
@@ -280,7 +194,7 @@ async def get_hours(message: types.Message, state: FSMContext):
     await CashierStates.days.set()
 
     await message.answer(
-        "Oy davomida necha kun ishladingiz?",
+        DAYS_TEXT,
         reply_markup=days_keyboard
     )
 
@@ -300,7 +214,7 @@ async def custom_hours(message: types.Message, state: FSMContext):
         await CashierStates.hours.set()
 
         await message.answer(
-            "Kuniga necha soat ishlaysiz?",
+            START_TEXT,
             reply_markup=hours_keyboard
         )
         return
@@ -332,7 +246,7 @@ async def custom_hours(message: types.Message, state: FSMContext):
     await CashierStates.days.set()
 
     await message.answer(
-        "Oy davomida necha kun ishladingiz?",
+        DAYS_TEXT,
         reply_markup=days_keyboard
     )
 
@@ -363,7 +277,7 @@ async def get_days(message: types.Message, state: FSMContext):
         await CashierStates.hours.set()
 
         await message.answer(
-            "Kuniga necha soat ishlaysiz?",
+            START_TEXT,
             reply_markup=hours_keyboard
         )
         return
@@ -374,7 +288,7 @@ async def get_days(message: types.Message, state: FSMContext):
         await CashierStates.custom_days.set()
 
         await message.answer(
-            "Necha kun ishladingiz?\n\nRaqam kiriting.",
+            "📅 Necha kun ishladingiz?\n\nRaqam kiriting.",
             reply_markup=back_keyboard
         )
         return
@@ -397,7 +311,7 @@ async def get_days(message: types.Message, state: FSMContext):
     await CashierStates.cover.set()
 
     await message.answer(
-        "🔄 Cover qildingizmi?",
+        COVER_TEXT,
         reply_markup=yes_no_keyboard
     )
 
@@ -417,7 +331,7 @@ async def custom_days(message: types.Message, state: FSMContext):
         await CashierStates.days.set()
 
         await message.answer(
-            "Oy davomida necha kun ishladingiz?",
+            DAYS_TEXT,
             reply_markup=days_keyboard
         )
         return
@@ -449,7 +363,7 @@ async def custom_days(message: types.Message, state: FSMContext):
     await CashierStates.cover.set()
 
     await message.answer(
-        "🔄 Cover qildingizmi?",
+        COVER_TEXT,
         reply_markup=yes_no_keyboard
     )
 
@@ -480,7 +394,7 @@ async def get_cover(message: types.Message, state: FSMContext):
         await CashierStates.days.set()
 
         await message.answer(
-            "Oy davomida necha kun ishladingiz?",
+            DAYS_TEXT,
             reply_markup=days_keyboard
         )
         return
@@ -491,7 +405,7 @@ async def get_cover(message: types.Message, state: FSMContext):
         await CashierStates.cover_hours.set()
 
         await message.answer(
-            "Necha soat cover qildingiz?",
+            COVER_HOURS_TEXT,
             reply_markup=back_keyboard
         )
         return
@@ -506,7 +420,7 @@ async def get_cover(message: types.Message, state: FSMContext):
         await CashierStates.absent.set()
 
         await message.answer(
-            "📉 Ish qoldirdingizmi?",
+            ABSENT_TEXT,
             reply_markup=yes_no_keyboard
         )
         return
@@ -532,7 +446,7 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
         await CashierStates.cover.set()
 
         await message.answer(
-            "🔄 Cover qildingizmi?",
+            COVER_TEXT,
             reply_markup=yes_no_keyboard
         )
         return
@@ -564,7 +478,7 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
     await CashierStates.absent.set()
 
     await message.answer(
-        "📉 Ish qoldirdingizmi?",
+        ABSENT_TEXT,
         reply_markup=yes_no_keyboard
     )
 
@@ -595,7 +509,7 @@ async def get_absent(message: types.Message, state: FSMContext):
         await CashierStates.cover.set()
 
         await message.answer(
-            "🔄 Cover qildingizmi?",
+            COVER_TEXT,
             reply_markup=yes_no_keyboard
         )
         return
@@ -606,7 +520,7 @@ async def get_absent(message: types.Message, state: FSMContext):
         await CashierStates.absent_hours.set()
 
         await message.answer(
-            "Necha soat ish qoldirdingiz?",
+            ABSENT_HOURS_TEXT,
             reply_markup=back_keyboard
         )
         return
@@ -621,7 +535,7 @@ async def get_absent(message: types.Message, state: FSMContext):
         await CashierStates.active_students.set()
 
         await message.answer(
-            "Oy yakunidagi Aktiv o'quvchilar sonini kiriting!",
+            ACTIVE_TEXT,
             reply_markup=back_keyboard
         )
         return
@@ -647,7 +561,7 @@ async def get_absent_hours(message: types.Message, state: FSMContext):
         await CashierStates.absent.set()
 
         await message.answer(
-            "📉 Ish qoldirdingizmi?",
+            ABSENT_TEXT,
             reply_markup=yes_no_keyboard
         )
         return
@@ -679,7 +593,7 @@ async def get_absent_hours(message: types.Message, state: FSMContext):
     await CashierStates.active_students.set()
 
     await message.answer(
-        "Oy yakunidagi Aktiv o'quvchilar sonini kiriting!",
+        ACTIVE_TEXT,
         reply_markup=back_keyboard
     )
 
@@ -699,7 +613,7 @@ async def get_active_students(message: types.Message, state: FSMContext):
         await CashierStates.absent.set()
 
         await message.answer(
-            "📉 Ish qoldirdingizmi?",
+            ABSENT_TEXT,
             reply_markup=yes_no_keyboard
         )
         return
@@ -731,7 +645,7 @@ async def get_active_students(message: types.Message, state: FSMContext):
     await CashierStates.active_debtors.set()
 
     await message.answer(
-        "Aktiv o'quvchilarning nechtasi qarzdor?",
+        ACTIVE_DEBT_TEXT,
         reply_markup=back_keyboard
     )
 
@@ -751,7 +665,7 @@ async def get_active_debtors(message: types.Message, state: FSMContext):
         await CashierStates.active_students.set()
 
         await message.answer(
-            "Oy yakunidagi Aktiv o'quvchilar sonini kiriting!",
+            ACTIVE_TEXT,
             reply_markup=back_keyboard
         )
         return
@@ -783,7 +697,7 @@ async def get_active_debtors(message: types.Message, state: FSMContext):
     await CashierStates.archive_students.set()
 
     await message.answer(
-        "Archive o'quvchilar sonini kiriting...",
+        ARCHIVE_TEXT,
         reply_markup=back_keyboard
     )
 
@@ -803,7 +717,7 @@ async def get_archive_students(message: types.Message, state: FSMContext):
         await CashierStates.active_debtors.set()
 
         await message.answer(
-            "Aktiv o'quvchilarning nechtasi qarzdor?",
+            ACTIVE_DEBT_TEXT,
             reply_markup=back_keyboard
         )
         return
@@ -835,7 +749,7 @@ async def get_archive_students(message: types.Message, state: FSMContext):
     await CashierStates.archive_debtors.set()
 
     await message.answer(
-        "Archive o'quvchilardagi qarzdorlar sonini kiriting...",
+        ARCHIVE_DEBT_TEXT,
         reply_markup=back_keyboard
     )
 
@@ -855,7 +769,7 @@ async def finish_cashier(message: types.Message, state: FSMContext):
         await CashierStates.archive_students.set()
 
         await message.answer(
-            "Archive o'quvchilar sonini kiriting...",
+            ARCHIVE_TEXT,
             reply_markup=back_keyboard
         )
         return
@@ -883,7 +797,6 @@ async def finish_cashier(message: types.Message, state: FSMContext):
     data = await state.get_data()
 
     hours = data.get("hours", 0)
-
     days = data.get("days", 0)
 
     cover_hours = data.get("cover_hours", 0)
@@ -891,7 +804,6 @@ async def finish_cashier(message: types.Message, state: FSMContext):
     absent_hours = data.get("absent_hours", 0)
 
     active_students = data.get("active_students", 0)
-
     active_debtors = data.get("active_debtors", 0)
 
     archive_students = data.get("archive_students", 0)
@@ -899,7 +811,9 @@ async def finish_cashier(message: types.Message, state: FSMContext):
     archive_debtors = int(text)
 
 
+    # =========================
     # DAILY SALARY
+    # =========================
 
     if hours <= 8:
 
@@ -915,12 +829,16 @@ async def finish_cashier(message: types.Message, state: FSMContext):
         )
 
 
+    # =========================
     # FIX SALARY
+    # =========================
 
     fix_salary = daily_salary * days
 
 
+    # =========================
     # DEBT %
+    # =========================
 
     total_students = (
         active_students +
@@ -943,7 +861,9 @@ async def finish_cashier(message: types.Message, state: FSMContext):
         debt_percent = 0
 
 
+    # =========================
     # BONUS SCALE
+    # =========================
 
     if debt_percent == 0:
 
@@ -982,6 +902,10 @@ async def finish_cashier(message: types.Message, state: FSMContext):
         bonus_coef = 1.0
 
 
+    # =========================
+    # FINAL
+    # =========================
+
     total_salary = (
         fix_salary * bonus_coef
     )
@@ -1002,6 +926,19 @@ async def finish_cashier(message: types.Message, state: FSMContext):
 
 
     await state.finish()
+
+
+    try:
+        await message.answer_sticker(
+            SUCCESS_STICKER
+        )
+    except:
+        pass
+
+
+    await message.answer(
+        SUCCESS_TEXT
+    )
 
 
     await message.answer(
