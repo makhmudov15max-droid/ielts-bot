@@ -6,13 +6,12 @@ from keyboards.contact_keyboard import contact_keyboard
 from keyboards.role_keyboard import role_keyboard
 from keyboards.menu_keyboard import get_menu
 
-from safety.db import load_users (
+from safety.db import (
     load_users,
     save_users,
     load_pending,
     save_pending
 )
-
 
 @dp.message_handler(commands=["start"])
 async def start_command(message: types.Message):
