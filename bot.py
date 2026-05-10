@@ -2,6 +2,10 @@ from aiogram import executor
 
 from safety.loader import dp
 
+from handlers.admin_salary import router as admin_salary_router
+
+dp.include_router(admin_salary_router)
+
 
 # SAFETY HANDLERS
 
