@@ -15,9 +15,9 @@ from keyboards.cashier_keyboard import (
 from keyboards.admin_keyboard import cashier_menu
 
 
-# =========================
+# =========================================
 # UI TEXTS
-# =========================
+# =========================================
 
 START_TEXT = """
 💰 CASHIER SALARY
@@ -106,18 +106,17 @@ SUCCESS_TEXT = """
 """
 
 
-# =========================
+# =========================================
 # STICKERS
-# =========================
+# =========================================
 
-# @StickerIDBot orqali almashtirasan
 START_STICKER = "CAACAgIAAxkBAAEDummyStart"
 SUCCESS_STICKER = "CAACAgIAAxkBAAEDummyFinish"
 
 
-# =========================
+# =========================================
 # START
-# =========================
+# =========================================
 
 @dp.message_handler(lambda message: message.text == "💰 Cashier Salary")
 async def cashier_start(message: types.Message):
@@ -137,15 +136,14 @@ async def cashier_start(message: types.Message):
     )
 
 
-# =========================
+# =========================================
 # HOURS
-# =========================
+# =========================================
 
 @dp.message_handler(state=CashierStates.hours)
 async def get_hours(message: types.Message, state: FSMContext):
 
     text = message.text
-
 
     if text == "🏠 Bosh sahifa":
 
@@ -157,14 +155,12 @@ async def get_hours(message: types.Message, state: FSMContext):
         )
         return
 
-
     if text == "⬅️ Ortga":
 
         await message.answer(
             "Siz birinchi bosqichdasiz."
         )
         return
-
 
     if text == "Boshqa":
 
@@ -175,7 +171,6 @@ async def get_hours(message: types.Message, state: FSMContext):
             reply_markup=back_keyboard
         )
         return
-
 
     try:
 
@@ -188,7 +183,6 @@ async def get_hours(message: types.Message, state: FSMContext):
         )
         return
 
-
     await state.update_data(hours=hours)
 
     await CashierStates.days.set()
@@ -199,15 +193,14 @@ async def get_hours(message: types.Message, state: FSMContext):
     )
 
 
-# =========================
+# =========================================
 # CUSTOM HOURS
-# =========================
+# =========================================
 
 @dp.message_handler(state=CashierStates.custom_hours)
 async def custom_hours(message: types.Message, state: FSMContext):
 
     text = message.text
-
 
     if text == "⬅️ Ortga":
 
@@ -219,17 +212,15 @@ async def custom_hours(message: types.Message, state: FSMContext):
         )
         return
 
-
     if text == "🏠 Bosh sahifa":
 
         await state.finish()
 
         await message.answer(
             "🏠 Bosh sahifa",
-            reply_markup=main_menu_keyboard
+            reply_markup=cashier_menu
         )
         return
-
 
     if not text.isdigit():
 
@@ -237,7 +228,6 @@ async def custom_hours(message: types.Message, state: FSMContext):
             "❌ Raqam kiriting."
         )
         return
-
 
     await state.update_data(
         hours=int(text)
@@ -251,15 +241,14 @@ async def custom_hours(message: types.Message, state: FSMContext):
     )
 
 
-# =========================
+# =========================================
 # DAYS
-# =========================
+# =========================================
 
 @dp.message_handler(state=CashierStates.days)
 async def get_days(message: types.Message, state: FSMContext):
 
     text = message.text
-
 
     if text == "🏠 Bosh sahifa":
 
@@ -267,10 +256,9 @@ async def get_days(message: types.Message, state: FSMContext):
 
         await message.answer(
             "🏠 Bosh sahifa",
-            reply_markup=main_menu_keyboard
+            reply_markup=cashier_menu
         )
         return
-
 
     if text == "⬅️ Ortga":
 
@@ -282,7 +270,6 @@ async def get_days(message: types.Message, state: FSMContext):
         )
         return
 
-
     if text == "Boshqa":
 
         await CashierStates.custom_days.set()
@@ -292,7 +279,6 @@ async def get_days(message: types.Message, state: FSMContext):
             reply_markup=back_keyboard
         )
         return
-
 
     try:
 
@@ -305,7 +291,6 @@ async def get_days(message: types.Message, state: FSMContext):
         )
         return
 
-
     await state.update_data(days=days)
 
     await CashierStates.cover.set()
@@ -316,15 +301,14 @@ async def get_days(message: types.Message, state: FSMContext):
     )
 
 
-# =========================
+# =========================================
 # CUSTOM DAYS
-# =========================
+# =========================================
 
 @dp.message_handler(state=CashierStates.custom_days)
 async def custom_days(message: types.Message, state: FSMContext):
 
     text = message.text
-
 
     if text == "⬅️ Ortga":
 
@@ -336,17 +320,15 @@ async def custom_days(message: types.Message, state: FSMContext):
         )
         return
 
-
     if text == "🏠 Bosh sahifa":
 
         await state.finish()
 
         await message.answer(
             "🏠 Bosh sahifa",
-            reply_markup=main_menu_keyboard
+            reply_markup=cashier_menu
         )
         return
-
 
     if not text.isdigit():
 
@@ -354,7 +336,6 @@ async def custom_days(message: types.Message, state: FSMContext):
             "❌ Raqam kiriting."
         )
         return
-
 
     await state.update_data(
         days=int(text)
@@ -368,15 +349,14 @@ async def custom_days(message: types.Message, state: FSMContext):
     )
 
 
-# =========================
+# =========================================
 # COVER
-# =========================
+# =========================================
 
 @dp.message_handler(state=CashierStates.cover)
 async def get_cover(message: types.Message, state: FSMContext):
 
     text = message.text.lower()
-
 
     if message.text == "🏠 Bosh sahifa":
 
@@ -384,10 +364,9 @@ async def get_cover(message: types.Message, state: FSMContext):
 
         await message.answer(
             "🏠 Bosh sahifa",
-            reply_markup=main_menu_keyboard
+            reply_markup=cashier_menu
         )
         return
-
 
     if message.text == "⬅️ Ortga":
 
@@ -399,7 +378,6 @@ async def get_cover(message: types.Message, state: FSMContext):
         )
         return
 
-
     if text == "ha":
 
         await CashierStates.cover_hours.set()
@@ -409,7 +387,6 @@ async def get_cover(message: types.Message, state: FSMContext):
             reply_markup=back_keyboard
         )
         return
-
 
     if text == "yo'q":
 
@@ -425,21 +402,19 @@ async def get_cover(message: types.Message, state: FSMContext):
         )
         return
 
-
     await message.answer(
         "❌ Tugmalardan foydalaning."
     )
 
 
-# =========================
+# =========================================
 # COVER HOURS
-# =========================
+# =========================================
 
 @dp.message_handler(state=CashierStates.cover_hours)
 async def get_cover_hours(message: types.Message, state: FSMContext):
 
     text = message.text
-
 
     if text == "⬅️ Ortga":
 
@@ -451,17 +426,15 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
         )
         return
 
-
     if text == "🏠 Bosh sahifa":
 
         await state.finish()
 
         await message.answer(
             "🏠 Bosh sahifa",
-            reply_markup=main_menu_keyboard
+            reply_markup=cashier_menu
         )
         return
-
 
     if not text.isdigit():
 
@@ -469,7 +442,6 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
             "❌ Raqam kiriting."
         )
         return
-
 
     await state.update_data(
         cover_hours=int(text)
@@ -483,15 +455,14 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
     )
 
 
-# =========================
+# =========================================
 # ABSENT
-# =========================
+# =========================================
 
 @dp.message_handler(state=CashierStates.absent)
 async def get_absent(message: types.Message, state: FSMContext):
 
     text = message.text.lower()
-
 
     if message.text == "🏠 Bosh sahifa":
 
@@ -499,10 +470,9 @@ async def get_absent(message: types.Message, state: FSMContext):
 
         await message.answer(
             "🏠 Bosh sahifa",
-            reply_markup=main_menu_keyboard
+            reply_markup=cashier_menu
         )
         return
-
 
     if message.text == "⬅️ Ortga":
 
@@ -514,7 +484,6 @@ async def get_absent(message: types.Message, state: FSMContext):
         )
         return
 
-
     if text == "ha":
 
         await CashierStates.absent_hours.set()
@@ -524,7 +493,6 @@ async def get_absent(message: types.Message, state: FSMContext):
             reply_markup=back_keyboard
         )
         return
-
 
     if text == "yo'q":
 
@@ -540,21 +508,19 @@ async def get_absent(message: types.Message, state: FSMContext):
         )
         return
 
-
     await message.answer(
         "❌ Tugmalardan foydalaning."
     )
 
 
-# =========================
+# =========================================
 # ABSENT HOURS
-# =========================
+# =========================================
 
 @dp.message_handler(state=CashierStates.absent_hours)
 async def get_absent_hours(message: types.Message, state: FSMContext):
 
     text = message.text
-
 
     if text == "⬅️ Ortga":
 
@@ -566,17 +532,15 @@ async def get_absent_hours(message: types.Message, state: FSMContext):
         )
         return
 
-
     if text == "🏠 Bosh sahifa":
 
         await state.finish()
 
         await message.answer(
             "🏠 Bosh sahifa",
-            reply_markup=main_menu_keyboard
+            reply_markup=cashier_menu
         )
         return
-
 
     if not text.isdigit():
 
@@ -584,7 +548,6 @@ async def get_absent_hours(message: types.Message, state: FSMContext):
             "❌ Raqam kiriting."
         )
         return
-
 
     await state.update_data(
         absent_hours=int(text)
@@ -598,15 +561,14 @@ async def get_absent_hours(message: types.Message, state: FSMContext):
     )
 
 
-# =========================
+# =========================================
 # ACTIVE STUDENTS
-# =========================
+# =========================================
 
 @dp.message_handler(state=CashierStates.active_students)
 async def get_active_students(message: types.Message, state: FSMContext):
 
     text = message.text
-
 
     if text == "⬅️ Ortga":
 
@@ -618,17 +580,15 @@ async def get_active_students(message: types.Message, state: FSMContext):
         )
         return
 
-
     if text == "🏠 Bosh sahifa":
 
         await state.finish()
 
         await message.answer(
             "🏠 Bosh sahifa",
-            reply_markup=main_menu_keyboard
+            reply_markup=cashier_menu
         )
         return
-
 
     if not text.isdigit():
 
@@ -636,7 +596,6 @@ async def get_active_students(message: types.Message, state: FSMContext):
             "❌ Iltimos raqam kiriting."
         )
         return
-
 
     await state.update_data(
         active_students=int(text)
@@ -650,15 +609,14 @@ async def get_active_students(message: types.Message, state: FSMContext):
     )
 
 
-# =========================
+# =========================================
 # ACTIVE DEBTORS
-# =========================
+# =========================================
 
 @dp.message_handler(state=CashierStates.active_debtors)
 async def get_active_debtors(message: types.Message, state: FSMContext):
 
     text = message.text
-
 
     if text == "⬅️ Ortga":
 
@@ -670,17 +628,15 @@ async def get_active_debtors(message: types.Message, state: FSMContext):
         )
         return
 
-
     if text == "🏠 Bosh sahifa":
 
         await state.finish()
 
         await message.answer(
             "🏠 Bosh sahifa",
-            reply_markup=main_menu_keyboard
+            reply_markup=cashier_menu
         )
         return
-
 
     if not text.isdigit():
 
@@ -688,7 +644,6 @@ async def get_active_debtors(message: types.Message, state: FSMContext):
             "❌ Iltimos raqam kiriting."
         )
         return
-
 
     await state.update_data(
         active_debtors=int(text)
@@ -702,15 +657,14 @@ async def get_active_debtors(message: types.Message, state: FSMContext):
     )
 
 
-# =========================
+# =========================================
 # ARCHIVE STUDENTS
-# =========================
+# =========================================
 
 @dp.message_handler(state=CashierStates.archive_students)
 async def get_archive_students(message: types.Message, state: FSMContext):
 
     text = message.text
-
 
     if text == "⬅️ Ortga":
 
@@ -722,17 +676,15 @@ async def get_archive_students(message: types.Message, state: FSMContext):
         )
         return
 
-
     if text == "🏠 Bosh sahifa":
 
         await state.finish()
 
         await message.answer(
             "🏠 Bosh sahifa",
-            reply_markup=main_menu_keyboard
+            reply_markup=cashier_menu
         )
         return
-
 
     if not text.isdigit():
 
@@ -740,7 +692,6 @@ async def get_archive_students(message: types.Message, state: FSMContext):
             "❌ Iltimos raqam kiriting."
         )
         return
-
 
     await state.update_data(
         archive_students=int(text)
@@ -754,15 +705,14 @@ async def get_archive_students(message: types.Message, state: FSMContext):
     )
 
 
-# =========================
+# =========================================
 # FINAL
-# =========================
+# =========================================
 
 @dp.message_handler(state=CashierStates.archive_debtors)
 async def finish_cashier(message: types.Message, state: FSMContext):
 
     text = message.text
-
 
     if text == "⬅️ Ortga":
 
@@ -774,17 +724,15 @@ async def finish_cashier(message: types.Message, state: FSMContext):
         )
         return
 
-
     if text == "🏠 Bosh sahifa":
 
         await state.finish()
 
         await message.answer(
             "🏠 Bosh sahifa",
-            reply_markup=main_menu_keyboard
+            reply_markup=cashier_menu
         )
         return
-
 
     if not text.isdigit():
 
@@ -792,7 +740,6 @@ async def finish_cashier(message: types.Message, state: FSMContext):
             "❌ Iltimos raqam kiriting."
         )
         return
-
 
     data = await state.get_data()
 
@@ -810,10 +757,7 @@ async def finish_cashier(message: types.Message, state: FSMContext):
 
     archive_debtors = int(text)
 
-
-    # =========================
     # DAILY SALARY
-    # =========================
 
     if hours <= 8:
 
@@ -828,17 +772,11 @@ async def finish_cashier(message: types.Message, state: FSMContext):
             (extra_hours * 20000)
         )
 
-
-    # =========================
     # FIX SALARY
-    # =========================
 
     fix_salary = daily_salary * days
 
-
-    # =========================
     # DEBT %
-    # =========================
 
     total_students = (
         active_students +
@@ -860,51 +798,34 @@ async def finish_cashier(message: types.Message, state: FSMContext):
 
         debt_percent = 0
 
-
-    # =========================
     # BONUS SCALE
-    # =========================
 
     if debt_percent == 0:
-
         bonus_coef = 2.5
 
     elif debt_percent <= 2:
-
         bonus_coef = 2.0
 
     elif debt_percent <= 5:
-
         bonus_coef = 1.8
 
     elif debt_percent <= 7:
-
         bonus_coef = 1.7
 
     elif debt_percent <= 10:
-
         bonus_coef = 1.6
 
     elif debt_percent <= 15:
-
         bonus_coef = 1.5
 
     elif debt_percent <= 20:
-
         bonus_coef = 1.4
 
     elif debt_percent <= 30:
-
         bonus_coef = 1.2
 
     else:
-
         bonus_coef = 1.0
-
-
-    # =========================
-    # FINAL
-    # =========================
 
     total_salary = (
         fix_salary * bonus_coef
@@ -924,9 +845,7 @@ async def finish_cashier(message: types.Message, state: FSMContext):
         penalty
     )
 
-
     await state.finish()
-
 
     try:
         await message.answer_sticker(
@@ -935,11 +854,9 @@ async def finish_cashier(message: types.Message, state: FSMContext):
     except:
         pass
 
-
     await message.answer(
         SUCCESS_TEXT
     )
-
 
     await message.answer(
         f"""
@@ -972,5 +889,5 @@ async def finish_cashier(message: types.Message, state: FSMContext):
 💰 UMUMIY OYLIK
 {final_salary:,.0f} UZS
 """,
-        reply_markup=main_menu_keyboard
+        reply_markup=cashier_menu
     )
