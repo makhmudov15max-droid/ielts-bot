@@ -1,7 +1,7 @@
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import ReplyKeyboardMarkup
-from utils.db import load_users
+from ..utils.db import load_users
 
 from keyboards.admin_keyboard import (
     main_menu_keyboard,
