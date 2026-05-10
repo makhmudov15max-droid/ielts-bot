@@ -8,10 +8,10 @@ def get_menu(role):
     )
 
     # =========================
-    # OWNER / MANAGER
+    # FULL ACCESS ROLES
     # =========================
 
-    if role == "manager":
+    if role in ["manager", "kordinator"]:
 
         keyboard.add(
             KeyboardButton("📈 Manager Salary")
@@ -43,16 +43,6 @@ def get_menu(role):
 
         keyboard.add(
             KeyboardButton("💰 Cashier Salary")
-        )
-
-    # =========================
-    # COORDINATOR
-    # =========================
-
-    elif role == "kordinator":
-
-        keyboard.add(
-            KeyboardButton("📈 Manager Salary")
         )
 
     return keyboard
