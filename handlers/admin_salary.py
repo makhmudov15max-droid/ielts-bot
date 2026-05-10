@@ -27,6 +27,62 @@ status_keyboard.add(
 )
 
 
+hours_keyboard = ReplyKeyboardMarkup(
+    resize_keyboard=True
+)
+
+hours_keyboard.add(
+    KeyboardButton("6"),
+    KeyboardButton("8")
+)
+
+hours_keyboard.add(
+    KeyboardButton("10"),
+    KeyboardButton("12")
+)
+
+hours_keyboard.add(
+    KeyboardButton("❌ Bekor qilish")
+)
+
+
+days_keyboard = ReplyKeyboardMarkup(
+    resize_keyboard=True
+)
+
+days_keyboard.add(
+    KeyboardButton("22"),
+    KeyboardButton("24")
+)
+
+days_keyboard.add(
+    KeyboardButton("26"),
+    KeyboardButton("28")
+)
+
+days_keyboard.add(
+    KeyboardButton("30")
+)
+
+days_keyboard.add(
+    KeyboardButton("❌ Bekor qilish")
+)
+
+
+yes_no_keyboard = ReplyKeyboardMarkup(
+    resize_keyboard=True
+)
+
+yes_no_keyboard.add(
+    KeyboardButton("yes"),
+    KeyboardButton("no")
+)
+
+yes_no_keyboard.add(
+    KeyboardButton("❌ Bekor qilish")
+)
+
+
 cancel_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
@@ -52,7 +108,7 @@ async def start_admin_salary(message: types.Message, state: FSMContext):
     await state.finish()
 
     await message.answer(
-        "Status tanlang:",
+        "🏅 Status tanlang:",
         reply_markup=status_keyboard
     )
 
@@ -72,8 +128,8 @@ async def get_status(message: types.Message, state: FSMContext):
     await state.update_data(status=status)
 
     await message.answer(
-        "Kunlik ish soatini kiriting:",
-        reply_markup=cancel_keyboard
+        "⏰ Kunlik ish soatini tanlang:",
+        reply_markup=hours_keyboard
     )
 
     await AdminSalaryStates.daily_hours.set()
@@ -92,7 +148,8 @@ async def get_daily_hours(message: types.Message, state: FSMContext):
     await state.update_data(daily_hours=value)
 
     await message.answer(
-        "Ishlagan kunni kiriting:"
+        "📅 Ishlagan kunni tanlang:",
+        reply_markup=days_keyboard
     )
 
     await AdminSalaryStates.worked_days.set()
@@ -111,7 +168,8 @@ async def get_worked_days(message: types.Message, state: FSMContext):
     await state.update_data(worked_days=value)
 
     await message.answer(
-        "Individual plan kiriting:"
+        "🎯 Individual plan kiriting:",
+        reply_markup=cancel_keyboard
     )
 
     await AdminSalaryStates.individual_plan.set()
@@ -130,7 +188,7 @@ async def get_individual_plan(message: types.Message, state: FSMContext):
     await state.update_data(individual_plan=value)
 
     await message.answer(
-        "Actual sales kiriting:"
+        "💰 Actual sales kiriting:"
     )
 
     await AdminSalaryStates.actual_sales.set()
@@ -149,7 +207,7 @@ async def get_actual_sales(message: types.Message, state: FSMContext):
     await state.update_data(actual_sales=value)
 
     await message.answer(
-        "Conversion plan kiriting:"
+        "📈 Conversion plan kiriting:"
     )
 
     await AdminSalaryStates.conversion_plan.set()
@@ -168,7 +226,7 @@ async def get_conversion_plan(message: types.Message, state: FSMContext):
     await state.update_data(conversion_plan=value)
 
     await message.answer(
-        "Actual conversion kiriting:"
+        "📊 Actual conversion kiriting:"
     )
 
     await AdminSalaryStates.actual_conversion.set()
@@ -187,7 +245,7 @@ async def get_actual_conversion(message: types.Message, state: FSMContext):
     await state.update_data(actual_conversion=value)
 
     await message.answer(
-        "Active plan kiriting:"
+        "👥 Active plan kiriting:"
     )
 
     await AdminSalaryStates.active_plan.set()
@@ -206,7 +264,7 @@ async def get_active_plan(message: types.Message, state: FSMContext):
     await state.update_data(active_plan=value)
 
     await message.answer(
-        "Actual active kiriting:"
+        "🔥 Actual active kiriting:"
     )
 
     await AdminSalaryStates.actual_active.set()
@@ -225,7 +283,8 @@ async def get_actual_active(message: types.Message, state: FSMContext):
     await state.update_data(actual_active=value)
 
     await message.answer(
-        "Rus tili biladimi? yes/no"
+        "🇷🇺 Rus tili biladimi?",
+        reply_markup=yes_no_keyboard
     )
 
     await AdminSalaryStates.knows_russian.set()
@@ -246,7 +305,8 @@ async def get_russian(message: types.Message, state: FSMContext):
     )
 
     await message.answer(
-        "IELTS 7+ bormi? yes/no"
+        "🎓 IELTS 7+ bormi?",
+        reply_markup=yes_no_keyboard
     )
 
     await AdminSalaryStates.has_ielts.set()
@@ -267,7 +327,8 @@ async def get_ielts(message: types.Message, state: FSMContext):
     )
 
     await message.answer(
-        "Cover hours kiriting:"
+        "🔄 Cover hours kiriting:",
+        reply_markup=cancel_keyboard
     )
 
     await AdminSalaryStates.cover_hours.set()
@@ -286,7 +347,7 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
     await state.update_data(cover_hours=value)
 
     await message.answer(
-        "Missed hours kiriting:"
+        "📉 Missed hours kiriting:"
     )
 
     await AdminSalaryStates.missed_hours.set()
