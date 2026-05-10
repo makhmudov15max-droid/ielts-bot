@@ -82,9 +82,31 @@ def calculate_admin_salary(data):
         * (weighted_kpi / 100)
     )
 
+    russian_bonus = (
+        500000 if data["knows_russian"] else 0
+    )
+
+    ielts_bonus = (
+        1000000 if data["has_ielts"] else 0
+    )
+
+    cover_bonus = (
+        data["cover_hours"]
+        * hourly_rate
+    )
+
+    penalty = (
+        data["missed_hours"]
+        * hourly_rate
+    )
+
     total_salary = (
         fixa
         + final_kpi_bonus
+        + russian_bonus
+        + ielts_bonus
+        + cover_bonus
+        - penalty
     )
 
     return {
@@ -103,6 +125,14 @@ def calculate_admin_salary(data):
         "base_kpi_bonus": int(base_kpi_bonus),
 
         "final_kpi_bonus": int(final_kpi_bonus),
+
+        "russian_bonus": int(russian_bonus),
+
+        "ielts_bonus": int(ielts_bonus),
+
+        "cover_bonus": int(cover_bonus),
+
+        "penalty": int(penalty),
 
         "total_salary": int(total_salary),
     }
