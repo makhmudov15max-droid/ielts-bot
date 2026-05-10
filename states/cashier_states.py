@@ -1,20 +1,27 @@
-from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram.dispatcher.filters.state import (
+    State,
+    StatesGroup
+)
 
 
-class CashierSalaryStates(StatesGroup):
+class CashierStates(StatesGroup):
 
-    waiting_for_hours = State()
+    hours = State()
 
-    waiting_for_days = State()
+    days = State()
 
-    waiting_for_missed_work = State()
-    waiting_for_missed_days = State()
+    cover = State()
 
-    waiting_for_cover = State()
-    waiting_for_cover_days = State()
+    cover_hours = State()
 
-    waiting_for_active_students = State()
-    waiting_for_active_debtors = State()
+    absent = State()
 
-    waiting_for_archive_students = State()
-    waiting_for_archive_debtors = State()
+    absent_hours = State()
+
+    active_students = State()
+
+    active_debtors = State()
+
+    archive_students = State()
+
+    archive_debtors = State()
