@@ -28,7 +28,7 @@ async def go_home(message: types.Message, state: FSMContext):
 def register_cashier_handlers(dp):
 
 
-    @dp.message_handler(lambda message: message.text == "💵 Cashier Salary")
+    @dp.message_handler(text="💰 Cashier Salary")
     async def cashier_start(message: types.Message):
 
         await message.answer(
