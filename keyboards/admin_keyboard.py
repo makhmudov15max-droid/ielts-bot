@@ -1,77 +1,59 @@
-from aiogram.types import ReplyKeyboardMarkup
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 
-def main_menu_keyboard():
+def main_menu_keyboard(role=None):
 
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+    keyboard = ReplyKeyboardMarkup(
+        resize_keyboard=True
+    )
 
-    keyboard.add("💰 Admin Salary")
-    keyboard.add("💵 Cashier Salary")
+    # ADMIN
+    if role == "admin":
 
-    return keyboard
+        keyboard.add(
+            KeyboardButton("📊 Admin Salary")
+        )
 
+        keyboard.add(
+            KeyboardButton("💰 Cashier Salary")
+        )
 
-def status_keyboard():
-
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-
-    keyboard.add("Nova", "Prime")
-    keyboard.add("Apex", "Leader")
-    keyboard.add("🏠 Bosh sahifa")
-
-    return keyboard
-
-
-def hours_keyboard():
-
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-
-    keyboard.add("6 soat", "7 soat")
-    keyboard.add("9 soat", "10 soat")
-    keyboard.add("✍️ Boshqa soat")
-    keyboard.add("🏠 Bosh sahifa")
-
-    return keyboard
+        return keyboard
 
 
-def days_keyboard():
+    # KASSIR
+    elif role == "kassir":
 
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+        keyboard.add(
+            KeyboardButton("💰 Cashier Salary")
+        )
 
-    keyboard.add("24 kun", "25 kun")
-    keyboard.add("26 kun", "27 kun")
-    keyboard.add("✍️ Boshqa kun")
-    keyboard.add("🏠 Bosh sahifa")
-
-    return keyboard
+        return keyboard
 
 
-def yes_no_keyboard():
+    # MANAGER
+    elif role == "manager":
 
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+        keyboard.add(
+            KeyboardButton("📊 Manager Salary")
+        )
 
-    keyboard.add("✅ Ha", "❌ Yo'q")
-    keyboard.add("🏠 Bosh sahifa")
-
-    return keyboard
-
-
-def conversion_keyboard():
-
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-
-    keyboard.add("50%")
-    keyboard.add("✍️ Boshqa")
-    keyboard.add("🏠 Bosh sahifa")
-
-    return keyboard
+        return keyboard
 
 
-def cover_keyboard():
+    # KOORDINATOR
+    elif role == "kordinator":
 
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+        keyboard.add(
+            KeyboardButton("📈 Coordinator Salary")
+        )
 
-    keyboard.add("✅ Cover qilgan", "❌ Cover qilmagan")
-    keyboard.add("🏠 Bosh sahifa")
+        return keyboard
+
+
+    # DEFAULT
+    keyboard.add(
+        KeyboardButton("🏠 Bosh sahifa")
+    )
 
     return keyboard
