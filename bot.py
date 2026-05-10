@@ -7,6 +7,9 @@ from config import TOKEN
 from handlers.admin_salary import register_admin_handlers
 from handlers.cashier_salary import register_cashier_handlers
 
+import handlers.start
+import handlers.approvals
+
 from keyboards.admin_keyboard import main_menu_keyboard
 
 
