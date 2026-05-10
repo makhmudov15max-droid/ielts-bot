@@ -1,6 +1,6 @@
 from aiogram import types
 from safety.loader import dp, bot
-from config import OWNER_ID
+from safety.config import OWNER_ID
 
 from keyboards.contact_keyboard import contact_keyboard
 from keyboards.role_keyboard import role_keyboard
