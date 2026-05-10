@@ -10,6 +10,7 @@ from safety.loader import dp
 
 from keyboards.admin_keyboard import (
     owner_panel,
+    admin_menu,
     cashier_menu
 )
 
@@ -19,7 +20,7 @@ USERS_FILE = "safety/database/users.json"
 PENDING_FILE = "safety/database/pending_users.json"
 
 
-OWNER_ID = 6500594896
+OWNER_ID = 777888999
 # <-- O'Z TELEGRAM ID'INGIZNI YOZING
 
 
@@ -79,13 +80,13 @@ async def start_handler(message: types.Message):
         message.from_user.full_name
     )
 
-    # ================= APPROVED USER =================
+    # ================= APPROVED USERS =================
 
     if user_id in users:
 
         role = users[user_id]["role"]
 
-        # OWNER
+        # ================= OWNER =================
 
         if role == "owner":
 
@@ -98,20 +99,7 @@ async def start_handler(message: types.Message):
                 reply_markup=owner_panel
             )
 
-        # ADMIN
-
-        if role == "admin":
-
-            return await message.answer(
-                f"""
-👋 Xush kelibsiz, {fullname}
-
-🎭 Role: ADMIN
-""",
-                reply_markup=owner_panel
-            )
-
-        # COORDINATOR
+        # ================= COORDINATOR =================
 
         if role == "coordinator":
 
@@ -124,7 +112,33 @@ async def start_handler(message: types.Message):
                 reply_markup=owner_panel
             )
 
-        # CASHIER
+        # ================= MANAGER =================
+
+        if role == "manager":
+
+            return await message.answer(
+                f"""
+👋 Xush kelibsiz, {fullname}
+
+🎭 Role: MANAGER
+""",
+                reply_markup=owner_panel
+            )
+
+        # ================= ADMIN =================
+
+        if role == "admin":
+
+            return await message.answer(
+                f"""
+👋 Xush kelibsiz, {fullname}
+
+🎭 Role: ADMIN
+""",
+                reply_markup=admin_menu
+            )
+
+        # ================= CASHIER =================
 
         if role == "cashier":
 
@@ -137,7 +151,7 @@ async def start_handler(message: types.Message):
                 reply_markup=cashier_menu
             )
 
-        # TEACHER
+        # ================= TEACHER =================
 
         if role == "teacher":
 
@@ -177,6 +191,7 @@ async def start_handler(message: types.Message):
 
     roles = [
         "owner",
+        "manager",
         "coordinator",
         "cashier",
         "admin",
