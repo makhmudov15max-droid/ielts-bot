@@ -17,15 +17,15 @@ storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 
 
-@dp.message_handler(commands=["start"])
-async def start_handler(message: types.Message, state: FSMContext):
+#@dp.message_handler(commands=["start"])
+#async def start_handler(message: types.Message, state: FSMContext):
 
-    await state.finish()
+    #await state.finish()
 
-    await message.answer(
-        "🏠 Bosh sahifa",
-        reply_markup=main_menu_keyboard()
-    )
+    #await message.answer(
+        #"🏠 Bosh sahifa",
+       # reply_markup=main_menu_keyboard()
+  #  )
 
 
 register_admin_handlers(dp)
