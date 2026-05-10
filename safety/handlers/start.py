@@ -1,5 +1,5 @@
 from aiogram import types
-from loader import dp, bot
+from safety.loader import dp, bot
 from config import OWNER_ID
 
 from keyboards.contact_keyboard import contact_keyboard
