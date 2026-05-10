@@ -6,12 +6,37 @@ HOURLY_RATES = {
 }
 
 
+BONUS_RATES = [
+    (0, 49, 0),
+    (50, 60, 5000),
+    (61, 70, 6000),
+    (71, 80, 10000),
+    (81, 90, 15000),
+    (91, 95, 18000),
+    (96, 100, 25000),
+    (101, 110, 30000),
+    (111, 120, 32000),
+    (121, 130, 35000),
+    (131, 9999, 40000),
+]
+
+
 def percent(actual, plan):
 
     if plan == 0:
         return 0
 
     return (actual / plan) * 100
+
+
+def get_bonus_rate(individual_kpi):
+
+    for min_val, max_val, rate in BONUS_RATES:
+
+        if min_val <= individual_kpi <= max_val:
+            return rate
+
+    return 0
 
 
 def calculate_admin_salary(data):
@@ -45,7 +70,22 @@ def calculate_admin_salary(data):
         + active_kpi * 0.2
     )
 
-    total_salary = fixa
+    bonus_rate = get_bonus_rate(individual_kpi)
+
+    base_kpi_bonus = (
+        data["actual_sales"]
+        * bonus_rate
+    )
+
+    final_kpi_bonus = (
+        base_kpi_bonus
+        * (weighted_kpi / 100)
+    )
+
+    total_salary = (
+        fixa
+        + final_kpi_bonus
+    )
 
     return {
         "fixa": int(fixa),
@@ -57,6 +97,12 @@ def calculate_admin_salary(data):
         "active_kpi": round(active_kpi, 1),
 
         "weighted_kpi": round(weighted_kpi, 1),
+
+        "bonus_rate": int(bonus_rate),
+
+        "base_kpi_bonus": int(base_kpi_bonus),
+
+        "final_kpi_bonus": int(final_kpi_bonus),
 
         "total_salary": int(total_salary),
     }
