@@ -1,22 +1,27 @@
-from aiogram import Router, F
-from aiogram.types import Message
-from aiogram.fsm.context import FSMContext
+from aiogram import types
+from aiogram.dispatcher import FSMContext
+
+from loader import dp
 
 from states.admin_states import AdminSalaryStates
 from services.salary.admin_calculator import calculate_admin_salary
 
-router = Router()
+
+@dp.message_handler(text="📊 Admin Salary")
+async def start_admin_salary(message: types.Message, state: FSMContext):
+    await state.finish()
+
+    await message.answer(
+        "Status kiriting:\n"
+        "(nova / prime / apex / leader)"
+    )
+
+    await AdminSalaryStates.status.set()
 
 
-@router.message(F.text == "📊 Admin Salary")
-async def start_admin_salary(message: Message, state: FSMContext):
-    await state.clear()
-    await message.answer("Status kiriting:\n(nova / prime / apex / leader)")
-    await state.set_state(AdminSalaryStates.status)
+@dp.message_handler(state=AdminSalaryStates.status)
+async def get_status(message: types.Message, state: FSMContext):
 
-
-@router.message(AdminSalaryStates.status)
-async def get_status(message: Message, state: FSMContext):
     status = message.text.lower()
 
     if status not in ["nova", "prime", "apex", "leader"]:
@@ -25,104 +30,176 @@ async def get_status(message: Message, state: FSMContext):
     await state.update_data(status=status)
 
     await message.answer("Kunlik ish soati:")
-    await state.set_state(AdminSalaryStates.daily_hours)
+    await AdminSalaryStates.daily_hours.set()
 
 
-@router.message(AdminSalaryStates.daily_hours)
-async def get_daily_hours(message: Message, state: FSMContext):
-    await state.update_data(daily_hours=float(message.text))
+@dp.message_handler(state=AdminSalaryStates.daily_hours)
+async def get_daily_hours(message: types.Message, state: FSMContext):
+
+    try:
+        value = float(message.text)
+    except:
+        return await message.answer("Raqam kiriting")
+
+    await state.update_data(daily_hours=value)
 
     await message.answer("Ishlagan kun:")
-    await state.set_state(AdminSalaryStates.worked_days)
+    await AdminSalaryStates.worked_days.set()
 
 
-@router.message(AdminSalaryStates.worked_days)
-async def get_worked_days(message: Message, state: FSMContext):
-    await state.update_data(worked_days=int(message.text))
+@dp.message_handler(state=AdminSalaryStates.worked_days)
+async def get_worked_days(message: types.Message, state: FSMContext):
+
+    try:
+        value = int(message.text)
+    except:
+        return await message.answer("Raqam kiriting")
+
+    await state.update_data(worked_days=value)
 
     await message.answer("Individual plan:")
-    await state.set_state(AdminSalaryStates.individual_plan)
+    await AdminSalaryStates.individual_plan.set()
 
 
-@router.message(AdminSalaryStates.individual_plan)
-async def get_individual_plan(message: Message, state: FSMContext):
-    await state.update_data(individual_plan=float(message.text))
+@dp.message_handler(state=AdminSalaryStates.individual_plan)
+async def get_individual_plan(message: types.Message, state: FSMContext):
+
+    try:
+        value = float(message.text)
+    except:
+        return await message.answer("Raqam kiriting")
+
+    await state.update_data(individual_plan=value)
 
     await message.answer("Actual sales:")
-    await state.set_state(AdminSalaryStates.actual_sales)
+    await AdminSalaryStates.actual_sales.set()
 
 
-@router.message(AdminSalaryStates.actual_sales)
-async def get_actual_sales(message: Message, state: FSMContext):
-    await state.update_data(actual_sales=float(message.text))
+@dp.message_handler(state=AdminSalaryStates.actual_sales)
+async def get_actual_sales(message: types.Message, state: FSMContext):
+
+    try:
+        value = float(message.text)
+    except:
+        return await message.answer("Raqam kiriting")
+
+    await state.update_data(actual_sales=value)
 
     await message.answer("Conversion plan:")
-    await state.set_state(AdminSalaryStates.conversion_plan)
+    await AdminSalaryStates.conversion_plan.set()
 
 
-@router.message(AdminSalaryStates.conversion_plan)
-async def get_conversion_plan(message: Message, state: FSMContext):
-    await state.update_data(conversion_plan=float(message.text))
+@dp.message_handler(state=AdminSalaryStates.conversion_plan)
+async def get_conversion_plan(message: types.Message, state: FSMContext):
+
+    try:
+        value = float(message.text)
+    except:
+        return await message.answer("Raqam kiriting")
+
+    await state.update_data(conversion_plan=value)
 
     await message.answer("Actual conversion:")
-    await state.set_state(AdminSalaryStates.actual_conversion)
+    await AdminSalaryStates.actual_conversion.set()
 
 
-@router.message(AdminSalaryStates.actual_conversion)
-async def get_actual_conversion(message: Message, state: FSMContext):
-    await state.update_data(actual_conversion=float(message.text))
+@dp.message_handler(state=AdminSalaryStates.actual_conversion)
+async def get_actual_conversion(message: types.Message, state: FSMContext):
+
+    try:
+        value = float(message.text)
+    except:
+        return await message.answer("Raqam kiriting")
+
+    await state.update_data(actual_conversion=value)
 
     await message.answer("Active plan:")
-    await state.set_state(AdminSalaryStates.active_plan)
+    await AdminSalaryStates.active_plan.set()
 
 
-@router.message(AdminSalaryStates.active_plan)
-async def get_active_plan(message: Message, state: FSMContext):
-    await state.update_data(active_plan=float(message.text))
+@dp.message_handler(state=AdminSalaryStates.active_plan)
+async def get_active_plan(message: types.Message, state: FSMContext):
+
+    try:
+        value = float(message.text)
+    except:
+        return await message.answer("Raqam kiriting")
+
+    await state.update_data(active_plan=value)
 
     await message.answer("Actual active:")
-    await state.set_state(AdminSalaryStates.actual_active)
+    await AdminSalaryStates.actual_active.set()
 
 
-@router.message(AdminSalaryStates.actual_active)
-async def get_actual_active(message: Message, state: FSMContext):
-    await state.update_data(actual_active=float(message.text))
+@dp.message_handler(state=AdminSalaryStates.actual_active)
+async def get_actual_active(message: types.Message, state: FSMContext):
+
+    try:
+        value = float(message.text)
+    except:
+        return await message.answer("Raqam kiriting")
+
+    await state.update_data(actual_active=value)
 
     await message.answer("Rus tili biladimi? (yes/no)")
-    await state.set_state(AdminSalaryStates.knows_russian)
+    await AdminSalaryStates.knows_russian.set()
 
 
-@router.message(AdminSalaryStates.knows_russian)
-async def get_russian(message: Message, state: FSMContext):
+@dp.message_handler(state=AdminSalaryStates.knows_russian)
+async def get_russian(message: types.Message, state: FSMContext):
+
+    answer = message.text.lower()
+
+    if answer not in ["yes", "no"]:
+        return await message.answer("Faqat yes yoki no yozing")
+
     await state.update_data(
-        knows_russian=message.text.lower() == "yes"
+        knows_russian=answer == "yes"
     )
 
     await message.answer("IELTS 7+ bormi? (yes/no)")
-    await state.set_state(AdminSalaryStates.has_ielts)
+    await AdminSalaryStates.has_ielts.set()
 
 
-@router.message(AdminSalaryStates.has_ielts)
-async def get_ielts(message: Message, state: FSMContext):
+@dp.message_handler(state=AdminSalaryStates.has_ielts)
+async def get_ielts(message: types.Message, state: FSMContext):
+
+    answer = message.text.lower()
+
+    if answer not in ["yes", "no"]:
+        return await message.answer("Faqat yes yoki no yozing")
+
     await state.update_data(
-        has_ielts=message.text.lower() == "yes"
+        has_ielts=answer == "yes"
     )
 
     await message.answer("Cover hours:")
-    await state.set_state(AdminSalaryStates.cover_hours)
+    await AdminSalaryStates.cover_hours.set()
 
 
-@router.message(AdminSalaryStates.cover_hours)
-async def get_cover(message: Message, state: FSMContext):
-    await state.update_data(cover_hours=float(message.text))
+@dp.message_handler(state=AdminSalaryStates.cover_hours)
+async def get_cover(message: types.Message, state: FSMContext):
+
+    try:
+        value = float(message.text)
+    except:
+        return await message.answer("Raqam kiriting")
+
+    await state.update_data(cover_hours=value)
 
     await message.answer("Missed hours:")
-    await state.set_state(AdminSalaryStates.missed_hours)
+    await AdminSalaryStates.missed_hours.set()
 
 
-@router.message(AdminSalaryStates.missed_hours)
-async def get_missed(message: Message, state: FSMContext):
-    await state.update_data(missed_hours=float(message.text))
+@dp.message_handler(state=AdminSalaryStates.missed_hours)
+async def get_missed(message: types.Message, state: FSMContext):
+
+    try:
+        value = float(message.text)
+    except:
+        return await message.answer("Raqam kiriting")
+
+    await state.update_data(missed_hours=value)
 
     data = await state.get_data()
 
@@ -153,4 +230,4 @@ async def get_missed(message: Message, state: FSMContext):
 
     await message.answer(text)
 
-    await state.clear()
+    await state.finish()
