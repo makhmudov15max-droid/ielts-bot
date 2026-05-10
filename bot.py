@@ -2,10 +2,14 @@ from aiogram import executor
 
 from safety.loader import dp
 
-# IMPORT HANDLERS
 
-import handlers.start
-import handlers.approvals
+# SAFETY HANDLERS
+
+import safety.handlers.start
+import safety.handlers.approvals
+
+
+# MAIN HANDLERS
 
 import handlers.admin_salary
 import handlers.cashier_salary
