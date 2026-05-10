@@ -11,7 +11,7 @@ import safety.handlers.approvals
 
 # MAIN HANDLERS
 
-import handlers.admin_salary
+#import handlers.admin_salary
 import handlers.cashier_salary
 
 
