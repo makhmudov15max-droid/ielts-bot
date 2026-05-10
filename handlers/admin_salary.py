@@ -46,16 +46,6 @@ async def cancel_process(message: types.Message, state: FSMContext):
     )
 
 
-@dp.message_handler(commands=["start"], state="*")
-async def restart(message: types.Message, state: FSMContext):
-
-    await state.finish()
-
-    await message.answer(
-        "Bosh menyu"
-    )
-
-
 @dp.message_handler(text="📊 Admin Salary")
 async def start_admin_salary(message: types.Message, state: FSMContext):
 
@@ -120,13 +110,47 @@ async def get_worked_days(message: types.Message, state: FSMContext):
 
     await state.update_data(worked_days=value)
 
+    await message.answer(
+        "Individual plan kiriting:"
+    )
+
+    await AdminSalaryStates.individual_plan.set()
+
+
+@dp.message_handler(state=AdminSalaryStates.individual_plan)
+async def get_individual_plan(message: types.Message, state: FSMContext):
+
+    try:
+        value = float(message.text)
+    except:
+        return await message.answer(
+            "Faqat raqam kiriting"
+        )
+
+    await state.update_data(individual_plan=value)
+
+    await message.answer(
+        "Actual sales kiriting:"
+    )
+
+    await AdminSalaryStates.actual_sales.set()
+
+
+@dp.message_handler(state=AdminSalaryStates.actual_sales)
+async def get_actual_sales(message: types.Message, state: FSMContext):
+
+    try:
+        value = float(message.text)
+    except:
+        return await message.answer(
+            "Faqat raqam kiriting"
+        )
+
+    await state.update_data(actual_sales=value)
+
     data = await state.get_data()
 
-    result = calculate_admin_salary({
-        "status": data["status"],
-        "daily_hours": data["daily_hours"],
-        "worked_days": value,
-    })
+    result = calculate_admin_salary(data)
 
     text = f"""
 📊 ADMIN SALARY
@@ -134,6 +158,8 @@ async def get_worked_days(message: types.Message, state: FSMContext):
 🏅 Status: {data['status'].upper()}
 
 💰 Fixa: {result['fixa']:,}
+
+📈 Individual KPI: {result['individual_kpi']}%
 
 ━━━━━━━━━━━━━━
 💵 TOTAL: {result['total_salary']:,}
