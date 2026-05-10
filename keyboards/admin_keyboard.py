@@ -74,7 +74,7 @@ def days_keyboard():
 
 
 # =========================
-# YES / NO
+# YES / NO KEYBOARD
 # =========================
 
 def status_keyboard():
@@ -93,3 +93,11 @@ def status_keyboard():
     )
 
     return keyboard
+
+
+# =========================
+# COMPATIBILITY
+# =========================
+
+def yes_no_keyboard():
+    return status_keyboard()
