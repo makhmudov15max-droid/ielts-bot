@@ -13,7 +13,7 @@ import safety.handlers.approvals
 from keyboards.admin_keyboard import main_menu_keyboard
 
 
-bot = Bot(token=TOKEN)
+bot = Bot(token=BOT_TOKEN)
 
 storage = MemoryStorage()
 
