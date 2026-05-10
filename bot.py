@@ -2,24 +2,20 @@ from aiogram import executor
 
 from safety.loader import dp
 
-# SAFETY
+
+# SAFETY HANDLERS
 
 import safety.handlers.start
 import safety.handlers.approvals
 
-# HANDLERS
 
-from handlers.admin_salary import register_admin_handlers
-from handlers.cashier_salary import register_cashier_handlers
+# MAIN HANDLERS
 
-
-# REGISTER
-
-register_admin_handlers(dp)
-register_cashier_handlers(dp)
+import handlers.admin_salary
+import handlers.cashier_salary
 
 
-# START
+# START BOT
 
 if __name__ == "__main__":
 
