@@ -9,7 +9,7 @@ from calculators.admin_calc import calculate_admin_salary
 from keyboards.admin_keyboard import owner_menu
 
 
-# ---------------- KEYBOARDS ----------------
+# ================= KEYBOARDS =================
 
 status_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
@@ -23,6 +23,10 @@ status_keyboard.row(
 status_keyboard.row(
     KeyboardButton("apex"),
     KeyboardButton("leader")
+)
+
+status_keyboard.row(
+    KeyboardButton("⬅️ Ortga")
 )
 
 status_keyboard.row(
@@ -42,6 +46,10 @@ hours_keyboard.row(
 
 hours_keyboard.row(
     KeyboardButton("✍️ Boshqa")
+)
+
+hours_keyboard.row(
+    KeyboardButton("⬅️ Ortga")
 )
 
 hours_keyboard.row(
@@ -68,6 +76,10 @@ days_keyboard.row(
 )
 
 days_keyboard.row(
+    KeyboardButton("⬅️ Ortga")
+)
+
+days_keyboard.row(
     KeyboardButton("🏠 Bosh menu")
 )
 
@@ -81,8 +93,11 @@ conversion_keyboard.row(
 )
 
 conversion_keyboard.row(
-    KeyboardButton("⬅️ Ortga"),
     KeyboardButton("✍️ Boshqa")
+)
+
+conversion_keyboard.row(
+    KeyboardButton("⬅️ Ortga")
 )
 
 conversion_keyboard.row(
@@ -113,15 +128,18 @@ manual_keyboard = ReplyKeyboardMarkup(
 )
 
 manual_keyboard.row(
-    KeyboardButton("⬅️ Ortga"),
+    KeyboardButton("⬅️ Ortga")
+)
+
+manual_keyboard.row(
     KeyboardButton("🏠 Bosh menu")
 )
 
 
-# ---------------- GLOBAL BUTTONS ----------------
+# ================= GLOBAL =================
 
 @dp.message_handler(text="🏠 Bosh menu", state="*")
-async def back_to_menu(message: types.Message, state: FSMContext):
+async def back_menu(message: types.Message, state: FSMContext):
 
     await state.finish()
 
@@ -144,16 +162,25 @@ async def start_admin_salary(message: types.Message, state: FSMContext):
     await AdminSalaryStates.status.set()
 
 
-# ---------------- STATUS ----------------
+# ================= STATUS =================
 
 @dp.message_handler(state=AdminSalaryStates.status)
 async def get_status(message: types.Message, state: FSMContext):
 
     text = message.text.lower()
 
+    if text == "⬅️ ortga":
+
+        await state.finish()
+
+        return await message.answer(
+            "🏠 Bosh menu",
+            reply_markup=owner_menu
+        )
+
     if text not in ["nova", "prime", "apex", "leader"]:
         return await message.answer(
-            "Tugmalardan birini tanlang"
+            "Tugmalardan foydalaning"
         )
 
     await state.update_data(status=text)
@@ -166,12 +193,21 @@ async def get_status(message: types.Message, state: FSMContext):
     await AdminSalaryStates.daily_hours.set()
 
 
-# ---------------- DAILY HOURS ----------------
+# ================= DAILY HOURS =================
 
 @dp.message_handler(state=AdminSalaryStates.daily_hours)
 async def get_daily_hours(message: types.Message, state: FSMContext):
 
     text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await message.answer(
+            "🏅 Status tanlang:",
+            reply_markup=status_keyboard
+        )
+
+        return await AdminSalaryStates.status.set()
 
     if text == "✍️ Boshqa":
 
@@ -197,12 +233,21 @@ async def get_daily_hours(message: types.Message, state: FSMContext):
     await AdminSalaryStates.worked_days.set()
 
 
-# ---------------- WORKED DAYS ----------------
+# ================= WORKED DAYS =================
 
 @dp.message_handler(state=AdminSalaryStates.worked_days)
 async def get_worked_days(message: types.Message, state: FSMContext):
 
     text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await message.answer(
+            "⏰ Kunlik ish soatini tanlang:",
+            reply_markup=hours_keyboard
+        )
+
+        return await AdminSalaryStates.daily_hours.set()
 
     if text == "✍️ Boshqa":
 
@@ -228,13 +273,24 @@ async def get_worked_days(message: types.Message, state: FSMContext):
     await AdminSalaryStates.individual_plan.set()
 
 
-# ---------------- INDIVIDUAL PLAN ----------------
+# ================= INDIVIDUAL PLAN =================
 
 @dp.message_handler(state=AdminSalaryStates.individual_plan)
 async def get_individual_plan(message: types.Message, state: FSMContext):
 
+    text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await message.answer(
+            "📅 Ishlagan kunni tanlang:",
+            reply_markup=days_keyboard
+        )
+
+        return await AdminSalaryStates.worked_days.set()
+
     try:
-        value = float(message.text)
+        value = float(text)
     except:
         return await message.answer(
             "Faqat raqam kiriting"
@@ -250,13 +306,24 @@ async def get_individual_plan(message: types.Message, state: FSMContext):
     await AdminSalaryStates.actual_sales.set()
 
 
-# ---------------- ACTUAL SALES ----------------
+# ================= ACTUAL SALES =================
 
 @dp.message_handler(state=AdminSalaryStates.actual_sales)
 async def get_actual_sales(message: types.Message, state: FSMContext):
 
+    text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await message.answer(
+            "🎯 Individual plan kiriting:",
+            reply_markup=manual_keyboard
+        )
+
+        return await AdminSalaryStates.individual_plan.set()
+
     try:
-        value = float(message.text)
+        value = float(text)
     except:
         return await message.answer(
             "Faqat raqam kiriting"
@@ -272,14 +339,24 @@ async def get_actual_sales(message: types.Message, state: FSMContext):
     await AdminSalaryStates.conversion_plan.set()
 
 
-# ---------------- CONVERSION PLAN ----------------
+# ================= CONVERSION PLAN =================
 
 @dp.message_handler(state=AdminSalaryStates.conversion_plan)
 async def get_conversion_plan(message: types.Message, state: FSMContext):
 
     text = message.text
 
+    if text == "⬅️ Ortga":
+
+        await message.answer(
+            "💰 Actual sales kiriting:",
+            reply_markup=manual_keyboard
+        )
+
+        return await AdminSalaryStates.actual_sales.set()
+
     if text == "50%":
+
         value = 50
 
     elif text == "✍️ Boshqa":
@@ -308,13 +385,24 @@ async def get_conversion_plan(message: types.Message, state: FSMContext):
     await AdminSalaryStates.actual_conversion.set()
 
 
-# ---------------- ACTUAL CONVERSION ----------------
+# ================= ACTUAL CONVERSION =================
 
 @dp.message_handler(state=AdminSalaryStates.actual_conversion)
 async def get_actual_conversion(message: types.Message, state: FSMContext):
 
+    text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await message.answer(
+            "📈 Conversion plan tanlang:",
+            reply_markup=conversion_keyboard
+        )
+
+        return await AdminSalaryStates.conversion_plan.set()
+
     try:
-        value = float(message.text)
+        value = float(text)
     except:
         return await message.answer(
             "Faqat raqam kiriting"
@@ -330,13 +418,24 @@ async def get_actual_conversion(message: types.Message, state: FSMContext):
     await AdminSalaryStates.active_plan.set()
 
 
-# ---------------- ACTIVE PLAN ----------------
+# ================= ACTIVE PLAN =================
 
 @dp.message_handler(state=AdminSalaryStates.active_plan)
 async def get_active_plan(message: types.Message, state: FSMContext):
 
+    text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await message.answer(
+            "📊 Actual conversion kiriting:",
+            reply_markup=manual_keyboard
+        )
+
+        return await AdminSalaryStates.actual_conversion.set()
+
     try:
-        value = float(message.text)
+        value = float(text)
     except:
         return await message.answer(
             "Faqat raqam kiriting"
@@ -352,13 +451,24 @@ async def get_active_plan(message: types.Message, state: FSMContext):
     await AdminSalaryStates.actual_active.set()
 
 
-# ---------------- ACTUAL ACTIVE ----------------
+# ================= ACTUAL ACTIVE =================
 
 @dp.message_handler(state=AdminSalaryStates.actual_active)
 async def get_actual_active(message: types.Message, state: FSMContext):
 
+    text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await message.answer(
+            "👥 Active plan kiriting:",
+            reply_markup=manual_keyboard
+        )
+
+        return await AdminSalaryStates.active_plan.set()
+
     try:
-        value = float(message.text)
+        value = float(text)
     except:
         return await message.answer(
             "Faqat raqam kiriting"
@@ -374,12 +484,21 @@ async def get_actual_active(message: types.Message, state: FSMContext):
     await AdminSalaryStates.knows_russian.set()
 
 
-# ---------------- RUSSIAN ----------------
+# ================= RUSSIAN =================
 
 @dp.message_handler(state=AdminSalaryStates.knows_russian)
 async def get_russian(message: types.Message, state: FSMContext):
 
     text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await message.answer(
+            "🔥 Actual active kiriting:",
+            reply_markup=manual_keyboard
+        )
+
+        return await AdminSalaryStates.actual_active.set()
 
     if text not in ["✅ HA", "❌ YO‘Q"]:
         return await message.answer(
@@ -398,12 +517,21 @@ async def get_russian(message: types.Message, state: FSMContext):
     await AdminSalaryStates.has_ielts.set()
 
 
-# ---------------- IELTS ----------------
+# ================= IELTS =================
 
 @dp.message_handler(state=AdminSalaryStates.has_ielts)
 async def get_ielts(message: types.Message, state: FSMContext):
 
     text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await message.answer(
+            "🇷🇺 Rus tili biladimi?",
+            reply_markup=yes_no_keyboard
+        )
+
+        return await AdminSalaryStates.knows_russian.set()
 
     if text not in ["✅ HA", "❌ YO‘Q"]:
         return await message.answer(
@@ -422,21 +550,28 @@ async def get_ielts(message: types.Message, state: FSMContext):
     await AdminSalaryStates.cover_hours.set()
 
 
-# ---------------- COVER ----------------
+# ================= COVER =================
 
 @dp.message_handler(state=AdminSalaryStates.cover_hours)
 async def get_cover_hours(message: types.Message, state: FSMContext):
 
     text = message.text
 
-    if text == "✅ HA":
+    if text == "⬅️ Ortga":
 
         await message.answer(
+            "🎓 IELTS 7+ bormi?",
+            reply_markup=yes_no_keyboard
+        )
+
+        return await AdminSalaryStates.has_ielts.set()
+
+    if text == "✅ HA":
+
+        return await message.answer(
             "⏰ Necha soat cover qildingiz?",
             reply_markup=manual_keyboard
         )
-
-        return
 
     if text == "❌ YO‘Q":
 
@@ -449,9 +584,7 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
             reply_markup=yes_no_keyboard
         )
 
-        await AdminSalaryStates.missed_hours.set()
-
-        return
+        return await AdminSalaryStates.missed_hours.set()
 
     try:
         value = float(text)
@@ -472,12 +605,21 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
     await AdminSalaryStates.missed_hours.set()
 
 
-# ---------------- MISSED HOURS ----------------
+# ================= MISSED HOURS =================
 
 @dp.message_handler(state=AdminSalaryStates.missed_hours)
 async def get_missed_hours(message: types.Message, state: FSMContext):
 
     text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await message.answer(
+            "🔄 Cover qilganmi?",
+            reply_markup=yes_no_keyboard
+        )
+
+        return await AdminSalaryStates.cover_hours.set()
 
     if text == "✅ HA":
 
@@ -492,144 +634,44 @@ async def get_missed_hours(message: types.Message, state: FSMContext):
             missed_hours=0
         )
 
-        data = await state.get_data()
+    else:
 
-        result = calculate_admin_salary(data)
+        try:
+            value = float(text)
+        except:
+            return await message.answer(
+                "Faqat raqam kiriting"
+            )
 
-        final_text = f"""
-╔══════════════════╗
-      📊 ADMIN SALARY
-╚══════════════════╝
-
-🏅 STATUS
-└ {data['status'].upper()}
-
-━━━━━━━━━━━━━━━━━━
-
-💰 FIXA
-└ {result['fixa']:,} so'm
-
-📈 INDIVIDUAL KPI
-└ {result['individual_kpi']}%
-
-📈 CONVERSION KPI
-└ {result['conversion_kpi']}%
-
-📈 ACTIVE KPI
-└ {result['active_kpi']}%
-
-📊 WEIGHTED KPI
-└ {result['weighted_kpi']}%
-
-━━━━━━━━━━━━━━━━━━
-
-💵 KPI RATE
-└ {result['bonus_rate']:,}
-
-🎯 BASE KPI BONUS
-└ {result['base_kpi_bonus']:,} so'm
-
-🏆 FINAL KPI BONUS
-└ {result['final_kpi_bonus']:,} so'm
-
-━━━━━━━━━━━━━━━━━━
-
-🇷🇺 RUSSIAN BONUS
-└ {result['russian_bonus']:,} so'm
-
-🎓 IELTS BONUS
-└ {result['ielts_bonus']:,} so'm
-
-🔄 COVER BONUS
-└ {result['cover_bonus']:,} so'm
-
-📉 PENALTY
-└ {result['penalty']:,} so'm
-
-━━━━━━━━━━━━━━━━━━
-
-💎 JAMI OYLIK:
-{result['total_salary']:,} so'm
-"""
-
-        await message.answer(
-            final_text,
-            reply_markup=owner_menu
+        await state.update_data(
+            missed_hours=value
         )
-
-        await state.finish()
-
-        return
-
-    try:
-        value = float(text)
-    except:
-        return await message.answer(
-            "Faqat raqam kiriting"
-        )
-
-    await state.update_data(
-        missed_hours=value
-    )
 
     data = await state.get_data()
 
     result = calculate_admin_salary(data)
 
     final_text = f"""
-╔══════════════════╗
-      📊 ADMIN SALARY
-╚══════════════════╝
+🎉 Oylik hisoblandi!
 
-🏅 STATUS
-└ {data['status'].upper()}
+🧑‍💼 Status: {data['status'].upper()}
 
-━━━━━━━━━━━━━━━━━━
+💰 Fixa ........ {result['fixa']:,}
+🏆 KPI Bonus ... {result['final_kpi_bonus']:,}
 
-💰 FIXA
-└ {result['fixa']:,} so'm
+🎁 Qo‘shimchalar
+🇷🇺 Rus tili ..... +{result['russian_bonus']:,}
+🎓 IELTS ........ +{result['ielts_bonus']:,}
+🔄 Cover ........ +{result['cover_bonus']:,}
 
-📈 INDIVIDUAL KPI
-└ {result['individual_kpi']}%
+⚠️ Jarima
+📉 Missed ....... -{result['penalty']:,}
 
-📈 CONVERSION KPI
-└ {result['conversion_kpi']}%
+━━━━━━━━━━━━
 
-📈 ACTIVE KPI
-└ {result['active_kpi']}%
+💎 Yakuniy oylik:
 
-📊 WEIGHTED KPI
-└ {result['weighted_kpi']}%
-
-━━━━━━━━━━━━━━━━━━
-
-💵 KPI RATE
-└ {result['bonus_rate']:,}
-
-🎯 BASE KPI BONUS
-└ {result['base_kpi_bonus']:,} so'm
-
-🏆 FINAL KPI BONUS
-└ {result['final_kpi_bonus']:,} so'm
-
-━━━━━━━━━━━━━━━━━━
-
-🇷🇺 RUSSIAN BONUS
-└ {result['russian_bonus']:,} so'm
-
-🎓 IELTS BONUS
-└ {result['ielts_bonus']:,} so'm
-
-🔄 COVER BONUS
-└ {result['cover_bonus']:,} so'm
-
-📉 PENALTY
-└ {result['penalty']:,} so'm
-
-━━━━━━━━━━━━━━━━━━
-
-💎 JAMI OYLIK:
-{result['total_salary']:,} so'm
+🔥 {result['total_salary']:,} so'm
 """
 
     await message.answer(
