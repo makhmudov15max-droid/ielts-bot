@@ -4,6 +4,7 @@ from safety.loader import dp
 
 import safety.handlers.start
 import safety.handlers.approvals
+import handlers.change_role
 
 import handlers.cashier_salary
 import handlers.admin_salary
