@@ -14,6 +14,200 @@ from keyboards.cashier_keyboard import (
 
 from keyboards.admin_keyboard import main_menu_keyboard
 
+# =========================
+# PROFESSIONAL UI MESSAGES
+# =========================
+
+START_TEXT = """
+💰 CASHIER SALARY
+
+━━━━━━━━━━━━━━━━━━
+
+Ish vaqtingizni tanlang.
+"""
+
+DAYS_TEXT = """
+📅 ISH KUNLARI
+
+━━━━━━━━━━━━━━━━━━
+
+Oy davomida necha kun ishladingiz?
+"""
+
+COVER_TEXT = """
+🔄 COVER
+
+━━━━━━━━━━━━━━━━━━
+
+Qo‘shimcha cover ishladingizmi?
+"""
+
+COVER_HOURS_TEXT = """
+⏱ COVER SOATI
+
+━━━━━━━━━━━━━━━━━━
+
+Necha soat cover qildingiz?
+"""
+
+ABSENT_TEXT = """
+📉 ISH QOLDIRISH
+
+━━━━━━━━━━━━━━━━━━
+
+Ish qoldirdingizmi?
+"""
+
+ABSENT_HOURS_TEXT = """
+⛔ JARIMA SOATI
+
+━━━━━━━━━━━━━━━━━━
+
+Necha soat ish qoldirdingiz?
+"""
+
+ACTIVE_TEXT = """
+🟢 AKTIV STUDENTS
+
+━━━━━━━━━━━━━━━━━━
+
+Oy yakunidagi aktiv o‘quvchilar sonini kiriting.
+"""
+
+ACTIVE_DEBT_TEXT = """
+💳 AKTIV QARZDORLAR
+
+━━━━━━━━━━━━━━━━━━
+
+Aktiv o‘quvchilardan nechtasi qarzdor?
+"""
+
+ARCHIVE_TEXT = """
+📦 ARCHIVE STUDENTS
+
+━━━━━━━━━━━━━━━━━━
+
+Archive o‘quvchilar sonini kiriting.
+"""
+
+ARCHIVE_DEBT_TEXT = """
+🧾 ARCHIVE QARZDORLAR
+
+━━━━━━━━━━━━━━━━━━
+
+Archive studentlardan nechtasi qarzdor?
+"""
+
+SUCCESS_TEXT = """
+✅ SALARY SUCCESSFULLY CALCULATED
+
+━━━━━━━━━━━━━━━━━━
+"""
+
+
+# =========================
+# STICKERS
+# =========================
+
+START_STICKER = "CAACAgIAAxkBAAIBQ2gAAZ0k2..."
+SUCCESS_STICKER = "CAACAgIAAxkBAAIBRGgAAZ0mA..."
+
+
+# =========================
+# START EXAMPLE
+# =========================
+
+@dp.message_handler(lambda message: message.text == "💰 Cashier Salary")
+async def cashier_start(message: types.Message):
+
+    await message.answer_sticker(
+        START_STICKER
+    )
+
+    await CashierStates.hours.set()
+
+    await message.answer(
+        START_TEXT,
+        reply_markup=hours_keyboard
+    )
+
+
+# =========================
+# DAYS EXAMPLE
+# =========================
+
+await message.answer(
+    DAYS_TEXT,
+    reply_markup=days_keyboard
+)
+
+
+# =========================
+# COVER EXAMPLE
+# =========================
+
+await message.answer(
+    COVER_TEXT,
+    reply_markup=yes_no_keyboard
+)
+
+
+# =========================
+# ACTIVE EXAMPLE
+# =========================
+
+await message.answer(
+    ACTIVE_TEXT,
+    reply_markup=back_keyboard
+)
+
+
+# =========================
+# FINAL RESULT
+# =========================
+
+await message.answer_sticker(
+    SUCCESS_STICKER
+)
+
+await message.answer(
+    SUCCESS_TEXT
+)
+
+await message.answer(
+    f"""
+🏦 CASHIER SALARY REPORT
+
+━━━━━━━━━━━━━━━━━━
+
+💵 FIKS MAOSH
+{fix_salary:,.0f} UZS
+
+━━━━━━━━━━━━━━━━━━
+
+📅 Kunlik maosh:
+{daily_salary:,.0f} UZS
+
+🟢 Qarzdorlik foizi:
+{debt_percent:.2f}%
+
+📈 Bonus koeffitsienti:
+{bonus_coef}x
+
+🔄 Cover bonusi:
++{cover_bonus:,.0f} UZS
+
+📉 Jarima:
+-{penalty:,.0f} UZS
+
+━━━━━━━━━━━━━━━━━━
+
+💰 UMUMIY OYLIK
+{final_salary:,.0f} UZS
+""",
+    reply_markup=main_menu_keyboard
+)
+
 
 # =========================
 # START
