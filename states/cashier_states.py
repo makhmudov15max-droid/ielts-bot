@@ -13,10 +13,10 @@ class CashierStates(StatesGroup):
     custom_days = State()
 
     cover = State()
-    cover_hours = State()
+    cover_input = State()
 
     absent = State()
-    absent_hours = State()
+    absent_input = State()
 
     active_students = State()
     active_debtors = State()
