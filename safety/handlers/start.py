@@ -45,7 +45,7 @@ async def start_command(message: types.Message):
     # Telefon raqam so‘rash
     await message.answer(
         "📱 Telefon raqamingizni yuboring:",
-        reply_markup=contact_keyboard()
+        reply_markup=contact_keyboard
     )
 
 
