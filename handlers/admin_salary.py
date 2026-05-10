@@ -1,10 +1,10 @@
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 
-from bot import dp
+from safety.loader import dp
 
 from states.admin_states import AdminSalaryStates
-from services.salary.admin_calculator import calculate_admin_salary
+from calculators.admin_calc import calculate_admin_salary
 
 
 @dp.message_handler(text="📊 Admin Salary")
