@@ -561,7 +561,7 @@ async def finish_cashier(message: types.Message, state: FSMContext):
 
     archive_students = data["archive_students"]
 
-    # ================= SALARY =================
+    # ================= FIXA =================
 
     if hours <= 8:
 
@@ -572,21 +572,24 @@ async def finish_cashier(message: types.Message, state: FSMContext):
         extra = hours - 8
 
         daily_salary = (
-            8 * 15000
-        ) + (
-            extra * 20000
+            (8 * 15000)
+            + (extra * 20000)
         )
 
-    fix_salary = daily_salary * days
+    fix_salary = (
+        daily_salary * days
+    )
+
+    # ================= KPI =================
 
     total_students = (
-        active_students +
-        archive_students
+        active_students
+        + archive_students
     )
 
     total_debtors = (
-        active_debtors +
-        archive_debtors
+        active_debtors
+        + archive_debtors
     )
 
     if total_students == 0:
@@ -632,21 +635,28 @@ async def finish_cashier(message: types.Message, state: FSMContext):
         multiplier
     )
 
+    kpi_bonus = (
+        salary_with_bonus -
+        fix_salary
+    )
+
+    # ================= BONUS =================
+
     cover_bonus = (
-        cover_hours *
-        15000
+        cover_hours * 15000
     )
 
     penalty = (
-        absent_hours *
-        15000
+        absent_hours * 15000
     )
 
     final_salary = (
-        salary_with_bonus +
-        cover_bonus -
-        penalty
+        salary_with_bonus
+        + cover_bonus
+        - penalty
     )
+
+    # ================= UI =================
 
     text = f"""
 🎉 Oylik hisoblandi!
@@ -654,7 +664,11 @@ async def finish_cashier(message: types.Message, state: FSMContext):
 🧑‍💼 Status: CASHIER
 
 💰 Fixa ........ {int(fix_salary):,}
-🏆 KPI Bonus ... {int(salary_with_bonus - fix_salary):,}
+🏆 KPI Bonus ... {int(kpi_bonus):,}
+
+📊 KPI Natijalari
+📉 Qarzdorlik ... {debt_percent:.1f}%
+📈 Koeffitsient . {multiplier}x
 
 🎁 Qo‘shimchalar
 🔄 Cover ........ +{int(cover_bonus):,}
