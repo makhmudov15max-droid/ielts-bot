@@ -1,130 +1,95 @@
+import json
+
 from aiogram import types
 
 from safety.loader import dp
 
-from safety.db import load_users
-
 from keyboards.admin_keyboard import (
-    owner_menu,
-    cashier_menu,
-    manager_menu,
-    admin_menu
+    owner_panel,
+    cashier_menu
 )
 
 
-# =========================================
-# START
-# =========================================
+USERS_FILE = "safety/database/users.json"
+
+
+# ================= LOAD USERS =================
+
+def load_users():
+
+    try:
+
+        with open(
+            USERS_FILE,
+            "r",
+            encoding="utf-8"
+        ) as file:
+
+            return json.load(file)
+
+    except:
+
+        return {}
+
+
+# ================= START =================
 
 @dp.message_handler(commands=["start"])
 async def start_handler(message: types.Message):
 
-    user_id = str(message.from_user.id)
-
     users = load_users()
 
+    user_id = str(message.from_user.id)
 
-    # =========================================
-    # USER NOT FOUND
-    # =========================================
+    # ================= USER NOT FOUND =================
 
     if user_id not in users:
 
-        kb = types.ReplyKeyboardMarkup(
-            resize_keyboard=True
+        return await message.answer(
+            "⛔ Sizga hali access berilmagan"
         )
 
-        kb.add(
-            types.KeyboardButton(
-                "📱 Telefon raqam yuborish",
-                request_contact=True
-            )
-        )
+    user = users[user_id]
 
-        await message.answer(
-            """
-👋 Assalomu alaykum
+    role = user.get("role")
 
-Botdan foydalanish uchun
-telefon raqamingizni yuboring.
-""",
+    fullname = user.get(
+        "fullname",
+        message.from_user.full_name
+    )
 
-            reply_markup=kb
-        )
-
-        return
-
-
-    # =========================================
-    # GET ROLE
-    # =========================================
-
-    role = users[user_id]["role"]
-
-
-    # =========================================
-    # OWNER
-    # =========================================
+    # ================= OWNER =================
 
     if role == "owner":
 
-        await message.answer(
-            """
-👑 OWNER PANEL
-""",
+        return await message.answer(
+            f"""
+👋 Xush kelibsiz, {fullname}
 
-            reply_markup=owner_menu
+🎭 Role: OWNER
+""",
+            reply_markup=owner_panel
         )
 
-        return
-
-
-    # =========================================
-    # CASHIER
-    # =========================================
+    # ================= CASHIER =================
 
     if role == "cashier":
 
-        await message.answer(
-            """
-💰 CASHIER PANEL
-""",
+        return await message.answer(
+            f"""
+👋 Xush kelibsiz, {fullname}
 
+🎭 Role: CASHIER
+""",
             reply_markup=cashier_menu
         )
 
-        return
+    # ================= OTHER ROLES =================
 
+    return await message.answer(
+        f"""
+👋 Xush kelibsiz, {fullname}
 
-    # =========================================
-    # MANAGER
-    # =========================================
-
-    if role == "manager":
-
-        await message.answer(
-            """
-📊 MANAGER PANEL
-""",
-
-            reply_markup=manager_menu
-        )
-
-        return
-
-
-    # =========================================
-    # ADMIN
-    # =========================================
-
-    if role == "admin":
-
-        await message.answer(
-            """
-👨‍💼 ADMIN PANEL
-""",
-
-            reply_markup=admin_menu
-        )
-
-        return
+🎭 Role: {role.upper()}
+"""
+    )
