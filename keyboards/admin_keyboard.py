@@ -43,6 +43,37 @@ def hours_keyboard():
 
 
 # =========================
+# DAYS KEYBOARD
+# =========================
+
+def days_keyboard():
+
+    keyboard = ReplyKeyboardMarkup(
+        resize_keyboard=True
+    )
+
+    keyboard.add(
+        KeyboardButton("24 kun"),
+        KeyboardButton("25 kun")
+    )
+
+    keyboard.add(
+        KeyboardButton("26 kun"),
+        KeyboardButton("27 kun")
+    )
+
+    keyboard.add(
+        KeyboardButton("✍️ Boshqa")
+    )
+
+    keyboard.add(
+        KeyboardButton("🏠 Bosh sahifa")
+    )
+
+    return keyboard
+
+
+# =========================
 # YES / NO
 # =========================
 
