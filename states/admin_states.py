@@ -20,3 +20,11 @@ class AdminSalaryStates(StatesGroup):
     active_plan = State()
 
     actual_active = State()
+
+    knows_russian = State()
+
+    has_ielts = State()
+
+    cover_hours = State()
+
+    missed_hours = State()
