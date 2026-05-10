@@ -63,7 +63,7 @@ async def get_hours(message: types.Message, state: FSMContext):
     except:
 
         await message.answer(
-            "Iltimos tugmalardan foydalaning."
+            "❌ Iltimos tugmalardan foydalaning."
         )
         return
 
@@ -113,7 +113,7 @@ async def get_days(message: types.Message, state: FSMContext):
     except:
 
         await message.answer(
-            "Iltimos tugmalardan foydalaning."
+            "❌ Iltimos tugmalardan foydalaning."
         )
         return
 
@@ -134,9 +134,9 @@ async def get_days(message: types.Message, state: FSMContext):
 @dp.message_handler(state=CashierStates.cover)
 async def get_cover(message: types.Message, state: FSMContext):
 
-    text = message.text
+    text = message.text.lower()
 
-    if text == "🏠 Bosh sahifa":
+    if message.text == "🏠 Bosh sahifa":
 
         await state.finish()
 
@@ -146,7 +146,7 @@ async def get_cover(message: types.Message, state: FSMContext):
         )
         return
 
-    if text == "⬅️ Ortga":
+    if message.text == "⬅️ Ortga":
 
         await CashierStates.days.set()
 
@@ -156,7 +156,7 @@ async def get_cover(message: types.Message, state: FSMContext):
         )
         return
 
-    if text.lower() == "ha":
+    if text == "ha":
 
         await CashierStates.cover_hours.set()
 
@@ -166,7 +166,7 @@ async def get_cover(message: types.Message, state: FSMContext):
         )
         return
 
-    if text.lower() == "yo'q":
+    if text == "yo'q":
 
         await state.update_data(
             cover_hours=0
@@ -181,7 +181,7 @@ async def get_cover(message: types.Message, state: FSMContext):
         return
 
     await message.answer(
-        "Iltimos tugmalardan foydalaning."
+        "❌ Iltimos tugmalardan foydalaning."
     )
 
 
@@ -217,7 +217,7 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
     if not text.isdigit():
 
         await message.answer(
-            "Iltimos raqam kiriting."
+            "❌ Iltimos raqam kiriting."
         )
         return
 
@@ -240,9 +240,9 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
 @dp.message_handler(state=CashierStates.absent)
 async def get_absent(message: types.Message, state: FSMContext):
 
-    text = message.text
+    text = message.text.lower()
 
-    if text == "🏠 Bosh sahifa":
+    if message.text == "🏠 Bosh sahifa":
 
         await state.finish()
 
@@ -252,7 +252,7 @@ async def get_absent(message: types.Message, state: FSMContext):
         )
         return
 
-    if text == "⬅️ Ortga":
+    if message.text == "⬅️ Ortga":
 
         await CashierStates.cover.set()
 
@@ -262,7 +262,7 @@ async def get_absent(message: types.Message, state: FSMContext):
         )
         return
 
-    if text.lower() == "ha":
+    if text == "ha":
 
         await CashierStates.absent_hours.set()
 
@@ -272,7 +272,7 @@ async def get_absent(message: types.Message, state: FSMContext):
         )
         return
 
-    if text.lower() == "yo'q":
+    if text == "yo'q":
 
         await state.update_data(
             absent_hours=0
@@ -287,7 +287,7 @@ async def get_absent(message: types.Message, state: FSMContext):
         return
 
     await message.answer(
-        "Iltimos tugmalardan foydalaning."
+        "❌ Iltimos tugmalardan foydalaning."
     )
 
 
@@ -323,7 +323,7 @@ async def get_absent_hours(message: types.Message, state: FSMContext):
     if not text.isdigit():
 
         await message.answer(
-            "Iltimos raqam kiriting."
+            "❌ Iltimos raqam kiriting."
         )
         return
 
@@ -522,6 +522,8 @@ async def finish_cashier(message: types.Message, state: FSMContext):
         return
 
 
+    # DATA
+
     data = await state.get_data()
 
     archive_debtors = int(text)
@@ -566,6 +568,8 @@ async def finish_cashier(message: types.Message, state: FSMContext):
         debt_percent = 0
 
 
+    # BONUS COEFFICIENT
+
     if debt_percent <= 2:
 
         bonus_coef = 2.0
@@ -587,13 +591,19 @@ async def finish_cashier(message: types.Message, state: FSMContext):
         bonus_coef - 1
     )
 
+
+    # COVER & PENALTY
+
     cover_bonus = (
-        cover_hours * 35000
+        cover_hours * 15000
     )
 
     penalty = (
-        absent_hours * 35000
+        absent_hours * 15000
     )
+
+
+    # FINAL SALARY
 
     final_salary = (
         fix_salary +
@@ -605,6 +615,8 @@ async def finish_cashier(message: types.Message, state: FSMContext):
 
     await state.finish()
 
+
+    # RESULT
 
     await message.answer(
         f"""
