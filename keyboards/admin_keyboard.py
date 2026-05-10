@@ -46,3 +46,20 @@ cashier_menu.add(
 cashier_menu.add(
     KeyboardButton("🏠 Bosh sahifa")
 )
+
+
+manager_menu = ReplyKeyboardMarkup(
+    resize_keyboard=True
+)
+
+manager_menu.add(
+    KeyboardButton("📊 Admin Salary")
+)
+
+manager_menu.add(
+    KeyboardButton("💰 Cashier Salary")
+)
+
+manager_menu.add(
+    KeyboardButton("🏠 Bosh sahifa")
+)
