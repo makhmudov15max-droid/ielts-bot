@@ -16,9 +16,17 @@ def calculate_admin_salary(data):
         * hourly_rate
     )
 
+    individual_kpi = (
+        data["actual_sales"]
+        / data["individual_plan"]
+    ) * 100
+
     total_salary = fixa
 
     return {
         "fixa": int(fixa),
+
+        "individual_kpi": round(individual_kpi, 1),
+
         "total_salary": int(total_salary),
     }
