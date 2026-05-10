@@ -1,7 +1,7 @@
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 
-from loader import dp
+from bot import dp
 
 from states.admin_states import AdminSalaryStates
 from services.salary.admin_calculator import calculate_admin_salary
@@ -13,7 +13,7 @@ async def start_admin_salary(message: types.Message, state: FSMContext):
 
     await message.answer(
         "Status kiriting:\n"
-        "(nova / prime / apex / leader)"
+        "nova / prime / apex / leader"
     )
 
     await AdminSalaryStates.status.set()
@@ -141,7 +141,7 @@ async def get_actual_active(message: types.Message, state: FSMContext):
 
     await state.update_data(actual_active=value)
 
-    await message.answer("Rus tili biladimi? (yes/no)")
+    await message.answer("Rus tili biladimi? yes/no")
     await AdminSalaryStates.knows_russian.set()
 
 
@@ -157,7 +157,7 @@ async def get_russian(message: types.Message, state: FSMContext):
         knows_russian=answer == "yes"
     )
 
-    await message.answer("IELTS 7+ bormi? (yes/no)")
+    await message.answer("IELTS 7+ bormi? yes/no")
     await AdminSalaryStates.has_ielts.set()
 
 
@@ -178,7 +178,7 @@ async def get_ielts(message: types.Message, state: FSMContext):
 
 
 @dp.message_handler(state=AdminSalaryStates.cover_hours)
-async def get_cover(message: types.Message, state: FSMContext):
+async def get_cover_hours(message: types.Message, state: FSMContext):
 
     try:
         value = float(message.text)
@@ -192,7 +192,7 @@ async def get_cover(message: types.Message, state: FSMContext):
 
 
 @dp.message_handler(state=AdminSalaryStates.missed_hours)
-async def get_missed(message: types.Message, state: FSMContext):
+async def get_missed_hours(message: types.Message, state: FSMContext):
 
     try:
         value = float(message.text)
