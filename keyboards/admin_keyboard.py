@@ -1,62 +1,64 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
+from safety.keyboards.menu_keyboard import get_menu
 
-def main_menu_keyboard(role=None):
+
+# =========================
+# MAIN MENU
+# =========================
+
+def main_menu_keyboard():
+    return get_menu("admin")
+
+
+# =========================
+# HOURS KEYBOARD
+# =========================
+
+def hours_keyboard():
 
     keyboard = ReplyKeyboardMarkup(
         resize_keyboard=True
     )
 
-    # ADMIN
-    if role == "admin":
+    keyboard.add(
+        KeyboardButton("6 soat"),
+        KeyboardButton("7 soat")
+    )
 
-        keyboard.add(
-            KeyboardButton("📊 Admin Salary")
-        )
+    keyboard.add(
+        KeyboardButton("8 soat"),
+        KeyboardButton("9 soat")
+    )
 
-        keyboard.add(
-            KeyboardButton("💰 Cashier Salary")
-        )
+    keyboard.add(
+        KeyboardButton("✍️ Boshqa")
+    )
 
-        return keyboard
-
-
-    # KASSIR
-    elif role == "kassir":
-
-        keyboard.add(
-            KeyboardButton("💰 Cashier Salary")
-        )
-
-        return keyboard
-
-
-    # MANAGER
-    elif role == "manager":
-
-        keyboard.add(
-            KeyboardButton("📊 Manager Salary")
-        )
-
-        return keyboard
-
-
-    # KOORDINATOR
-    elif role == "kordinator":
-
-        keyboard.add(
-            KeyboardButton("📈 Coordinator Salary")
-        )
-
-        return keyboard
-
-
-    # DEFAULT
     keyboard.add(
         KeyboardButton("🏠 Bosh sahifa")
     )
 
     return keyboard
 
+
+# =========================
+# YES / NO
+# =========================
+
 def status_keyboard():
-    return get_menu("admin")
+
+    keyboard = ReplyKeyboardMarkup(
+        resize_keyboard=True
+    )
+
+    keyboard.add(
+        KeyboardButton("✅ Ha"),
+        KeyboardButton("❌ Yo'q")
+    )
+
+    keyboard.add(
+        KeyboardButton("🏠 Bosh sahifa")
+    )
+
+    return keyboard
