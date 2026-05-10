@@ -63,3 +63,22 @@ manager_menu.add(
 manager_menu.add(
     KeyboardButton("🏠 Bosh sahifa")
 )
+
+from aiogram.types import (
+    InlineKeyboardMarkup,
+    InlineKeyboardButton
+)
+
+
+owner_panel = ReplyKeyboardMarkup(
+    resize_keyboard=True
+)
+
+owner_panel.row(
+    KeyboardButton("📊 Admin Salary"),
+    KeyboardButton("💰 Cashier Salary")
+)
+
+owner_panel.row(
+    KeyboardButton("🔄 Change Role")
+)
