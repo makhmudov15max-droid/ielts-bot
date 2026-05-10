@@ -19,11 +19,11 @@ USERS_FILE = "safety/database/users.json"
 PENDING_FILE = "safety/database/pending_users.json"
 
 
-OWNER_ID = 6500594896
+OWNER_ID = 777888999
 # <-- O'Z TELEGRAM ID'INGIZNI YOZING
 
 
-# ================= LOAD JSON =================
+# ================= JSON =================
 
 def load_json(path):
 
@@ -98,6 +98,32 @@ async def start_handler(message: types.Message):
                 reply_markup=owner_panel
             )
 
+        # ADMIN
+
+        if role == "admin":
+
+            return await message.answer(
+                f"""
+👋 Xush kelibsiz, {fullname}
+
+🎭 Role: ADMIN
+""",
+                reply_markup=owner_panel
+            )
+
+        # COORDINATOR
+
+        if role == "coordinator":
+
+            return await message.answer(
+                f"""
+👋 Xush kelibsiz, {fullname}
+
+🎭 Role: COORDINATOR
+""",
+                reply_markup=owner_panel
+            )
+
         # CASHIER
 
         if role == "cashier":
@@ -111,15 +137,17 @@ async def start_handler(message: types.Message):
                 reply_markup=cashier_menu
             )
 
-        # OTHER
+        # TEACHER
 
-        return await message.answer(
-            f"""
+        if role == "teacher":
+
+            return await message.answer(
+                f"""
 👋 Xush kelibsiz, {fullname}
 
-🎭 Role: {role.upper()}
+🎭 Role: TEACHER
 """
-        )
+            )
 
     # ================= ALREADY PENDING =================
 
