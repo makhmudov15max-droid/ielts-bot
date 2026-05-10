@@ -3,17 +3,17 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from safety.keyboards.menu_keyboard import get_menu
 
 
-# =========================
+# =====================================
 # MAIN MENU
-# =========================
+# =====================================
 
 def main_menu_keyboard():
     return get_menu("admin")
 
 
-# =========================
+# =====================================
 # HOURS KEYBOARD
-# =========================
+# =====================================
 
 def hours_keyboard():
 
@@ -42,9 +42,9 @@ def hours_keyboard():
     return keyboard
 
 
-# =========================
+# =====================================
 # DAYS KEYBOARD
-# =========================
+# =====================================
 
 def days_keyboard():
 
@@ -73,9 +73,9 @@ def days_keyboard():
     return keyboard
 
 
-# =========================
-# YES / NO
-# =========================
+# =====================================
+# YES / NO KEYBOARD
+# =====================================
 
 def status_keyboard():
 
@@ -95,9 +95,9 @@ def status_keyboard():
     return keyboard
 
 
-# =========================
+# =====================================
 # CONVERSION KEYBOARD
-# =========================
+# =====================================
 
 def conversion_keyboard():
 
@@ -126,9 +126,13 @@ def conversion_keyboard():
     return keyboard
 
 
-# =========================
-# COMPATIBILITY
-# =========================
+# =====================================
+# COMPATIBILITY FUNCTIONS
+# =====================================
 
 def yes_no_keyboard():
+    return status_keyboard()
+
+
+def cover_keyboard():
     return status_keyboard()
