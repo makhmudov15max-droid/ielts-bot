@@ -2,7 +2,7 @@ from aiogram import Bot, Dispatcher, executor, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 
-from config import TOKEN
+from config import BOT_TOKEN
 
 from handlers.admin_salary import register_admin_handlers
 from handlers.cashier_salary import register_cashier_handlers
