@@ -12,7 +12,7 @@ from keyboards.cashier_keyboard import (
     back_keyboard
 )
 
-from keyboards.admin_keyboard import main_menu_keyboard
+from keyboards.admin_keyboard import cashier_menu
 
 
 # =========================
@@ -153,7 +153,7 @@ async def get_hours(message: types.Message, state: FSMContext):
 
         await message.answer(
             "🏠 Bosh sahifa",
-            reply_markup=main_menu_keyboard
+            reply_markup=cashier_menu
         )
         return
 
