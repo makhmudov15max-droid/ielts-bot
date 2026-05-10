@@ -49,13 +49,6 @@ async def get_hours(message: types.Message, state: FSMContext):
         )
         return
 
-    if text == "⬅️ Ortga":
-
-        await message.answer(
-            "Siz birinchi bosqichdasiz."
-        )
-        return
-
     try:
 
         hours = int(text.split()[0])
@@ -63,7 +56,7 @@ async def get_hours(message: types.Message, state: FSMContext):
     except:
 
         await message.answer(
-            "❌ Iltimos tugmalardan foydalaning."
+            "❌ Tugmalardan foydalaning."
         )
         return
 
@@ -113,7 +106,7 @@ async def get_days(message: types.Message, state: FSMContext):
     except:
 
         await message.answer(
-            "❌ Iltimos tugmalardan foydalaning."
+            "❌ Tugmalardan foydalaning."
         )
         return
 
@@ -181,7 +174,7 @@ async def get_cover(message: types.Message, state: FSMContext):
         return
 
     await message.answer(
-        "❌ Iltimos tugmalardan foydalaning."
+        "❌ Tugmalardan foydalaning."
     )
 
 
@@ -217,7 +210,7 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
     if not text.isdigit():
 
         await message.answer(
-            "❌ Iltimos raqam kiriting."
+            "❌ Raqam kiriting."
         )
         return
 
@@ -287,7 +280,7 @@ async def get_absent(message: types.Message, state: FSMContext):
         return
 
     await message.answer(
-        "❌ Iltimos tugmalardan foydalaning."
+        "❌ Tugmalardan foydalaning."
     )
 
 
@@ -323,7 +316,7 @@ async def get_absent_hours(message: types.Message, state: FSMContext):
     if not text.isdigit():
 
         await message.answer(
-            "❌ Iltimos raqam kiriting."
+            "❌ Raqam kiriting."
         )
         return
 
@@ -371,7 +364,7 @@ async def get_active_students(message: types.Message, state: FSMContext):
     if not text.isdigit():
 
         await message.answer(
-            "❌ Iltimos savolga raqam bilan javob bering"
+            "❌ Iltimos raqam kiriting."
         )
         return
 
@@ -419,7 +412,7 @@ async def get_active_debtors(message: types.Message, state: FSMContext):
     if not text.isdigit():
 
         await message.answer(
-            "❌ Iltimos savolga raqam bilan javob bering"
+            "❌ Iltimos raqam kiriting."
         )
         return
 
@@ -467,7 +460,7 @@ async def get_archive_students(message: types.Message, state: FSMContext):
     if not text.isdigit():
 
         await message.answer(
-            "❌ Iltimos savolga raqam bilan javob bering"
+            "❌ Iltimos raqam kiriting."
         )
         return
 
@@ -517,16 +510,18 @@ async def finish_cashier(message: types.Message, state: FSMContext):
     if not text.isdigit():
 
         await message.answer(
-            "❌ Iltimos savolga raqam bilan javob bering"
+            "❌ Iltimos raqam kiriting."
         )
         return
 
 
+    # =========================
     # DATA
+    # =========================
 
     data = await state.get_data()
 
-    archive_debtors = int(text)
+    hours = data.get("hours", 0)
 
     days = data.get("days", 0)
 
@@ -540,12 +535,21 @@ async def finish_cashier(message: types.Message, state: FSMContext):
 
     archive_students = data.get("archive_students", 0)
 
+    archive_debtors = int(text)
 
-    # CALCULATIONS
 
-    daily_salary = 105000
+    # =========================
+    # SALARY
+    # =========================
+
+    daily_salary = hours * 15000
 
     fix_salary = daily_salary * days
+
+
+    # =========================
+    # DEBT
+    # =========================
 
     total_students = (
         active_students +
@@ -568,17 +572,39 @@ async def finish_cashier(message: types.Message, state: FSMContext):
         debt_percent = 0
 
 
-    # BONUS COEFFICIENT
+    # =========================
+    # BONUS SCALE
+    # =========================
 
-    if debt_percent <= 2:
+    if debt_percent == 0:
+
+        bonus_coef = 2.5
+
+    elif debt_percent <= 2:
 
         bonus_coef = 2.0
 
     elif debt_percent <= 5:
 
-        bonus_coef = 1.5
+        bonus_coef = 1.8
+
+    elif debt_percent <= 7:
+
+        bonus_coef = 1.7
 
     elif debt_percent <= 10:
+
+        bonus_coef = 1.6
+
+    elif debt_percent <= 15:
+
+        bonus_coef = 1.5
+
+    elif debt_percent <= 20:
+
+        bonus_coef = 1.4
+
+    elif debt_percent <= 30:
 
         bonus_coef = 1.2
 
@@ -587,12 +613,13 @@ async def finish_cashier(message: types.Message, state: FSMContext):
         bonus_coef = 1.0
 
 
-    bonus = fix_salary * (
-        bonus_coef - 1
+    # =========================
+    # BONUS
+    # =========================
+
+    total_salary = (
+        fix_salary * bonus_coef
     )
-
-
-    # COVER & PENALTY
 
     cover_bonus = (
         cover_hours * 15000
@@ -602,12 +629,8 @@ async def finish_cashier(message: types.Message, state: FSMContext):
         absent_hours * 15000
     )
 
-
-    # FINAL SALARY
-
     final_salary = (
-        fix_salary +
-        bonus +
+        total_salary +
         cover_bonus -
         penalty
     )
@@ -616,7 +639,9 @@ async def finish_cashier(message: types.Message, state: FSMContext):
     await state.finish()
 
 
+    # =========================
     # RESULT
+    # =========================
 
     await message.answer(
         f"""
