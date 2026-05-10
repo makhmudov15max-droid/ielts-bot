@@ -1,6 +1,9 @@
 from aiogram import types
 from aiogram.dispatcher import FSMContext
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import (
+    ReplyKeyboardMarkup,
+    KeyboardButton
+)
 
 from safety.loader import dp
 
@@ -26,10 +29,7 @@ status_keyboard.row(
 )
 
 status_keyboard.row(
-    KeyboardButton("⬅️ Ortga")
-)
-
-status_keyboard.row(
+    KeyboardButton("⬅️ Ortga"),
     KeyboardButton("🏠 Bosh menu")
 )
 
@@ -49,10 +49,7 @@ hours_keyboard.row(
 )
 
 hours_keyboard.row(
-    KeyboardButton("⬅️ Ortga")
-)
-
-hours_keyboard.row(
+    KeyboardButton("⬅️ Ortga"),
     KeyboardButton("🏠 Bosh menu")
 )
 
@@ -76,10 +73,7 @@ days_keyboard.row(
 )
 
 days_keyboard.row(
-    KeyboardButton("⬅️ Ortga")
-)
-
-days_keyboard.row(
+    KeyboardButton("⬅️ Ortga"),
     KeyboardButton("🏠 Bosh menu")
 )
 
@@ -97,10 +91,7 @@ conversion_keyboard.row(
 )
 
 conversion_keyboard.row(
-    KeyboardButton("⬅️ Ortga")
-)
-
-conversion_keyboard.row(
+    KeyboardButton("⬅️ Ortga"),
     KeyboardButton("🏠 Bosh menu")
 )
 
@@ -115,10 +106,7 @@ yes_no_keyboard.row(
 )
 
 yes_no_keyboard.row(
-    KeyboardButton("⬅️ Ortga")
-)
-
-yes_no_keyboard.row(
+    KeyboardButton("⬅️ Ortga"),
     KeyboardButton("🏠 Bosh menu")
 )
 
@@ -128,12 +116,48 @@ manual_keyboard = ReplyKeyboardMarkup(
 )
 
 manual_keyboard.row(
-    KeyboardButton("⬅️ Ortga")
-)
-
-manual_keyboard.row(
+    KeyboardButton("⬅️ Ortga"),
     KeyboardButton("🏠 Bosh menu")
 )
+
+
+# ================= HELPERS =================
+
+async def finish_salary(message, state):
+
+    data = await state.get_data()
+
+    result = calculate_admin_salary(data)
+
+    text = f"""
+🎉 Oylik hisoblandi!
+
+🧑‍💼 Status: {data['status'].upper()}
+
+💰 Fixa ........ {result['fixa']:,}
+🏆 KPI Bonus ... {result['final_kpi_bonus']:,}
+
+🎁 Qo‘shimchalar
+🇷🇺 Rus tili ..... +{result['russian_bonus']:,}
+🎓 IELTS ........ +{result['ielts_bonus']:,}
+🔄 Cover ........ +{result['cover_bonus']:,}
+
+⚠️ Jarima
+📉 Missed ....... -{result['penalty']:,}
+
+━━━━━━━━━━━━
+
+💎 Yakuniy oylik:
+
+🔥 {result['total_salary']:,} so'm
+"""
+
+    await message.answer(
+        text,
+        reply_markup=owner_menu
+    )
+
+    await state.finish()
 
 
 # ================= GLOBAL =================
@@ -150,9 +174,7 @@ async def back_menu(message: types.Message, state: FSMContext):
 
 
 @dp.message_handler(text="📊 Admin Salary")
-async def start_admin_salary(message: types.Message, state: FSMContext):
-
-    await state.finish()
+async def start_salary(message: types.Message):
 
     await message.answer(
         "🏅 Status tanlang:",
@@ -178,12 +200,19 @@ async def get_status(message: types.Message, state: FSMContext):
             reply_markup=owner_menu
         )
 
-    if text not in ["nova", "prime", "apex", "leader"]:
+    if text not in [
+        "nova",
+        "prime",
+        "apex",
+        "leader"
+    ]:
         return await message.answer(
             "Tugmalardan foydalaning"
         )
 
-    await state.update_data(status=text)
+    await state.update_data(
+        status=text
+    )
 
     await message.answer(
         "⏰ Kunlik ish soatini tanlang:",
@@ -223,7 +252,9 @@ async def get_daily_hours(message: types.Message, state: FSMContext):
             "Faqat raqam kiriting"
         )
 
-    await state.update_data(daily_hours=value)
+    await state.update_data(
+        daily_hours=value
+    )
 
     await message.answer(
         "📅 Ishlagan kunni tanlang:",
@@ -263,7 +294,9 @@ async def get_worked_days(message: types.Message, state: FSMContext):
             "Faqat raqam kiriting"
         )
 
-    await state.update_data(worked_days=value)
+    await state.update_data(
+        worked_days=value
+    )
 
     await message.answer(
         "🎯 Individual plan kiriting:",
@@ -296,7 +329,9 @@ async def get_individual_plan(message: types.Message, state: FSMContext):
             "Faqat raqam kiriting"
         )
 
-    await state.update_data(individual_plan=value)
+    await state.update_data(
+        individual_plan=value
+    )
 
     await message.answer(
         "💰 Actual sales kiriting:",
@@ -329,7 +364,9 @@ async def get_actual_sales(message: types.Message, state: FSMContext):
             "Faqat raqam kiriting"
         )
 
-    await state.update_data(actual_sales=value)
+    await state.update_data(
+        actual_sales=value
+    )
 
     await message.answer(
         "📈 Conversion plan tanlang:",
@@ -369,13 +406,17 @@ async def get_conversion_plan(message: types.Message, state: FSMContext):
     else:
 
         try:
-            value = float(text.replace("%", ""))
+            value = float(
+                text.replace("%", "")
+            )
         except:
             return await message.answer(
                 "Faqat raqam kiriting"
             )
 
-    await state.update_data(conversion_plan=value)
+    await state.update_data(
+        conversion_plan=value
+    )
 
     await message.answer(
         "📊 Actual conversion kiriting:",
@@ -408,7 +449,9 @@ async def get_actual_conversion(message: types.Message, state: FSMContext):
             "Faqat raqam kiriting"
         )
 
-    await state.update_data(actual_conversion=value)
+    await state.update_data(
+        actual_conversion=value
+    )
 
     await message.answer(
         "👥 Active plan kiriting:",
@@ -441,7 +484,9 @@ async def get_active_plan(message: types.Message, state: FSMContext):
             "Faqat raqam kiriting"
         )
 
-    await state.update_data(active_plan=value)
+    await state.update_data(
+        active_plan=value
+    )
 
     await message.answer(
         "🔥 Actual active kiriting:",
@@ -474,7 +519,9 @@ async def get_actual_active(message: types.Message, state: FSMContext):
             "Faqat raqam kiriting"
         )
 
-    await state.update_data(actual_active=value)
+    await state.update_data(
+        actual_active=value
+    )
 
     await message.answer(
         "🇷🇺 Rus tili biladimi?",
@@ -500,7 +547,10 @@ async def get_russian(message: types.Message, state: FSMContext):
 
         return await AdminSalaryStates.actual_active.set()
 
-    if text not in ["✅ HA", "❌ YO‘Q"]:
+    if text not in [
+        "✅ HA",
+        "❌ YO‘Q"
+    ]:
         return await message.answer(
             "Tugmalardan foydalaning"
         )
@@ -533,7 +583,10 @@ async def get_ielts(message: types.Message, state: FSMContext):
 
         return await AdminSalaryStates.knows_russian.set()
 
-    if text not in ["✅ HA", "❌ YO‘Q"]:
+    if text not in [
+        "✅ HA",
+        "❌ YO‘Q"
+    ]:
         return await message.answer(
             "Tugmalardan foydalaning"
         )
@@ -550,10 +603,10 @@ async def get_ielts(message: types.Message, state: FSMContext):
     await AdminSalaryStates.cover_hours.set()
 
 
-# ================= COVER =================
+# ================= COVER ASK =================
 
 @dp.message_handler(state=AdminSalaryStates.cover_hours)
-async def get_cover_hours(message: types.Message, state: FSMContext):
+async def ask_cover(message: types.Message, state: FSMContext):
 
     text = message.text
 
@@ -568,10 +621,12 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
 
     if text == "✅ HA":
 
-        return await message.answer(
+        await message.answer(
             "⏰ Necha soat cover qildingiz?",
             reply_markup=manual_keyboard
         )
+
+        return await AdminSalaryStates.cover_input.set()
 
     if text == "❌ YO‘Q":
 
@@ -585,6 +640,27 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
         )
 
         return await AdminSalaryStates.missed_hours.set()
+
+    return await message.answer(
+        "Tugmalardan foydalaning"
+    )
+
+
+# ================= COVER INPUT =================
+
+@dp.message_handler(state=AdminSalaryStates.cover_input)
+async def cover_input(message: types.Message, state: FSMContext):
+
+    text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await message.answer(
+            "🔄 Cover qilganmi?",
+            reply_markup=yes_no_keyboard
+        )
+
+        return await AdminSalaryStates.cover_hours.set()
 
     try:
         value = float(text)
@@ -605,10 +681,10 @@ async def get_cover_hours(message: types.Message, state: FSMContext):
     await AdminSalaryStates.missed_hours.set()
 
 
-# ================= MISSED HOURS =================
+# ================= MISSED ASK =================
 
 @dp.message_handler(state=AdminSalaryStates.missed_hours)
-async def get_missed_hours(message: types.Message, state: FSMContext):
+async def ask_missed(message: types.Message, state: FSMContext):
 
     text = message.text
 
@@ -623,10 +699,12 @@ async def get_missed_hours(message: types.Message, state: FSMContext):
 
     if text == "✅ HA":
 
-        return await message.answer(
+        await message.answer(
             "⏰ Necha soat ish qoldirdingiz?",
             reply_markup=manual_keyboard
         )
+
+        return await AdminSalaryStates.missed_input.set()
 
     if text == "❌ YO‘Q":
 
@@ -634,49 +712,44 @@ async def get_missed_hours(message: types.Message, state: FSMContext):
             missed_hours=0
         )
 
-    else:
-
-        try:
-            value = float(text)
-        except:
-            return await message.answer(
-                "Faqat raqam kiriting"
-            )
-
-        await state.update_data(
-            missed_hours=value
+        return await finish_salary(
+            message,
+            state
         )
 
-    data = await state.get_data()
-
-    result = calculate_admin_salary(data)
-
-    final_text = f"""
-🎉 Oylik hisoblandi!
-
-🧑‍💼 Status: {data['status'].upper()}
-
-💰 Fixa ........ {result['fixa']:,}
-🏆 KPI Bonus ... {result['final_kpi_bonus']:,}
-
-🎁 Qo‘shimchalar
-🇷🇺 Rus tili ..... +{result['russian_bonus']:,}
-🎓 IELTS ........ +{result['ielts_bonus']:,}
-🔄 Cover ........ +{result['cover_bonus']:,}
-
-⚠️ Jarima
-📉 Missed ....... -{result['penalty']:,}
-
-━━━━━━━━━━━━
-
-💎 Yakuniy oylik:
-
-🔥 {result['total_salary']:,} so'm
-"""
-
-    await message.answer(
-        final_text,
-        reply_markup=owner_menu
+    return await message.answer(
+        "Tugmalardan foydalaning"
     )
 
-    await state.finish()
+
+# ================= MISSED INPUT =================
+
+@dp.message_handler(state=AdminSalaryStates.missed_input)
+async def missed_input(message: types.Message, state: FSMContext):
+
+    text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await message.answer(
+            "📉 Ish qoldirgan kunlaringiz bo'ldimi?",
+            reply_markup=yes_no_keyboard
+        )
+
+        return await AdminSalaryStates.missed_hours.set()
+
+    try:
+        value = float(text)
+    except:
+        return await message.answer(
+            "Faqat raqam kiriting"
+        )
+
+    await state.update_data(
+        missed_hours=value
+    )
+
+    await finish_salary(
+        message,
+        state
+    )
