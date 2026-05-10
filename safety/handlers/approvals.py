@@ -24,7 +24,7 @@ OWNER_ID = 6500594896
 
 
 # =========================================
-# CONTACT SHARE
+# CONTACT HANDLER
 # =========================================
 
 @dp.message_handler(content_types=types.ContentType.CONTACT)
@@ -38,7 +38,7 @@ async def contact_handler(message: types.Message):
 
 
     # =========================================
-    # OWNER
+    # OWNER AUTO ACCESS
     # =========================================
 
     if int(user_id) == OWNER_ID:
@@ -52,7 +52,13 @@ async def contact_handler(message: types.Message):
         save_users(users)
 
         await message.answer(
-            "👑 Owner profile aniqlandi.\n\n✅ Access granted."
+            """
+👑 OWNER PROFILE
+
+━━━━━━━━━━━━━━━━━━
+
+✅ Access granted.
+"""
         )
 
         return
@@ -67,7 +73,13 @@ async def contact_handler(message: types.Message):
     if user_id in blocked:
 
         await message.answer(
-            "❌ Siz bloklangansiz."
+            """
+❌ ACCESS DENIED
+
+━━━━━━━━━━━━━━━━━━
+
+Siz bloklangansiz.
+"""
         )
 
         return
@@ -88,7 +100,7 @@ async def contact_handler(message: types.Message):
 
 
     # =========================================
-    # INLINE BUTTONS
+    # INLINE KEYBOARD
     # =========================================
 
     keyboard = InlineKeyboardMarkup(
@@ -137,7 +149,7 @@ async def contact_handler(message: types.Message):
 📞 Telefon:
 {phone}
 
-🆔 ID:
+🆔 Telegram ID:
 {user_id}
 """,
 
@@ -151,7 +163,9 @@ async def contact_handler(message: types.Message):
 
     await message.answer(
         """
-⏳ So‘rovingiz yuborildi.
+⏳ SO‘ROV YUBORILDI
+
+━━━━━━━━━━━━━━━━━━
 
 Admin tasdiqlashini kuting.
 """
@@ -159,7 +173,7 @@ Admin tasdiqlashini kuting.
 
 
 # =========================================
-# APPROVE
+# APPROVE USER
 # =========================================
 
 @dp.callback_query_handler(
@@ -167,74 +181,81 @@ Admin tasdiqlashini kuting.
 )
 async def approve_user(callback: types.CallbackQuery):
 
-    data = callback.data.split("_")
+    try:
 
-    role = data[1]
+        data = callback.data.split("_")
 
-    user_id = data[2]
+        role = data[1]
 
-
-    pending = load_pending()
-
-
-    if user_id not in pending:
-
-        await callback.answer(
-            "❌ User topilmadi."
-        )
-        return
+        user_id = data[2]
 
 
-    # =========================================
-    # SAVE USER
-    # =========================================
-
-    users = load_users()
-
-    users[user_id] = {
-        "role": role
-    }
-
-    save_users(users)
+        pending = load_pending()
 
 
-    # =========================================
-    # DELETE PENDING
-    # =========================================
+        if user_id not in pending:
 
-    del pending[user_id]
-
-    save_pending(pending)
-
-
-    # =========================================
-    # ROLE TEXT
-    # =========================================
-
-    role_text = ""
-
-    if role == "admin":
-
-        role_text = "👨‍💼 Admin"
-
-    elif role == "cashier":
-
-        role_text = "💰 Cashier"
-
-    elif role == "manager":
-
-        role_text = "📊 Manager"
+            await callback.answer(
+                "User topilmadi.",
+                show_alert=True
+            )
+            return
 
 
-    # =========================================
-    # SEND USER
-    # =========================================
+        # =========================================
+        # SAVE USER
+        # =========================================
 
-    await bot.send_message(
-        user_id,
+        users = load_users()
 
-        f"""
-✅ Siz tasdiqlandingiz.
+        users[user_id] = {
+            "role": role
+        }
+
+        save_users(users)
+
+
+        # =========================================
+        # DELETE PENDING
+        # =========================================
+
+        del pending[user_id]
+
+        save_pending(pending)
+
+
+        # =========================================
+        # ROLE TEXT
+        # =========================================
+
+        role_text = ""
+
+        if role == "admin":
+
+            role_text = "👨‍💼 Admin"
+
+        elif role == "cashier":
+
+            role_text = "💰 Cashier"
+
+        elif role == "manager":
+
+            role_text = "📊 Manager"
+
+        else:
+
+            role_text = role.title()
+
+
+        # =========================================
+        # SEND USER
+        # =========================================
+
+        await bot.send_message(
+            int(user_id),
+
+            f"""
+✅ SO‘ROV TASDIQLANDI
 
 ━━━━━━━━━━━━━━━━━━
 
@@ -243,35 +264,54 @@ async def approve_user(callback: types.CallbackQuery):
 
 🔄 Endi /start bosing.
 """
-    )
+        )
 
 
-    # =========================================
-    # EDIT OWNER MESSAGE
-    # =========================================
+        # =========================================
+        # CALLBACK ANSWER
+        # =========================================
 
-    await callback.message.edit_text(
-        f"""
+        await callback.answer(
+            "Tasdiqlandi ✅"
+        )
+
+
+        # =========================================
+        # EDIT MESSAGE
+        # =========================================
+
+        try:
+
+            await callback.message.edit_text(
+                f"""
 ✅ USER TASDIQLANDI
 
 ━━━━━━━━━━━━━━━━━━
 
-🆔 User:
+🆔 User ID:
 {user_id}
 
 🎭 Role:
 {role_text}
 """
-    )
+            )
+
+        except:
+            pass
 
 
-    await callback.answer(
-        "Tasdiqlandi ✅"
-    )
+    except Exception as e:
+
+        print("APPROVE ERROR:", e)
+
+        await callback.answer(
+            "Xatolik yuz berdi.",
+            show_alert=True
+        )
 
 
 # =========================================
-# REJECT
+# REJECT USER
 # =========================================
 
 @dp.callback_query_handler(
@@ -279,69 +319,92 @@ async def approve_user(callback: types.CallbackQuery):
 )
 async def reject_user(callback: types.CallbackQuery):
 
-    user_id = callback.data.split("_")[1]
+    try:
+
+        user_id = callback.data.split("_")[1]
 
 
-    pending = load_pending()
+        pending = load_pending()
 
 
-    # =========================================
-    # DELETE PENDING
-    # =========================================
+        # =========================================
+        # DELETE PENDING
+        # =========================================
 
-    if user_id in pending:
+        if user_id in pending:
 
-        del pending[user_id]
+            del pending[user_id]
 
-        save_pending(pending)
-
-
-    # =========================================
-    # BLOCK USER
-    # =========================================
-
-    blocked = load_blocked()
-
-    if user_id not in blocked:
-
-        blocked.append(user_id)
-
-    save_blocked(blocked)
+            save_pending(pending)
 
 
-    # =========================================
-    # SEND USER
-    # =========================================
+        # =========================================
+        # BLOCK USER
+        # =========================================
 
-    await bot.send_message(
-        user_id,
+        blocked = load_blocked()
 
-        """
-❌ So‘rovingiz rad etildi.
+        if user_id not in blocked:
+
+            blocked.append(user_id)
+
+            save_blocked(blocked)
+
+
+        # =========================================
+        # SEND USER
+        # =========================================
+
+        await bot.send_message(
+            int(user_id),
+
+            """
+❌ SO‘ROV RAD ETILDI
+
+━━━━━━━━━━━━━━━━━━
 
 Admin bilan bog‘laning.
 """
-    )
+        )
 
 
-    # =========================================
-    # EDIT OWNER MESSAGE
-    # =========================================
+        # =========================================
+        # CALLBACK ANSWER
+        # =========================================
 
-    await callback.message.edit_text(
-        f"""
+        await callback.answer(
+            "Rad etildi ❌"
+        )
+
+
+        # =========================================
+        # EDIT OWNER MESSAGE
+        # =========================================
+
+        try:
+
+            await callback.message.edit_text(
+                f"""
 ❌ USER RAD ETILDI
 
 ━━━━━━━━━━━━━━━━━━
 
-🆔 User:
+🆔 User ID:
 {user_id}
 
 🚫 User bloklandi.
 """
-    )
+            )
+
+        except:
+            pass
 
 
-    await callback.answer(
-        "Rad etildi ❌"
-    )
+    except Exception as e:
+
+        print("REJECT ERROR:", e)
+
+        await callback.answer(
+            "Xatolik yuz berdi.",
+            show_alert=True
+        )
