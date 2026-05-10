@@ -9,29 +9,26 @@ class AdminSalaryStates(StatesGroup):
     status = State()
 
     daily_hours = State()
+    custom_daily_hours = State()
 
     worked_days = State()
+    custom_worked_days = State()
 
     individual_plan = State()
-
     actual_sales = State()
 
     conversion_plan = State()
-
     actual_conversion = State()
 
     active_plan = State()
-
     actual_active = State()
 
-    knows_russian = State()
+    cover = State()
+    cover_hours = State()
 
     has_ielts = State()
 
-    cover_hours = State()
+    knows_russian = State()
 
-    cover_input = State()
-
+    missed = State()
     missed_hours = State()
-
-    missed_input = State()
