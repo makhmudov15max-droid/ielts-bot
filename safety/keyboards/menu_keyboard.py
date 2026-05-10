@@ -7,8 +7,9 @@ def get_menu(role):
         resize_keyboard=True
     )
 
-    # MANAGER
-    if role == "manager":
+
+    # ADMIN
+    if role == "admin":
 
         keyboard.add(
             KeyboardButton("📊 Admin Salary")
@@ -18,12 +19,6 @@ def get_menu(role):
             KeyboardButton("💰 Cashier Salary")
         )
 
-    # ADMIN
-    elif role == "admin":
-
-        keyboard.add(
-            KeyboardButton("📊 Admin Salary")
-        )
 
     # KASSIR
     elif role == "kassir":
@@ -32,15 +27,21 @@ def get_menu(role):
             KeyboardButton("💰 Cashier Salary")
         )
 
+
+    # MANAGER
+    elif role == "manager":
+
+        keyboard.add(
+            KeyboardButton("📈 Manager Salary")
+        )
+
+
     # KORDINATOR
     elif role == "kordinator":
 
         keyboard.add(
-            KeyboardButton("📊 Admin Salary")
+            KeyboardButton("📋 Coordinator Salary")
         )
 
-        keyboard.add(
-            KeyboardButton("💰 Cashier Salary")
-        )
 
     return keyboard
