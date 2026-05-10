@@ -74,7 +74,7 @@ def days_keyboard():
 
 
 # =========================
-# YES / NO KEYBOARD
+# YES / NO
 # =========================
 
 def status_keyboard():
@@ -86,6 +86,37 @@ def status_keyboard():
     keyboard.add(
         KeyboardButton("✅ Ha"),
         KeyboardButton("❌ Yo'q")
+    )
+
+    keyboard.add(
+        KeyboardButton("🏠 Bosh sahifa")
+    )
+
+    return keyboard
+
+
+# =========================
+# CONVERSION KEYBOARD
+# =========================
+
+def conversion_keyboard():
+
+    keyboard = ReplyKeyboardMarkup(
+        resize_keyboard=True
+    )
+
+    keyboard.add(
+        KeyboardButton("120%"),
+        KeyboardButton("110%")
+    )
+
+    keyboard.add(
+        KeyboardButton("100%"),
+        KeyboardButton("90%")
+    )
+
+    keyboard.add(
+        KeyboardButton("✍️ Boshqa")
     )
 
     keyboard.add(
