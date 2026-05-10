@@ -1,7 +1,7 @@
 from aiogram import types
 from loader import dp, bot
 
-from utils.db import (
+from db import load_users (
     load_users,
     save_users,
     load_pending,
