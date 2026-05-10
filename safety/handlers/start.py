@@ -6,7 +6,7 @@ from keyboards.contact_keyboard import contact_keyboard
 from keyboards.role_keyboard import role_keyboard
 from keyboards.menu_keyboard import get_menu
 
-from utils.db import (
+from db import load_users (
     load_users,
     save_users,
     load_pending,
