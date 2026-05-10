@@ -1,5 +1,7 @@
 from aiogram import types
 from aiogram.dispatcher import FSMContext
+from safety.keyboards.menu_keyboard import get_menu
+from safety.db import load_users
 
 from states.cashier_states import CashierSalaryStates
 
@@ -21,7 +23,7 @@ async def go_home(message: types.Message, state: FSMContext):
 
     await message.answer(
         "🏠 Bosh sahifa",
-        reply_markup=main_menu_keyboard()
+        reply_markup=get_menu(role)
     )
 
 
@@ -510,11 +512,18 @@ def register_cashier_handlers(dp):
 
             f"━━━━━━━━━━━━━━━━━━\n\n"
 
+            users = load_users()
+
+            user_id = str(message.from_user.id)
+
+            role = users[user_id]["role"]
+
+        await message.answer(
+            
             f"💰 UMUMIY OYLIK\n"
             f"{result['final_salary']:,.0f} UZS",
 
-            reply_markup=main_menu_keyboard()
-        )
-
+            reply_markup=get_menu(role)
+)
 
         await state.finish()
