@@ -8,3 +8,7 @@ class AdminSalaryStates(StatesGroup):
     daily_hours = State()
 
     worked_days = State()
+
+    individual_plan = State()
+
+    actual_sales = State()
