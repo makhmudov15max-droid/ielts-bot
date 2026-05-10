@@ -2,16 +2,20 @@ from aiogram import types
 
 from safety.loader import dp, bot
 from safety.config import OWNER_ID
+
 from aiogram.types import ReplyKeyboardRemove
 
 from safety.keyboards.contact_keyboard import contact_keyboard
 from safety.keyboards.menu_keyboard import get_menu
 
+from safety.keyboards.approval_inline import approval_keyboard
+
 from safety.db import (
     load_users,
     save_users,
     load_pending,
-    save_pending
+    save_pending,
+    load_blocked
 )
 
 
@@ -20,24 +24,32 @@ async def start_command(message: types.Message):
 
     user_id = str(message.from_user.id)
 
+    blocked = load_blocked()
+
+    if user_id in blocked:
+
+        await message.answer(
+            "❌ Siz botdan foydalanishga bloklangansiz."
+        )
+        return
+
     users = load_users()
 
-    # Agar user approved bo‘lsa
     if user_id in users:
 
         role = users[user_id]["role"]
+
         await message.answer(
             "✅ Menu yuklandi",
             reply_markup=ReplyKeyboardRemove()
         )
-        
+
         await message.answer(
             "🏠 Bosh sahifa",
             reply_markup=get_menu(role)
         )
         return
 
-    # Pending userlarni tekshirish
     pending = load_pending()
 
     if user_id in pending:
@@ -47,7 +59,6 @@ async def start_command(message: types.Message):
         )
         return
 
-    # Telefon raqam so‘rash
     await message.answer(
         "📱 Telefon raqamingizni yuboring:",
         reply_markup=contact_keyboard
@@ -77,7 +88,11 @@ async def get_contact(message: types.Message):
         f"🆔 ID: {message.from_user.id}"
     )
 
-    await bot.send_message(OWNER_ID, text)
+    await bot.send_message(
+        OWNER_ID,
+        text,
+        reply_markup=approval_keyboard(user_id)
+    )
 
     await message.answer(
         "✅ So‘rovingiz yuborildi.\nAdmin tasdiqlashini kuting."
