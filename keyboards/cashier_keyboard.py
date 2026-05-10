@@ -1,49 +1,86 @@
-from aiogram.types import ReplyKeyboardMarkup
+from aiogram.types import (
+    ReplyKeyboardMarkup,
+    KeyboardButton
+)
 
 
-def cashier_hours_keyboard():
+# HOURS KEYBOARD
 
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+hours_keyboard = ReplyKeyboardMarkup(
+    resize_keyboard=True
+)
 
-    keyboard.add("6 soat", "7 soat")
-    keyboard.add("8 soat", "9 soat")
+hours_keyboard.row(
+    KeyboardButton("6 soat"),
+    KeyboardButton("7 soat")
+)
 
-    keyboard.add("✍️ Boshqa")
+hours_keyboard.row(
+    KeyboardButton("8 soat"),
+    KeyboardButton("9 soat")
+)
 
-    keyboard.add("🏠 Bosh sahifa")
+hours_keyboard.row(
+    KeyboardButton("Boshqa")
+)
 
-    return keyboard
-
-
-def cashier_days_keyboard():
-
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-
-    keyboard.add("24 kun", "25 kun")
-    keyboard.add("26 kun", "27 kun")
-
-    keyboard.add("✍️ Boshqa")
-
-    keyboard.add("🏠 Bosh sahifa")
-
-    return keyboard
+hours_keyboard.row(
+    KeyboardButton("🏠 Bosh sahifa"),
+    KeyboardButton("⬅️ Ortga")
+)
 
 
-def yes_no_keyboard():
+# DAYS KEYBOARD
 
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+days_keyboard = ReplyKeyboardMarkup(
+    resize_keyboard=True
+)
 
-    keyboard.add("✅ Ha", "❌ Yo'q")
+days_keyboard.row(
+    KeyboardButton("24 kun"),
+    KeyboardButton("25 kun")
+)
 
-    keyboard.add("🏠 Bosh sahifa")
+days_keyboard.row(
+    KeyboardButton("26 kun"),
+    KeyboardButton("27 kun")
+)
 
-    return keyboard
+days_keyboard.row(
+    KeyboardButton("28 kun"),
+    KeyboardButton("Boshqa")
+)
+
+days_keyboard.row(
+    KeyboardButton("🏠 Bosh sahifa"),
+    KeyboardButton("⬅️ Ortga")
+)
 
 
-def home_keyboard():
+# YES / NO
 
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+yes_no_keyboard = ReplyKeyboardMarkup(
+    resize_keyboard=True
+)
 
-    keyboard.add("🏠 Bosh sahifa")
+yes_no_keyboard.row(
+    KeyboardButton("Ha"),
+    KeyboardButton("Yo'q")
+)
 
-    return keyboard
+yes_no_keyboard.row(
+    KeyboardButton("🏠 Bosh sahifa"),
+    KeyboardButton("⬅️ Ortga")
+)
+
+
+# BACK KEYBOARD
+
+back_keyboard = ReplyKeyboardMarkup(
+    resize_keyboard=True
+)
+
+back_keyboard.row(
+    KeyboardButton("🏠 Bosh sahifa"),
+    KeyboardButton("⬅️ Ortga")
+)
