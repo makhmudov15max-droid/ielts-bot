@@ -161,7 +161,8 @@ async def get_cover(message: types.Message, state: FSMContext):
         await CashierStates.cover_hours.set()
 
         await message.answer(
-            "Necha soat cover qildingiz?"
+            "Necha soat cover qildingiz?",
+            reply_markup=back_keyboard
         )
         return
 
@@ -178,6 +179,10 @@ async def get_cover(message: types.Message, state: FSMContext):
             reply_markup=yes_no_keyboard
         )
         return
+
+    await message.answer(
+        "Iltimos tugmalardan foydalaning."
+    )
 
 
 # =========================
@@ -262,7 +267,8 @@ async def get_absent(message: types.Message, state: FSMContext):
         await CashierStates.absent_hours.set()
 
         await message.answer(
-            "Necha soat ish qoldirdingiz?"
+            "Necha soat ish qoldirdingiz?",
+            reply_markup=back_keyboard
         )
         return
 
@@ -280,6 +286,10 @@ async def get_absent(message: types.Message, state: FSMContext):
         )
         return
 
+    await message.answer(
+        "Iltimos tugmalardan foydalaning."
+    )
+
 
 # =========================
 # ABSENT HOURS
@@ -289,6 +299,16 @@ async def get_absent(message: types.Message, state: FSMContext):
 async def get_absent_hours(message: types.Message, state: FSMContext):
 
     text = message.text
+
+    if text == "🏠 Bosh sahifa":
+
+        await state.finish()
+
+        await message.answer(
+            "🏠 Bosh sahifa",
+            reply_markup=main_menu_keyboard
+        )
+        return
 
     if text == "⬅️ Ortga":
 
@@ -328,6 +348,16 @@ async def get_active_students(message: types.Message, state: FSMContext):
 
     text = message.text
 
+    if text == "🏠 Bosh sahifa":
+
+        await state.finish()
+
+        await message.answer(
+            "🏠 Bosh sahifa",
+            reply_markup=main_menu_keyboard
+        )
+        return
+
     if text == "⬅️ Ortga":
 
         await CashierStates.absent.set()
@@ -366,6 +396,16 @@ async def get_active_debtors(message: types.Message, state: FSMContext):
 
     text = message.text
 
+    if text == "🏠 Bosh sahifa":
+
+        await state.finish()
+
+        await message.answer(
+            "🏠 Bosh sahifa",
+            reply_markup=main_menu_keyboard
+        )
+        return
+
     if text == "⬅️ Ortga":
 
         await CashierStates.active_students.set()
@@ -403,6 +443,16 @@ async def get_active_debtors(message: types.Message, state: FSMContext):
 async def get_archive_students(message: types.Message, state: FSMContext):
 
     text = message.text
+
+    if text == "🏠 Bosh sahifa":
+
+        await state.finish()
+
+        await message.answer(
+            "🏠 Bosh sahifa",
+            reply_markup=main_menu_keyboard
+        )
+        return
 
     if text == "⬅️ Ortga":
 
@@ -443,6 +493,16 @@ async def finish_cashier(message: types.Message, state: FSMContext):
     print("FINAL STATE ISHLADI")
 
     text = message.text
+
+    if text == "🏠 Bosh sahifa":
+
+        await state.finish()
+
+        await message.answer(
+            "🏠 Bosh sahifa",
+            reply_markup=main_menu_keyboard
+        )
+        return
 
     if text == "⬅️ Ortga":
 
