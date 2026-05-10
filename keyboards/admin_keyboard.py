@@ -62,3 +62,9 @@ admin_menu = ReplyKeyboardMarkup(
 admin_menu.row(
     KeyboardButton("👨‍💼 Admin Salary")
 )
+
+# =========================================
+# DEFAULT MAIN MENU
+# =========================================
+
+main_menu_keyboard = owner_menu
