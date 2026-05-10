@@ -1,4 +1,7 @@
-from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram.dispatcher.filters.state import (
+    State,
+    StatesGroup
+)
 
 
 class AdminSalaryStates(StatesGroup):
@@ -27,4 +30,8 @@ class AdminSalaryStates(StatesGroup):
 
     cover_hours = State()
 
+    cover_input = State()
+
     missed_hours = State()
+
+    missed_input = State()
