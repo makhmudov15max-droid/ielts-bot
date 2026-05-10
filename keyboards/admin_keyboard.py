@@ -57,3 +57,6 @@ def main_menu_keyboard(role=None):
     )
 
     return keyboard
+
+def status_keyboard():
+    return get_menu("admin")
