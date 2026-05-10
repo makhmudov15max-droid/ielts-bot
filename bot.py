@@ -16,7 +16,7 @@ dp = Dispatcher(bot, storage=storage)
 
 
 # handlers
-import handlers.start
+import safety.handlers.start
 import handlers.cashier_salary
 import handlers.admin_salary
 import handlers.approvals
