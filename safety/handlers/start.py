@@ -19,7 +19,7 @@ USERS_FILE = "safety/database/users.json"
 PENDING_FILE = "safety/database/pending_users.json"
 
 
-OWNER_ID = 777888999
+OWNER_ID = 6500594896
 # <-- O'Z TELEGRAM ID'INGIZNI YOZING
 
 
