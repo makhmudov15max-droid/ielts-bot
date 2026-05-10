@@ -1,160 +1,130 @@
 from aiogram import types
-from aiogram.types import ReplyKeyboardRemove
 
-from safety.loader import dp, bot
-from safety.config import OWNER_ID
+from safety.loader import dp
 
-from safety.keyboards.contact_keyboard import contact_keyboard
-from safety.keyboards.menu_keyboard import get_menu
-from safety.keyboards.approval_inline import approval_keyboard
+from safety.db import load_users
 
-from safety.db import (
-    load_users,
-    save_users,
-    load_pending,
-    save_pending,
-    load_blocked
+from keyboards.admin_keyboard import (
+    owner_menu,
+    cashier_menu,
+    manager_menu,
+    admin_menu
 )
 
 
 # =========================================
-# START COMMAND
+# START
 # =========================================
 
 @dp.message_handler(commands=["start"])
-async def start_command(message: types.Message):
+async def start_handler(message: types.Message):
 
     user_id = str(message.from_user.id)
-
-    # =========================================
-    # BLOCKED USERS
-    # =========================================
-
-    blocked = load_blocked()
-
-    if user_id in blocked:
-
-        await message.answer(
-            "❌ Siz botdan foydalanishga bloklangansiz."
-        )
-        return
-
-    # =========================================
-    # LOAD USERS
-    # =========================================
 
     users = load_users()
 
+
     # =========================================
-    # OWNER ACCESS
+    # USER NOT FOUND
     # =========================================
 
-    if user_id == "6500594896":
+    if user_id not in users:
 
-        users[user_id] = {
-            "role": "manager"
-        }
+        kb = types.ReplyKeyboardMarkup(
+            resize_keyboard=True
+        )
 
-        save_users(users)
-
-        await message.answer(
-            "👑 Owner panel",
-            reply_markup=ReplyKeyboardRemove()
+        kb.add(
+            types.KeyboardButton(
+                "📱 Telefon raqam yuborish",
+                request_contact=True
+            )
         )
 
         await message.answer(
-            "🏠 Bosh sahifa",
-            reply_markup=get_menu("manager")
-        )
+            """
+👋 Assalomu alaykum
 
-        return
+Botdan foydalanish uchun
+telefon raqamingizni yuboring.
+""",
 
-    # =========================================
-    # APPROVED USERS
-    # =========================================
-
-    if user_id in users:
-
-        role = users[user_id]["role"]
-
-        await message.answer(
-            "✅ Menu yuklandi",
-            reply_markup=ReplyKeyboardRemove()
-        )
-
-        await message.answer(
-            "🏠 Bosh sahifa",
-            reply_markup=get_menu(role)
+            reply_markup=kb
         )
 
         return
 
+
     # =========================================
-    # PENDING USERS
+    # GET ROLE
     # =========================================
 
-    pending = load_pending()
+    role = users[user_id]["role"]
 
-    if user_id in pending:
+
+    # =========================================
+    # OWNER
+    # =========================================
+
+    if role == "owner":
 
         await message.answer(
-            "⏳ So‘rovingiz adminga yuborilgan.\n"
-            "Tasdiqlanishini kuting."
+            """
+👑 OWNER PANEL
+""",
+
+            reply_markup=owner_menu
         )
 
         return
 
+
     # =========================================
-    # ASK CONTACT
+    # CASHIER
     # =========================================
 
-    await message.answer(
-        "📱 Telefon raqamingizni yuboring:",
-        reply_markup=contact_keyboard
-    )
+    if role == "cashier":
+
+        await message.answer(
+            """
+💰 CASHIER PANEL
+""",
+
+            reply_markup=cashier_menu
+        )
+
+        return
 
 
-# =========================================
-# CONTACT HANDLER
-# =========================================
+    # =========================================
+    # MANAGER
+    # =========================================
 
-@dp.message_handler(content_types=types.ContentType.CONTACT)
-async def get_contact(message: types.Message):
+    if role == "manager":
 
-    user_id = str(message.from_user.id)
+        await message.answer(
+            """
+📊 MANAGER PANEL
+""",
 
-    pending = load_pending()
+            reply_markup=manager_menu
+        )
 
-    pending[user_id] = {
-        "full_name": message.from_user.full_name,
-        "username": message.from_user.username,
-        "phone": message.contact.phone_number
-    }
+        return
 
-    save_pending(pending)
 
-    text = (
-        f"🆕 Yangi foydalanuvchi!\n\n"
+    # =========================================
+    # ADMIN
+    # =========================================
 
-        f"👤 Ism: {message.from_user.full_name}\n"
+    if role == "admin":
 
-        f"📛 Username: "
-        f"@{message.from_user.username}\n"
+        await message.answer(
+            """
+👨‍💼 ADMIN PANEL
+""",
 
-        f"📞 Telefon: "
-        f"{message.contact.phone_number}\n"
+            reply_markup=admin_menu
+        )
 
-        f"🆔 ID: "
-        f"{message.from_user.id}"
-    )
-
-    await bot.send_message(
-        OWNER_ID,
-        text,
-        reply_markup=approval_keyboard(user_id)
-    )
-
-    await message.answer(
-        "✅ So‘rovingiz yuborildi.\n"
-        "Admin tasdiqlashini kuting."
-    )
+        return
