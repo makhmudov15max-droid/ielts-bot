@@ -74,3 +74,19 @@ main_menu_keyboard = owner_menu
 # =========================================
 
 status_keyboard = owner_menu
+
+# =========================================
+# OLD COMPATIBILITY
+# =========================================
+
+main_menu_keyboard = owner_menu
+
+status_keyboard = owner_menu
+
+hours_keyboard = owner_menu
+
+days_keyboard = owner_menu
+
+yes_no_keyboard = owner_menu
+
+back_keyboard = owner_menu
