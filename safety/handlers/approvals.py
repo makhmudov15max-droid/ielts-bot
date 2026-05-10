@@ -47,8 +47,10 @@ async def approve_user(callback: types.CallbackQuery):
 
     await bot.send_message(
         int(user_id),
-        f"✅ Siz tasdiqlandingiz.\nRole: {role}"
-    )
+        f"✅ Siz tasdiqlandingiz.\n"
+        f"🎭 Role: {role}\n\n"
+        f"🔄 Endi botni qayta ochish uchun /start bosing."
+)
 
     await callback.message.edit_text(
         f"✅ User tasdiqlandi.\n\n"
