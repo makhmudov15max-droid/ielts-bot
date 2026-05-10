@@ -8,9 +8,6 @@ from states.admin_states import AdminSalaryStates
 from calculators.admin_calc import calculate_admin_salary
 
 
-OWNER_ID = 6670884112
-
-
 status_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
@@ -312,9 +309,7 @@ async def get_missed_hours(message: types.Message, state: FSMContext):
     result = calculate_admin_salary(data)
 
     text = f"""
-📊 ADMIN SALARY REQUEST
-
-👤 User ID: {message.from_user.id}
+📊 ADMIN SALARY
 
 🏅 Status: {data['status'].upper()}
 
@@ -350,13 +345,6 @@ async def get_missed_hours(message: types.Message, state: FSMContext):
 💵 TOTAL: {result['total_salary']:,}
 """
 
-    await dp.bot.send_message(
-        OWNER_ID,
-        text
-    )
-
-    await message.answer(
-        "✅ So'rov ownerga yuborildi"
-    )
+    await message.answer(text)
 
     await state.finish()
