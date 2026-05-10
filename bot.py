@@ -1,19 +1,10 @@
-import logging
-
 from aiogram import executor
 
 from safety.loader import dp
 
-
-logging.basicConfig(level=logging.INFO)
-
-
-# safety handlers
 import safety.handlers.start
 import safety.handlers.approvals
 
-
-# salary handlers
 import handlers.cashier_salary
 import handlers.admin_salary
 
