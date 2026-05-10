@@ -41,9 +41,7 @@ async def cancel_process(message: types.Message, state: FSMContext):
 
     await state.finish()
 
-    await message.answer(
-        "Bekor qilindi ✅"
-    )
+    await message.answer("Bekor qilindi ✅")
 
 
 @dp.message_handler(text="📊 Admin Salary")
@@ -85,15 +83,11 @@ async def get_daily_hours(message: types.Message, state: FSMContext):
     try:
         value = float(message.text)
     except:
-        return await message.answer(
-            "Faqat raqam kiriting"
-        )
+        return await message.answer("Faqat raqam kiriting")
 
     await state.update_data(daily_hours=value)
 
-    await message.answer(
-        "Ishlagan kunni kiriting:"
-    )
+    await message.answer("Ishlagan kunni kiriting:")
 
     await AdminSalaryStates.worked_days.set()
 
@@ -104,15 +98,11 @@ async def get_worked_days(message: types.Message, state: FSMContext):
     try:
         value = int(message.text)
     except:
-        return await message.answer(
-            "Faqat raqam kiriting"
-        )
+        return await message.answer("Faqat raqam kiriting")
 
     await state.update_data(worked_days=value)
 
-    await message.answer(
-        "Individual plan kiriting:"
-    )
+    await message.answer("Individual plan kiriting:")
 
     await AdminSalaryStates.individual_plan.set()
 
@@ -123,15 +113,11 @@ async def get_individual_plan(message: types.Message, state: FSMContext):
     try:
         value = float(message.text)
     except:
-        return await message.answer(
-            "Faqat raqam kiriting"
-        )
+        return await message.answer("Faqat raqam kiriting")
 
     await state.update_data(individual_plan=value)
 
-    await message.answer(
-        "Actual sales kiriting:"
-    )
+    await message.answer("Actual sales kiriting:")
 
     await AdminSalaryStates.actual_sales.set()
 
@@ -142,11 +128,69 @@ async def get_actual_sales(message: types.Message, state: FSMContext):
     try:
         value = float(message.text)
     except:
-        return await message.answer(
-            "Faqat raqam kiriting"
-        )
+        return await message.answer("Faqat raqam kiriting")
 
     await state.update_data(actual_sales=value)
+
+    await message.answer("Conversion plan kiriting:")
+
+    await AdminSalaryStates.conversion_plan.set()
+
+
+@dp.message_handler(state=AdminSalaryStates.conversion_plan)
+async def get_conversion_plan(message: types.Message, state: FSMContext):
+
+    try:
+        value = float(message.text)
+    except:
+        return await message.answer("Faqat raqam kiriting")
+
+    await state.update_data(conversion_plan=value)
+
+    await message.answer("Actual conversion kiriting:")
+
+    await AdminSalaryStates.actual_conversion.set()
+
+
+@dp.message_handler(state=AdminSalaryStates.actual_conversion)
+async def get_actual_conversion(message: types.Message, state: FSMContext):
+
+    try:
+        value = float(message.text)
+    except:
+        return await message.answer("Faqat raqam kiriting")
+
+    await state.update_data(actual_conversion=value)
+
+    await message.answer("Active plan kiriting:")
+
+    await AdminSalaryStates.active_plan.set()
+
+
+@dp.message_handler(state=AdminSalaryStates.active_plan)
+async def get_active_plan(message: types.Message, state: FSMContext):
+
+    try:
+        value = float(message.text)
+    except:
+        return await message.answer("Faqat raqam kiriting")
+
+    await state.update_data(active_plan=value)
+
+    await message.answer("Actual active kiriting:")
+
+    await AdminSalaryStates.actual_active.set()
+
+
+@dp.message_handler(state=AdminSalaryStates.actual_active)
+async def get_actual_active(message: types.Message, state: FSMContext):
+
+    try:
+        value = float(message.text)
+    except:
+        return await message.answer("Faqat raqam kiriting")
+
+    await state.update_data(actual_active=value)
 
     data = await state.get_data()
 
@@ -160,6 +204,12 @@ async def get_actual_sales(message: types.Message, state: FSMContext):
 💰 Fixa: {result['fixa']:,}
 
 📈 Individual KPI: {result['individual_kpi']}%
+
+📈 Conversion KPI: {result['conversion_kpi']}%
+
+📈 Active KPI: {result['active_kpi']}%
+
+📊 Weighted KPI: {result['weighted_kpi']}%
 
 ━━━━━━━━━━━━━━
 💵 TOTAL: {result['total_salary']:,}
