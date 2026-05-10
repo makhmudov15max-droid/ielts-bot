@@ -1,8 +1,6 @@
-from aiogram import Bot, Dispatcher, executor, types
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from aiogram.dispatcher import FSMContext
+from aiogram import executor
 
-from safety.config import BOT_TOKEN
+from safety.loader import dp
 
 from handlers.admin_salary import register_admin_handlers
 from handlers.cashier_salary import register_cashier_handlers
@@ -10,29 +8,8 @@ from handlers.cashier_salary import register_cashier_handlers
 import safety.handlers.start
 import safety.handlers.approvals
 
-from keyboards.admin_keyboard import main_menu_keyboard
-
-
-bot = Bot(token=BOT_TOKEN)
-
-storage = MemoryStorage()
-
-dp = Dispatcher(bot, storage=storage)
-
-
-#@dp.message_handler(commands=["start"])
-#async def start_handler(message: types.Message, state: FSMContext):
-
-    #await state.finish()
-
-    #await message.answer(
-        #"🏠 Bosh sahifa",
-       # reply_markup=main_menu_keyboard()
-  #  )
-
 
 register_admin_handlers(dp)
-
 register_cashier_handlers(dp)
 
 
