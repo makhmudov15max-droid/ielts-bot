@@ -4,10 +4,17 @@ from aiogram.dispatcher import FSMContext
 from safety.loader import dp
 
 from keyboards.admin_keyboard import (
+    owner_panel,
     admin_menu
 )
 
-from states.admin_states import AdminStates
+from states.admin_states import (
+    AdminSalaryStates
+)
+
+from calculators.admin_calc import (
+    calculate_admin_salary
+)
 
 
 # =========================================
@@ -19,19 +26,20 @@ from states.admin_states import AdminStates
 )
 async def admin_salary_start(message: types.Message):
 
-    await AdminStates.status.set()
+    await AdminSalaryStates.status.set()
 
     keyboard = types.ReplyKeyboardMarkup(
         resize_keyboard=True
     )
 
     keyboard.row(
-        "🥇 Senior",
-        "🥈 Middle"
+        "NOVA",
+        "PRIME"
     )
 
     keyboard.row(
-        "🥉 Junior"
+        "APEX",
+        "LEADER"
     )
 
     keyboard.row(
@@ -54,7 +62,7 @@ async def admin_salary_start(message: types.Message):
 # STATUS
 # =========================================
 
-@dp.message_handler(state=AdminStates.status)
+@dp.message_handler(state=AdminSalaryStates.status)
 async def get_status(message: types.Message, state: FSMContext):
 
     text = message.text
@@ -69,9 +77,10 @@ async def get_status(message: types.Message, state: FSMContext):
         )
 
     statuses = [
-        "🥇 Senior",
-        "🥈 Middle",
-        "🥉 Junior"
+        "NOVA",
+        "PRIME",
+        "APEX",
+        "LEADER"
     ]
 
     if text not in statuses:
@@ -81,22 +90,26 @@ async def get_status(message: types.Message, state: FSMContext):
         )
 
     await state.update_data(
-        status=text
+        status=text.lower()
     )
 
-    await AdminStates.hours.set()
+    await AdminSalaryStates.daily_hours.set()
 
     keyboard = types.ReplyKeyboardMarkup(
         resize_keyboard=True
     )
 
     keyboard.row(
-        "6 soat",
-        "8 soat"
+        "6",
+        "7"
     )
 
     keyboard.row(
-        "10 soat"
+        "8"
+    )
+
+    keyboard.row(
+        "✍️ Boshqa"
     )
 
     keyboard.row(
@@ -113,11 +126,16 @@ async def get_status(message: types.Message, state: FSMContext):
 
 
 # =========================================
-# HOURS
+# DAILY HOURS
 # =========================================
 
-@dp.message_handler(state=AdminStates.hours)
-async def get_hours(message: types.Message, state: FSMContext):
+@dp.message_handler(
+    state=AdminSalaryStates.daily_hours
+)
+async def get_daily_hours(
+    message: types.Message,
+    state: FSMContext
+):
 
     text = message.text
 
@@ -132,19 +150,20 @@ async def get_hours(message: types.Message, state: FSMContext):
 
     if text == "⬅️ Ortga":
 
-        await AdminStates.status.set()
+        await AdminSalaryStates.status.set()
 
         keyboard = types.ReplyKeyboardMarkup(
             resize_keyboard=True
         )
 
         keyboard.row(
-            "🥇 Senior",
-            "🥈 Middle"
+            "NOVA",
+            "PRIME"
         )
 
         keyboard.row(
-            "🥉 Junior"
+            "APEX",
+            "LEADER"
         )
 
         keyboard.row(
@@ -158,11 +177,27 @@ async def get_hours(message: types.Message, state: FSMContext):
             reply_markup=keyboard
         )
 
+    if text == "✍️ Boshqa":
+
+        await AdminSalaryStates.custom_daily_hours.set()
+
+        keyboard = types.ReplyKeyboardMarkup(
+            resize_keyboard=True
+        )
+
+        keyboard.row(
+            "🏠 Bosh sahifa",
+            "⬅️ Ortga"
+        )
+
+        return await message.answer(
+            "⏰ Soat kiriting:",
+            reply_markup=keyboard
+        )
+
     try:
 
-        hours = int(
-            text.split()[0]
-        )
+        value = float(text)
 
     except:
 
@@ -171,22 +206,27 @@ async def get_hours(message: types.Message, state: FSMContext):
         )
 
     await state.update_data(
-        hours=hours
+        daily_hours=value
     )
 
-    await AdminStates.days.set()
+    await AdminSalaryStates.worked_days.set()
 
     keyboard = types.ReplyKeyboardMarkup(
         resize_keyboard=True
     )
 
     keyboard.row(
-        "26 kun",
-        "24 kun"
+        "24",
+        "25"
     )
 
     keyboard.row(
-        "22 kun"
+        "26",
+        "27"
+    )
+
+    keyboard.row(
+        "✍️ Boshqa"
     )
 
     keyboard.row(
@@ -203,38 +243,38 @@ async def get_hours(message: types.Message, state: FSMContext):
 
 
 # =========================================
-# DAYS
+# CUSTOM HOURS
 # =========================================
 
-@dp.message_handler(state=AdminStates.days)
-async def get_days(message: types.Message, state: FSMContext):
+@dp.message_handler(
+    state=AdminSalaryStates.custom_daily_hours
+)
+async def custom_daily_hours(
+    message: types.Message,
+    state: FSMContext
+):
 
     text = message.text
 
-    if text == "🏠 Bosh sahifa":
-
-        await state.finish()
-
-        return await message.answer(
-            "🏠 Bosh sahifa",
-            reply_markup=admin_menu
-        )
-
     if text == "⬅️ Ortga":
 
-        await AdminStates.hours.set()
+        await AdminSalaryStates.daily_hours.set()
 
         keyboard = types.ReplyKeyboardMarkup(
             resize_keyboard=True
         )
 
         keyboard.row(
-            "6 soat",
-            "8 soat"
+            "6",
+            "7"
         )
 
         keyboard.row(
-            "10 soat"
+            "8"
+        )
+
+        keyboard.row(
+            "✍️ Boshqa"
         )
 
         keyboard.row(
@@ -251,33 +291,36 @@ async def get_days(message: types.Message, state: FSMContext):
 
     try:
 
-        days = int(
-            text.split()[0]
-        )
+        value = float(text)
 
     except:
 
         return await message.answer(
-            "❌ Tugmalardan foydalaning."
+            "❌ Raqam kiriting."
         )
 
     await state.update_data(
-        days=days
+        daily_hours=value
     )
 
-    await AdminStates.kpi.set()
+    await AdminSalaryStates.worked_days.set()
 
     keyboard = types.ReplyKeyboardMarkup(
         resize_keyboard=True
     )
 
     keyboard.row(
-        "120%",
-        "100%"
+        "24",
+        "25"
     )
 
     keyboard.row(
-        "80%"
+        "26",
+        "27"
+    )
+
+    keyboard.row(
+        "✍️ Boshqa"
     )
 
     keyboard.row(
@@ -287,153 +330,7 @@ async def get_days(message: types.Message, state: FSMContext):
 
     await message.answer(
         """
-📈 KPI foizini kiriting:
-""",
-        reply_markup=keyboard
-    )
-
-
-# =========================================
-# KPI
-# =========================================
-
-@dp.message_handler(state=AdminStates.kpi)
-async def get_kpi(message: types.Message, state: FSMContext):
-
-    text = message.text
-
-    if text == "🏠 Bosh sahifa":
-
-        await state.finish()
-
-        return await message.answer(
-            "🏠 Bosh sahifa",
-            reply_markup=admin_menu
-        )
-
-    if text == "⬅️ Ortga":
-
-        await AdminStates.days.set()
-
-        keyboard = types.ReplyKeyboardMarkup(
-            resize_keyboard=True
-        )
-
-        keyboard.row(
-            "26 kun",
-            "24 kun"
-        )
-
-        keyboard.row(
-            "22 kun"
-        )
-
-        keyboard.row(
-            "🏠 Bosh sahifa",
-            "⬅️ Ortga"
-        )
-
-        return await message.answer(
-            """
 📅 Ishlagan kunni tanlang:
 """,
-            reply_markup=keyboard
-        )
-
-    try:
-
-        kpi = int(
-            text.replace("%", "")
-        )
-
-    except:
-
-        return await message.answer(
-            "❌ Foiz kiriting."
-        )
-
-    data = await state.get_data()
-
-    status = data["status"]
-
-    hours = data["hours"]
-
-    days = data["days"]
-
-
-    # =========================================
-    # BASE SALARY
-    # =========================================
-
-    if status == "🥇 Senior":
-
-        base = 6000000
-
-    elif status == "🥈 Middle":
-
-        base = 4500000
-
-    else:
-
-        base = 3000000
-
-
-    # =========================================
-    # HOURS BONUS
-    # =========================================
-
-    if hours == 8:
-
-        base += 1000000
-
-    elif hours == 10:
-
-        base += 2000000
-
-
-    # =========================================
-    # DAYS BONUS
-    # =========================================
-
-    if days >= 26:
-
-        base += 500000
-
-
-    # =========================================
-    # KPI
-    # =========================================
-
-    final_salary = (
-        base * kpi
-    ) / 100
-
-
-    await state.finish()
-
-    await message.answer(
-        f"""
-✅ ADMIN SALARY HISOBLANDI
-
-━━━━━━━━━━━━━━━━━━
-
-🏅 Status:
-{status}
-
-⏰ Ish vaqti:
-{hours} soat
-
-📅 Ish kuni:
-{days} kun
-
-📈 KPI:
-{kpi}%
-
-━━━━━━━━━━━━━━━━━━
-
-💰 UMUMIY OYLIK
-
-{final_salary:,.0f} UZS
-""",
-        reply_markup=admin_menu
+        reply_markup=keyboard
     )
