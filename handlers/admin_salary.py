@@ -729,3 +729,258 @@ async def cover_hours(
         "🎯 Individual plan kiriting:",
         reply_markup=manual_keyboard()
     )
+
+    # =========================================
+# UNIVERSAL NUMBER INPUT
+# =========================================
+
+async def number_input(
+    message,
+    state,
+    key,
+    next_state,
+    question,
+    back_state,
+    back_question,
+    back_keyboard,
+    keyboard=manual_keyboard()
+):
+
+    text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await back_state.set()
+
+        return await message.answer(
+            back_question,
+            reply_markup=back_keyboard
+        )
+
+    try:
+
+        value = float(
+            text.replace("%", "")
+        )
+
+    except:
+
+        return await message.answer(
+            "❌ Raqam kiriting."
+        )
+
+    await state.update_data(
+        **{key: value}
+    )
+
+    await next_state.set()
+
+    await message.answer(
+        question,
+        reply_markup=keyboard
+    )
+
+
+# =========================================
+# INDIVIDUAL PLAN
+# =========================================
+
+@dp.message_handler(
+    state=AdminSalaryStates.individual_plan
+)
+async def individual_plan(
+    message: types.Message,
+    state: FSMContext
+):
+
+    await number_input(
+        message,
+        state,
+        "individual_plan",
+        AdminSalaryStates.actual_sales,
+        "💰 Actual sales kiriting:",
+        AdminSalaryStates.cover,
+        "🔄 Cover qilganmi?",
+        yes_no_keyboard()
+    )
+
+
+# =========================================
+# ACTUAL SALES
+# =========================================
+
+@dp.message_handler(
+    state=AdminSalaryStates.actual_sales
+)
+async def actual_sales(
+    message: types.Message,
+    state: FSMContext
+):
+
+    await number_input(
+        message,
+        state,
+        "actual_sales",
+        AdminSalaryStates.conversion_plan,
+        "📈 Conversion plan tanlang:",
+        AdminSalaryStates.individual_plan,
+        "🎯 Individual plan kiriting:",
+        manual_keyboard(),
+        conversion_keyboard()
+    )
+
+
+# =========================================
+# CONVERSION PLAN
+# =========================================
+
+@dp.message_handler(
+    state=AdminSalaryStates.conversion_plan
+)
+async def conversion_plan(
+    message: types.Message,
+    state: FSMContext
+):
+
+    await number_input(
+        message,
+        state,
+        "conversion_plan",
+        AdminSalaryStates.actual_conversion,
+        "📊 Actual conversion kiriting:",
+        AdminSalaryStates.actual_sales,
+        "💰 Actual sales kiriting:",
+        manual_keyboard()
+    )
+
+
+# =========================================
+# ACTUAL CONVERSION
+# =========================================
+
+@dp.message_handler(
+    state=AdminSalaryStates.actual_conversion
+)
+async def actual_conversion(
+    message: types.Message,
+    state: FSMContext
+):
+
+    await number_input(
+        message,
+        state,
+        "actual_conversion",
+        AdminSalaryStates.active_plan,
+        "👥 Active plan kiriting:",
+        AdminSalaryStates.conversion_plan,
+        "📈 Conversion plan tanlang:",
+        conversion_keyboard()
+    )
+
+
+# =========================================
+# ACTIVE PLAN
+# =========================================
+
+@dp.message_handler(
+    state=AdminSalaryStates.active_plan
+)
+async def active_plan(
+    message: types.Message,
+    state: FSMContext
+):
+
+    await number_input(
+        message,
+        state,
+        "active_plan",
+        AdminSalaryStates.actual_active,
+        "🔥 Actual active kiriting:",
+        AdminSalaryStates.actual_conversion,
+        "📊 Actual conversion kiriting:",
+        manual_keyboard()
+    )
+
+
+# =========================================
+# FINAL RESULT
+# =========================================
+
+@dp.message_handler(
+    state=AdminSalaryStates.actual_active
+)
+async def actual_active(
+    message: types.Message,
+    state: FSMContext
+):
+
+    text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await AdminSalaryStates.active_plan.set()
+
+        return await message.answer(
+            "👥 Active plan kiriting:",
+            reply_markup=manual_keyboard()
+        )
+
+    try:
+
+        value = float(text)
+
+    except:
+
+        return await message.answer(
+            "❌ Raqam kiriting."
+        )
+
+    await state.update_data(
+        actual_active=value
+    )
+
+    data = await state.get_data()
+
+    result = calculate_admin_salary(data)
+
+    with open(
+        USERS_FILE,
+        "r",
+        encoding="utf-8"
+    ) as file:
+
+        users = json.load(file)
+
+    role = users[
+        str(message.from_user.id)
+    ]["role"]
+
+    final_menu = get_menu_by_role(role)
+
+    await state.finish()
+
+    await message.answer(
+        f"""
+🎉 Oylik hisoblandi!
+
+🧑‍💼 Status: {data['status'].upper()}
+
+💰 Fixa ........ {result['fixa']:,}
+🏆 KPI Bonus ... {result['final_kpi_bonus']:,}
+
+🎁 Qo‘shimchalar
+🇷🇺 Rus tili ..... +{result['russian_bonus']:,}
+🎓 IELTS ........ +{result['ielts_bonus']:,}
+🔄 Cover ........ +{result['cover_bonus']:,}
+
+⚠️ Jarima
+📉 Missed ....... -{result['penalty']:,}
+
+━━━━━━━━━━━━
+
+💎 Yakuniy oylik:
+
+🔥 {result['total_salary']:,} so'm
+""",
+        reply_markup=final_menu
+    )
