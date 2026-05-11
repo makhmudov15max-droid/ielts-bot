@@ -1,6 +1,5 @@
 # handlers/cashier_salary.py
 
-```python
 import json
 
 from aiogram import types
@@ -554,4 +553,3 @@ async def get_absent(
         "👨‍🎓 Active students soni:",
         reply_markup=manual_keyboard()
     )
-```
