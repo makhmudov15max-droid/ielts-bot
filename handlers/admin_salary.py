@@ -7,7 +7,9 @@ from aiogram.types import (
 
 from safety.loader import dp
 
-from states.admin_states import AdminSalaryStates
+from states.admin_states import (
+    AdminSalaryStates
+)
 
 from calculators.admin_calc import (
     calculate_admin_salary
@@ -19,7 +21,7 @@ from keyboards.admin_keyboard import (
 )
 
 
-# ================= MENUS =================
+# ================= KEYBOARDS =================
 
 status_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
@@ -124,19 +126,17 @@ manual_keyboard.row(
 )
 
 
-# ================= GLOBAL =================
+# ================= MENU =================
 
 @dp.message_handler(text="🏠 Bosh menu", state="*")
 async def back_menu(message: types.Message, state: FSMContext):
 
     await state.finish()
 
-    if message.from_user.id:
-
-        await message.answer(
-            "🏠 Bosh menu",
-            reply_markup=owner_panel
-        )
+    await message.answer(
+        "🏠 Bosh menu",
+        reply_markup=owner_panel
+    )
 
 
 # ================= START =================
@@ -193,10 +193,10 @@ async def get_status(message: types.Message, state: FSMContext):
     )
 
 
-# ================= DAILY HOURS =================
+# ================= HOURS =================
 
 @dp.message_handler(state=AdminSalaryStates.daily_hours)
-async def get_daily_hours(message: types.Message, state: FSMContext):
+async def get_hours(message: types.Message, state: FSMContext):
 
     text = message.text
 
@@ -276,7 +276,7 @@ async def custom_hours(message: types.Message, state: FSMContext):
     )
 
 
-# ================= WORKED DAYS =================
+# ================= DAYS =================
 
 @dp.message_handler(state=AdminSalaryStates.worked_days)
 async def get_days(message: types.Message, state: FSMContext):
@@ -314,11 +314,11 @@ async def get_days(message: types.Message, state: FSMContext):
         worked_days=value
     )
 
-    await AdminSalaryStates.individual_plan.set()
+    await AdminSalaryStates.has_ielts.set()
 
     await message.answer(
-        "🎯 Individual plan kiriting:",
-        reply_markup=manual_keyboard
+        "🎓 IELTS 7+ bormi?",
+        reply_markup=yes_no_keyboard
     )
 
 
@@ -351,6 +351,173 @@ async def custom_days(message: types.Message, state: FSMContext):
         worked_days=value
     )
 
+    await AdminSalaryStates.has_ielts.set()
+
+    await message.answer(
+        "🎓 IELTS 7+ bormi?",
+        reply_markup=yes_no_keyboard
+    )
+
+
+# ================= IELTS =================
+
+@dp.message_handler(state=AdminSalaryStates.has_ielts)
+async def get_ielts(message: types.Message, state: FSMContext):
+
+    text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await AdminSalaryStates.worked_days.set()
+
+        return await message.answer(
+            "📅 Ishlagan kunni tanlang:",
+            reply_markup=days_keyboard
+        )
+
+    await state.update_data(
+        has_ielts=text == "✅ HA"
+    )
+
+    await AdminSalaryStates.knows_russian.set()
+
+    await message.answer(
+        "🇷🇺 Rus tili biladimi?",
+        reply_markup=yes_no_keyboard
+    )
+
+
+# ================= RUSSIAN =================
+
+@dp.message_handler(state=AdminSalaryStates.knows_russian)
+async def get_russian(message: types.Message, state: FSMContext):
+
+    text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await AdminSalaryStates.has_ielts.set()
+
+        return await message.answer(
+            "🎓 IELTS 7+ bormi?",
+            reply_markup=yes_no_keyboard
+        )
+
+    await state.update_data(
+        knows_russian=text == "✅ HA"
+    )
+
+    await AdminSalaryStates.missed.set()
+
+    await message.answer(
+        "📉 Ish qoldirgan kunlaringiz bo'ldimi?",
+        reply_markup=yes_no_keyboard
+    )
+
+
+# ================= MISSED =================
+
+@dp.message_handler(state=AdminSalaryStates.missed)
+async def missed(message: types.Message, state: FSMContext):
+
+    text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await AdminSalaryStates.knows_russian.set()
+
+        return await message.answer(
+            "🇷🇺 Rus tili biladimi?",
+            reply_markup=yes_no_keyboard
+        )
+
+    if text == "✅ HA":
+
+        await AdminSalaryStates.missed_hours.set()
+
+        return await message.answer(
+            "⏰ Necha soat ish qoldirdingiz?",
+            reply_markup=manual_keyboard
+        )
+
+    await state.update_data(
+        missed_hours=0
+    )
+
+    await AdminSalaryStates.cover.set()
+
+    await message.answer(
+        "🔄 Cover qilganmi?",
+        reply_markup=yes_no_keyboard
+    )
+
+
+# ================= MISSED HOURS =================
+
+@dp.message_handler(state=AdminSalaryStates.missed_hours)
+async def missed_hours(message: types.Message, state: FSMContext):
+
+    text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await AdminSalaryStates.missed.set()
+
+        return await message.answer(
+            "📉 Ish qoldirgan kunlaringiz bo'ldimi?",
+            reply_markup=yes_no_keyboard
+        )
+
+    try:
+        value = float(text)
+
+    except:
+
+        return await message.answer(
+            "Faqat raqam kiriting"
+        )
+
+    await state.update_data(
+        missed_hours=value
+    )
+
+    await AdminSalaryStates.cover.set()
+
+    await message.answer(
+        "🔄 Cover qilganmi?",
+        reply_markup=yes_no_keyboard
+    )
+
+
+# ================= COVER =================
+
+@dp.message_handler(state=AdminSalaryStates.cover)
+async def cover(message: types.Message, state: FSMContext):
+
+    text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await AdminSalaryStates.missed.set()
+
+        return await message.answer(
+            "📉 Ish qoldirgan kunlaringiz bo'ldimi?",
+            reply_markup=yes_no_keyboard
+        )
+
+    if text == "✅ HA":
+
+        await AdminSalaryStates.cover_hours.set()
+
+        return await message.answer(
+            "⏰ Necha soat cover qildingiz?",
+            reply_markup=manual_keyboard
+        )
+
+    await state.update_data(
+        cover_hours=0
+    )
+
     await AdminSalaryStates.individual_plan.set()
 
     await message.answer(
@@ -359,7 +526,44 @@ async def custom_days(message: types.Message, state: FSMContext):
     )
 
 
-# ================= UNIVERSAL NUMBER HANDLER =================
+# ================= COVER HOURS =================
+
+@dp.message_handler(state=AdminSalaryStates.cover_hours)
+async def cover_hours(message: types.Message, state: FSMContext):
+
+    text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await AdminSalaryStates.cover.set()
+
+        return await message.answer(
+            "🔄 Cover qilganmi?",
+            reply_markup=yes_no_keyboard
+        )
+
+    try:
+        value = float(text)
+
+    except:
+
+        return await message.answer(
+            "Faqat raqam kiriting"
+        )
+
+    await state.update_data(
+        cover_hours=value
+    )
+
+    await AdminSalaryStates.individual_plan.set()
+
+    await message.answer(
+        "🎯 Individual plan kiriting:",
+        reply_markup=manual_keyboard
+    )
+
+
+# ================= UNIVERSAL NUMBER =================
 
 async def handle_number(
     message,
@@ -367,15 +571,15 @@ async def handle_number(
     key,
     next_state,
     question,
-    back_state=None,
-    back_question=None,
-    back_keyboard=None,
+    back_state,
+    back_question,
+    back_keyboard,
     keyboard=manual_keyboard
 ):
 
     text = message.text
 
-    if text == "⬅️ Ortga" and back_state:
+    if text == "⬅️ Ortga":
 
         await back_state.set()
 
@@ -407,7 +611,7 @@ async def handle_number(
     )
 
 
-# ================= KPI FLOW =================
+# ================= KPI =================
 
 @dp.message_handler(state=AdminSalaryStates.individual_plan)
 async def individual_plan(message: types.Message, state: FSMContext):
@@ -418,9 +622,9 @@ async def individual_plan(message: types.Message, state: FSMContext):
         "individual_plan",
         AdminSalaryStates.actual_sales,
         "💰 Actual sales kiriting:",
-        AdminSalaryStates.worked_days,
-        "📅 Ishlagan kunni tanlang:",
-        days_keyboard
+        AdminSalaryStates.cover,
+        "🔄 Cover qilganmi?",
+        yes_no_keyboard
     )
 
 
@@ -488,218 +692,15 @@ async def active_plan(message: types.Message, state: FSMContext):
 @dp.message_handler(state=AdminSalaryStates.actual_active)
 async def actual_active(message: types.Message, state: FSMContext):
 
-    await handle_number(
-        message,
-        state,
-        "actual_active",
-        AdminSalaryStates.cover,
-        "🔄 Cover qilganmi?",
-        AdminSalaryStates.active_plan,
-        "👥 Active plan kiriting:",
-        manual_keyboard,
-        yes_no_keyboard
-    )
-
-
-# ================= COVER =================
-
-@dp.message_handler(state=AdminSalaryStates.cover)
-async def cover(message: types.Message, state: FSMContext):
-
     text = message.text
 
     if text == "⬅️ Ortga":
 
-        await AdminSalaryStates.actual_active.set()
+        await AdminSalaryStates.active_plan.set()
 
         return await message.answer(
-            "🔥 Actual active kiriting:",
+            "👥 Active plan kiriting:",
             reply_markup=manual_keyboard
-        )
-
-    if text == "✅ HA":
-
-        await AdminSalaryStates.cover_hours.set()
-
-        return await message.answer(
-            "⏰ Necha soat cover qildingiz?",
-            reply_markup=manual_keyboard
-        )
-
-    if text == "❌ YO‘Q":
-
-        await state.update_data(
-            cover_hours=0
-        )
-
-        await AdminSalaryStates.has_ielts.set()
-
-        return await message.answer(
-            "🎓 IELTS 7+ bormi?",
-            reply_markup=yes_no_keyboard
-        )
-
-
-# ================= COVER HOURS =================
-
-@dp.message_handler(state=AdminSalaryStates.cover_hours)
-async def cover_hours(message: types.Message, state: FSMContext):
-
-    await handle_number(
-        message,
-        state,
-        "cover_hours",
-        AdminSalaryStates.has_ielts,
-        "🎓 IELTS 7+ bormi?",
-        AdminSalaryStates.cover,
-        "🔄 Cover qilganmi?",
-        yes_no_keyboard,
-        yes_no_keyboard
-    )
-
-
-# ================= IELTS =================
-
-@dp.message_handler(state=AdminSalaryStates.has_ielts)
-async def has_ielts(message: types.Message, state: FSMContext):
-
-    text = message.text
-
-    if text == "⬅️ Ortga":
-
-        await AdminSalaryStates.cover.set()
-
-        return await message.answer(
-            "🔄 Cover qilganmi?",
-            reply_markup=yes_no_keyboard
-        )
-
-    await state.update_data(
-        has_ielts=text == "✅ HA"
-    )
-
-    await AdminSalaryStates.knows_russian.set()
-
-    await message.answer(
-        "🇷🇺 Rus tili biladimi?",
-        reply_markup=yes_no_keyboard
-    )
-
-
-# ================= RUSSIAN =================
-
-@dp.message_handler(state=AdminSalaryStates.knows_russian)
-async def russian(message: types.Message, state: FSMContext):
-
-    text = message.text
-
-    if text == "⬅️ Ortga":
-
-        await AdminSalaryStates.has_ielts.set()
-
-        return await message.answer(
-            "🎓 IELTS 7+ bormi?",
-            reply_markup=yes_no_keyboard
-        )
-
-    await state.update_data(
-        knows_russian=text == "✅ HA"
-    )
-
-    await AdminSalaryStates.missed.set()
-
-    await message.answer(
-        "📉 Ish qoldirgan kunlaringiz bo'ldimi?",
-        reply_markup=yes_no_keyboard
-    )
-
-
-# ================= MISSED =================
-
-@dp.message_handler(state=AdminSalaryStates.missed)
-async def missed(message: types.Message, state: FSMContext):
-
-    text = message.text
-
-    if text == "⬅️ Ortga":
-
-        await AdminSalaryStates.knows_russian.set()
-
-        return await message.answer(
-            "🇷🇺 Rus tili biladimi?",
-            reply_markup=yes_no_keyboard
-        )
-
-    if text == "✅ HA":
-
-        await AdminSalaryStates.missed_hours.set()
-
-        return await message.answer(
-            "⏰ Necha soat ish qoldirdingiz?",
-            reply_markup=manual_keyboard
-        )
-
-    if text == "❌ YO‘Q":
-
-        await state.update_data(
-            missed_hours=0
-        )
-
-        data = await state.get_data()
-
-        result = calculate_admin_salary(
-            data
-        )
-
-        total = result[
-            "total_salary"
-        ]
-
-        text = f"""
-🎉 Oylik hisoblandi!
-
-🧑‍💼 Status: {data['status'].upper()}
-
-💰 Fixa ........ {result['fixa']:,}
-🏆 KPI Bonus ... {result['final_kpi_bonus']:,}
-
-🎁 Qo‘shimchalar
-🇷🇺 Rus tili ..... +{result['russian_bonus']:,}
-🎓 IELTS ........ +{result['ielts_bonus']:,}
-🔄 Cover ........ +{result['cover_bonus']:,}
-
-⚠️ Jarima
-📉 Missed ....... -{result['penalty']:,}
-
-━━━━━━━━━━━━
-
-💎 Yakuniy oylik:
-
-🔥 {total:,} so'm
-"""
-
-        await message.answer(
-            text,
-            reply_markup=owner_panel
-        )
-
-        return await state.finish()
-
-
-# ================= MISSED HOURS =================
-
-@dp.message_handler(state=AdminSalaryStates.missed_hours)
-async def missed_hours(message: types.Message, state: FSMContext):
-
-    text = message.text
-
-    if text == "⬅️ Ortga":
-
-        await AdminSalaryStates.missed.set()
-
-        return await message.answer(
-            "📉 Ish qoldirgan kunlaringiz bo'ldimi?",
-            reply_markup=yes_no_keyboard
         )
 
     try:
@@ -712,7 +713,7 @@ async def missed_hours(message: types.Message, state: FSMContext):
         )
 
     await state.update_data(
-        missed_hours=value
+        actual_active=value
     )
 
     data = await state.get_data()
@@ -720,10 +721,6 @@ async def missed_hours(message: types.Message, state: FSMContext):
     result = calculate_admin_salary(
         data
     )
-
-    total = result[
-        "total_salary"
-    ]
 
     text = f"""
 🎉 Oylik hisoblandi!
@@ -745,7 +742,7 @@ async def missed_hours(message: types.Message, state: FSMContext):
 
 💎 Yakuniy oylik:
 
-🔥 {total:,} so'm
+🔥 {result['total_salary']:,} so'm
 """
 
     await message.answer(
