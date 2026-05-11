@@ -1,126 +1,212 @@
+import json
+
 from aiogram import types
 from aiogram.dispatcher import FSMContext
-from aiogram.types import (
-    ReplyKeyboardMarkup,
-    KeyboardButton
-)
 
 from safety.loader import dp
 
-from states.cashier_states import CashierStates
-from keyboards.admin_keyboard import cashier_menu
-
-
-# ================= KEYBOARDS =================
-
-hours_keyboard = ReplyKeyboardMarkup(
-    resize_keyboard=True
+from calculators.cashier_calc import (
+    calculate_cashier_salary
 )
 
-hours_keyboard.row(
-    KeyboardButton("6"),
-    KeyboardButton("7"),
-    KeyboardButton("8")
+from states.cashier_states import (
+    CashierStates
 )
 
-hours_keyboard.row(
-    KeyboardButton("✍️ Boshqa")
-)
-
-hours_keyboard.row(
-    KeyboardButton("⬅️ Ortga"),
-    KeyboardButton("🏠 Bosh menu")
+from keyboards.admin_keyboard import (
+    owner_panel,
+    admin_menu,
+    cashier_menu
 )
 
 
-days_keyboard = ReplyKeyboardMarkup(
-    resize_keyboard=True
+USERS_FILE = "safety/database/users.json"
+
+
+# =========================================
+# GET MENU BY ROLE
+# =========================================
+
+def get_menu_by_role(role):
+
+    if role in [
+        "owner",
+        "manager",
+        "coordinator"
+    ]:
+
+        return owner_panel
+
+    if role == "admin":
+
+        return admin_menu
+
+    return cashier_menu
+
+
+# =========================================
+# KEYBOARDS
+# =========================================
+
+def hours_keyboard():
+
+    keyboard = types.ReplyKeyboardMarkup(
+        resize_keyboard=True
+    )
+
+    keyboard.row(
+        "6",
+        "7"
+    )
+
+    keyboard.row(
+        "8"
+    )
+
+    keyboard.row(
+        "✍️ Boshqa"
+    )
+
+    keyboard.row(
+        "🏠 Bosh sahifa",
+        "⬅️ Ortga"
+    )
+
+    return keyboard
+
+
+def days_keyboard():
+
+    keyboard = types.ReplyKeyboardMarkup(
+        resize_keyboard=True
+    )
+
+    keyboard.row(
+        "24",
+        "25"
+    )
+
+    keyboard.row(
+        "26",
+        "27"
+    )
+
+    keyboard.row(
+        "✍️ Boshqa"
+    )
+
+    keyboard.row(
+        "🏠 Bosh sahifa",
+        "⬅️ Ortga"
+    )
+
+    return keyboard
+
+
+def yes_no_keyboard():
+
+    keyboard = types.ReplyKeyboardMarkup(
+        resize_keyboard=True
+    )
+
+    keyboard.row(
+        "✅ HA",
+        "❌ YO‘Q"
+    )
+
+    keyboard.row(
+        "🏠 Bosh sahifa",
+        "⬅️ Ortga"
+    )
+
+    return keyboard
+
+
+def manual_keyboard():
+
+    keyboard = types.ReplyKeyboardMarkup(
+        resize_keyboard=True
+    )
+
+    keyboard.row(
+        "🏠 Bosh sahifa",
+        "⬅️ Ortga"
+    )
+
+    return keyboard
+
+
+# =========================================
+# HOME
+# =========================================
+
+@dp.message_handler(
+    text="🏠 Bosh sahifa",
+    state="*"
 )
-
-days_keyboard.row(
-    KeyboardButton("24"),
-    KeyboardButton("25")
-)
-
-days_keyboard.row(
-    KeyboardButton("26"),
-    KeyboardButton("27")
-)
-
-days_keyboard.row(
-    KeyboardButton("✍️ Boshqa")
-)
-
-days_keyboard.row(
-    KeyboardButton("⬅️ Ortga"),
-    KeyboardButton("🏠 Bosh menu")
-)
-
-
-yes_no_keyboard = ReplyKeyboardMarkup(
-    resize_keyboard=True
-)
-
-yes_no_keyboard.row(
-    KeyboardButton("✅ HA"),
-    KeyboardButton("❌ YO‘Q")
-)
-
-yes_no_keyboard.row(
-    KeyboardButton("⬅️ Ortga"),
-    KeyboardButton("🏠 Bosh menu")
-)
-
-
-manual_keyboard = ReplyKeyboardMarkup(
-    resize_keyboard=True
-)
-
-manual_keyboard.row(
-    KeyboardButton("⬅️ Ortga"),
-    KeyboardButton("🏠 Bosh menu")
-)
-
-
-# ================= GLOBAL =================
-
-@dp.message_handler(text="🏠 Bosh menu", state="*")
-async def back_menu(message: types.Message, state: FSMContext):
+async def cashier_home(
+    message: types.Message,
+    state: FSMContext
+):
 
     await state.finish()
 
+    with open(
+        USERS_FILE,
+        "r",
+        encoding="utf-8"
+    ) as file:
+
+        users = json.load(file)
+
+    role = users[
+        str(message.from_user.id)
+    ]["role"]
+
     await message.answer(
-        "🏠 Bosh menu",
-        reply_markup=cashier_menu
+        "🏠 Bosh sahifa",
+        reply_markup=get_menu_by_role(role)
     )
 
 
-@dp.message_handler(text="💰 Cashier Salary")
-async def cashier_start(message: types.Message):
+# =========================================
+# START
+# =========================================
 
-    await message.answer(
-        "⏰ Kunlik ish soatini tanlang:",
-        reply_markup=hours_keyboard
-    )
+@dp.message_handler(
+    lambda message: message.text == "💰 Cashier Salary"
+)
+async def cashier_salary_start(
+    message: types.Message
+):
 
     await CashierStates.hours.set()
 
+    await message.answer(
+        """
+💰 CASHIER SALARY
 
-# ================= HOURS =================
+━━━━━━━━━━━━━━━━━━
 
-@dp.message_handler(state=CashierStates.hours)
-async def get_hours(message: types.Message, state: FSMContext):
+⏰ Kunlik ish soatini tanlang:
+""",
+        reply_markup=hours_keyboard()
+    )
+
+
+# =========================================
+# HOURS
+# =========================================
+
+@dp.message_handler(
+    state=CashierStates.hours
+)
+async def cashier_hours(
+    message: types.Message,
+    state: FSMContext
+):
 
     text = message.text
-
-    if text == "⬅️ Ortga":
-
-        await state.finish()
-
-        return await message.answer(
-            "🏠 Bosh menu",
-            reply_markup=cashier_menu
-        )
 
     if text == "✍️ Boshqa":
 
@@ -128,14 +214,17 @@ async def get_hours(message: types.Message, state: FSMContext):
 
         return await message.answer(
             "⏰ Soat kiriting:",
-            reply_markup=manual_keyboard
+            reply_markup=manual_keyboard()
         )
 
     try:
+
         value = float(text)
+
     except:
+
         return await message.answer(
-            "Faqat raqam kiriting"
+            "❌ Tugmalardan foydalaning."
         )
 
     await state.update_data(
@@ -145,15 +234,24 @@ async def get_hours(message: types.Message, state: FSMContext):
     await CashierStates.days.set()
 
     await message.answer(
-        "📅 Ishlagan kunni tanlang:",
-        reply_markup=days_keyboard
+        """
+📅 Ishlagan kunni tanlang:
+""",
+        reply_markup=days_keyboard()
     )
 
 
-# ================= CUSTOM HOURS =================
+# =========================================
+# CUSTOM HOURS
+# =========================================
 
-@dp.message_handler(state=CashierStates.custom_hours)
-async def custom_hours(message: types.Message, state: FSMContext):
+@dp.message_handler(
+    state=CashierStates.custom_hours
+)
+async def cashier_custom_hours(
+    message: types.Message,
+    state: FSMContext
+):
 
     text = message.text
 
@@ -162,15 +260,20 @@ async def custom_hours(message: types.Message, state: FSMContext):
         await CashierStates.hours.set()
 
         return await message.answer(
-            "⏰ Kunlik ish soatini tanlang:",
-            reply_markup=hours_keyboard
+            """
+⏰ Kunlik ish soatini tanlang:
+""",
+            reply_markup=hours_keyboard()
         )
 
     try:
+
         value = float(text)
+
     except:
+
         return await message.answer(
-            "Faqat raqam kiriting"
+            "❌ Raqam kiriting."
         )
 
     await state.update_data(
@@ -180,26 +283,26 @@ async def custom_hours(message: types.Message, state: FSMContext):
     await CashierStates.days.set()
 
     await message.answer(
-        "📅 Ishlagan kunni tanlang:",
-        reply_markup=days_keyboard
+        """
+📅 Ishlagan kunni tanlang:
+""",
+        reply_markup=days_keyboard()
     )
 
 
-# ================= DAYS =================
+# =========================================
+# DAYS
+# =========================================
 
-@dp.message_handler(state=CashierStates.days)
-async def get_days(message: types.Message, state: FSMContext):
+@dp.message_handler(
+    state=CashierStates.days
+)
+async def cashier_days(
+    message: types.Message,
+    state: FSMContext
+):
 
     text = message.text
-
-    if text == "⬅️ Ortga":
-
-        await CashierStates.hours.set()
-
-        return await message.answer(
-            "⏰ Kunlik ish soatini tanlang:",
-            reply_markup=hours_keyboard
-        )
 
     if text == "✍️ Boshqa":
 
@@ -207,14 +310,17 @@ async def get_days(message: types.Message, state: FSMContext):
 
         return await message.answer(
             "📅 Kun kiriting:",
-            reply_markup=manual_keyboard
+            reply_markup=manual_keyboard()
         )
 
     try:
-        value = int(text)
+
+        value = float(text)
+
     except:
+
         return await message.answer(
-            "Faqat raqam kiriting"
+            "❌ Tugmalardan foydalaning."
         )
 
     await state.update_data(
@@ -225,7 +331,54 @@ async def get_days(message: types.Message, state: FSMContext):
 
     await message.answer(
         "🔄 Cover qilganmi?",
-        reply_markup=yes_no_keyboard
+        reply_markup=yes_no_keyboard()
+    )
+
+
+# =========================================
+# CUSTOM DAYS
+# =========================================
+
+@dp.message_handler(
+    state=CashierStates.custom_days
+)
+async def cashier_custom_days(
+    message: types.Message,
+    state: FSMContext
+):
+
+    text = message.text
+
+    if text == "⬅️ Ortga":
+
+        await CashierStates.days.set()
+
+        return await message.answer(
+            """
+📅 Ishlagan kunni tanlang:
+""",
+            reply_markup=days_keyboard()
+        )
+
+    try:
+
+        value = float(text)
+
+    except:
+
+        return await message.answer(
+            "❌ Raqam kiriting."
+        )
+
+    await state.update_data(
+        days=value
+    )
+
+    await CashierStates.cover.set()
+
+    await message.answer(
+        "🔄 Cover qilganmi?",
+        reply_markup=yes_no_keyboard()
     )
 
 
