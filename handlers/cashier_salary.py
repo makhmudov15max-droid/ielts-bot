@@ -413,7 +413,7 @@ async def custom_days(message: types.Message, state: FSMContext):
 
     await message.answer(
         "🔄 Cover qilganmi?",
-        reply_markup=yes_no_keyboard
+        reply_markup=yes_no_keyboard()
     )
 
 
@@ -439,7 +439,7 @@ async def get_cover(message: types.Message, state: FSMContext):
 
         return await message.answer(
             "⏰ Necha soat cover qildingiz?",
-            reply_markup=manual_keyboard
+            reply_markup=manual_keyboard()
         )
 
     if text == "❌ YO‘Q":
@@ -473,7 +473,7 @@ async def get_cover_input(message: types.Message, state: FSMContext):
 
         return await message.answer(
             "🔄 Cover qilganmi?",
-            reply_markup=yes_no_keyboard
+            reply_markup=yes_no_keyboard()
         )
 
     try:
@@ -491,7 +491,7 @@ async def get_cover_input(message: types.Message, state: FSMContext):
 
     await message.answer(
         "📉 Ish qoldirgan kunlaringiz bo'ldimi?",
-        reply_markup=yes_no_keyboard
+        reply_markup=yes_no_keyboard()
     )
 
 
@@ -508,7 +508,7 @@ async def get_absent(message: types.Message, state: FSMContext):
 
         return await message.answer(
             "🔄 Cover qilganmi?",
-            reply_markup=yes_no_keyboard
+            reply_markup=yes_no_keyboard()
         )
 
     if text == "✅ HA":
@@ -530,7 +530,7 @@ async def get_absent(message: types.Message, state: FSMContext):
 
         return await message.answer(
             "🟢 Aktiv students sonini kiriting:",
-            reply_markup=manual_keyboard
+            reply_markup=manual_keyboard()
         )
 
     return await message.answer(
@@ -551,7 +551,7 @@ async def get_absent_input(message: types.Message, state: FSMContext):
 
         return await message.answer(
             "📉 Ish qoldirgan kunlaringiz bo'ldimi?",
-            reply_markup=yes_no_keyboard
+            reply_markup=yes_no_keyboard()
         )
 
     try:
@@ -569,7 +569,7 @@ async def get_absent_input(message: types.Message, state: FSMContext):
 
     await message.answer(
         "🟢 Aktiv students sonini kiriting:",
-        reply_markup=manual_keyboard
+        reply_markup=manual_keyboard()
     )
 
 
@@ -586,7 +586,7 @@ async def active_students(message: types.Message, state: FSMContext):
 
         return await message.answer(
             "📉 Ish qoldirgan kunlaringiz bo'ldimi?",
-            reply_markup=yes_no_keyboard
+            reply_markup=yes_no_keyboard()
         )
 
     try:
@@ -604,7 +604,7 @@ async def active_students(message: types.Message, state: FSMContext):
 
     await message.answer(
         "💳 Aktiv qarzdorlar sonini kiriting:",
-        reply_markup=manual_keyboard
+        reply_markup=manual_keyboard()
     )
 
 
@@ -621,7 +621,7 @@ async def active_debtors(message: types.Message, state: FSMContext):
 
         return await message.answer(
             "🟢 Aktiv students sonini kiriting:",
-            reply_markup=manual_keyboard
+            reply_markup=manual_keyboard()
         )
 
     try:
@@ -639,7 +639,7 @@ async def active_debtors(message: types.Message, state: FSMContext):
 
     await message.answer(
         "📦 Archive students sonini kiriting:",
-        reply_markup=manual_keyboard
+        reply_markup=manual_keyboard()
     )
 
 
@@ -656,7 +656,7 @@ async def archive_students(message: types.Message, state: FSMContext):
 
         return await message.answer(
             "💳 Aktiv qarzdorlar sonini kiriting:",
-            reply_markup=manual_keyboard
+            reply_markup=manual_keyboard()
         )
 
     try:
@@ -674,7 +674,7 @@ async def archive_students(message: types.Message, state: FSMContext):
 
     await message.answer(
         "🧾 Archive qarzdorlar sonini kiriting:",
-        reply_markup=manual_keyboard
+        reply_markup=manual_keyboard()
     )
 
 
@@ -838,7 +838,7 @@ async def finish_cashier(message: types.Message, state: FSMContext):
 
     await message.answer(
         text,
-        reply_markup=cashier_menu
+        reply_markup=cashier_menu()
     )
 
     await state.finish()
