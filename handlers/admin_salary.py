@@ -1,3 +1,5 @@
+import json
+
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 
@@ -15,6 +17,26 @@ from states.admin_states import (
 from calculators.admin_calc import (
     calculate_admin_salary
 )
+
+
+USERS_FILE = "safety/database/users.json"
+
+
+# =========================================
+# GET MENU BY ROLE
+# =========================================
+
+def get_menu_by_role(role):
+
+    if role in [
+        "owner",
+        "manager",
+        "coordinator"
+    ]:
+
+        return owner_panel
+
+    return admin_menu
 
 
 # =========================================
@@ -151,7 +173,7 @@ def manual_keyboard():
 
 
 # =========================================
-# MENU
+# HOME
 # =========================================
 
 @dp.message_handler(
@@ -165,9 +187,21 @@ async def back_home(
 
     await state.finish()
 
+    with open(
+        USERS_FILE,
+        "r",
+        encoding="utf-8"
+    ) as file:
+
+        users = json.load(file)
+
+    role = users[
+        str(message.from_user.id)
+    ]["role"]
+
     await message.answer(
         "🏠 Bosh sahifa",
-        reply_markup=admin_menu
+        reply_markup=get_menu_by_role(role)
     )
 
 
@@ -178,7 +212,9 @@ async def back_home(
 @dp.message_handler(
     lambda message: message.text == "📊 Admin Salary"
 )
-async def admin_salary_start(message: types.Message):
+async def admin_salary_start(
+    message: types.Message
+):
 
     await AdminSalaryStates.status.set()
 
@@ -294,7 +330,7 @@ async def get_daily_hours(
 
 
 # =========================================
-# CUSTOM DAILY HOURS
+# CUSTOM HOURS
 # =========================================
 
 @dp.message_handler(
@@ -349,7 +385,7 @@ async def custom_daily_hours(
 @dp.message_handler(
     state=AdminSalaryStates.worked_days
 )
-async def get_worked_days(
+async def worked_days(
     message: types.Message,
     state: FSMContext
 ):
@@ -399,7 +435,7 @@ async def get_worked_days(
 
 
 # =========================================
-# CUSTOM WORKED DAYS
+# CUSTOM DAYS
 # =========================================
 
 @dp.message_handler(
@@ -692,230 +728,4 @@ async def cover_hours(
     await message.answer(
         "🎯 Individual plan kiriting:",
         reply_markup=manual_keyboard()
-    )
-
-
-# =========================================
-# UNIVERSAL KPI INPUT
-# =========================================
-
-async def number_input(
-    message,
-    state,
-    key,
-    next_state,
-    question,
-    back_state,
-    back_question,
-    back_keyboard,
-    keyboard=manual_keyboard()
-):
-
-    text = message.text
-
-    if text == "⬅️ Ortga":
-
-        await back_state.set()
-
-        return await message.answer(
-            back_question,
-            reply_markup=back_keyboard
-        )
-
-    try:
-
-        value = float(
-            text.replace("%", "")
-        )
-
-    except:
-
-        return await message.answer(
-            "❌ Raqam kiriting."
-        )
-
-    await state.update_data(
-        **{key: value}
-    )
-
-    await next_state.set()
-
-    await message.answer(
-        question,
-        reply_markup=keyboard
-    )
-
-
-# =========================================
-# KPI FLOW
-# =========================================
-
-@dp.message_handler(
-    state=AdminSalaryStates.individual_plan
-)
-async def individual_plan(
-    message: types.Message,
-    state: FSMContext
-):
-
-    await number_input(
-        message,
-        state,
-        "individual_plan",
-        AdminSalaryStates.actual_sales,
-        "💰 Actual sales kiriting:",
-        AdminSalaryStates.cover,
-        "🔄 Cover qilganmi?",
-        yes_no_keyboard()
-    )
-
-
-@dp.message_handler(
-    state=AdminSalaryStates.actual_sales
-)
-async def actual_sales(
-    message: types.Message,
-    state: FSMContext
-):
-
-    await number_input(
-        message,
-        state,
-        "actual_sales",
-        AdminSalaryStates.conversion_plan,
-        "📈 Conversion plan tanlang:",
-        AdminSalaryStates.individual_plan,
-        "🎯 Individual plan kiriting:",
-        manual_keyboard(),
-        conversion_keyboard()
-    )
-
-
-@dp.message_handler(
-    state=AdminSalaryStates.conversion_plan
-)
-async def conversion_plan(
-    message: types.Message,
-    state: FSMContext
-):
-
-    await number_input(
-        message,
-        state,
-        "conversion_plan",
-        AdminSalaryStates.actual_conversion,
-        "📊 Actual conversion kiriting:",
-        AdminSalaryStates.actual_sales,
-        "💰 Actual sales kiriting:",
-        manual_keyboard()
-    )
-
-
-@dp.message_handler(
-    state=AdminSalaryStates.actual_conversion
-)
-async def actual_conversion(
-    message: types.Message,
-    state: FSMContext
-):
-
-    await number_input(
-        message,
-        state,
-        "actual_conversion",
-        AdminSalaryStates.active_plan,
-        "👥 Active plan kiriting:",
-        AdminSalaryStates.conversion_plan,
-        "📈 Conversion plan tanlang:",
-        conversion_keyboard()
-    )
-
-
-@dp.message_handler(
-    state=AdminSalaryStates.active_plan
-)
-async def active_plan(
-    message: types.Message,
-    state: FSMContext
-):
-
-    await number_input(
-        message,
-        state,
-        "active_plan",
-        AdminSalaryStates.actual_active,
-        "🔥 Actual active kiriting:",
-        AdminSalaryStates.actual_conversion,
-        "📊 Actual conversion kiriting:",
-        manual_keyboard()
-    )
-
-
-# =========================================
-# FINAL
-# =========================================
-
-@dp.message_handler(
-    state=AdminSalaryStates.actual_active
-)
-async def actual_active(
-    message: types.Message,
-    state: FSMContext
-):
-
-    text = message.text
-
-    if text == "⬅️ Ortga":
-
-        await AdminSalaryStates.active_plan.set()
-
-        return await message.answer(
-            "👥 Active plan kiriting:",
-            reply_markup=manual_keyboard()
-        )
-
-    try:
-
-        value = float(text)
-
-    except:
-
-        return await message.answer(
-            "❌ Raqam kiriting."
-        )
-
-    await state.update_data(
-        actual_active=value
-    )
-
-    data = await state.get_data()
-
-    result = calculate_admin_salary(data)
-
-    await state.finish()
-
-    await message.answer(
-        f"""
-🎉 Oylik hisoblandi!
-
-🧑‍💼 Status: {data['status'].upper()}
-
-💰 Fixa ........ {result['fixa']:,}
-🏆 KPI Bonus ... {result['final_kpi_bonus']:,}
-
-🎁 Qo‘shimchalar
-🇷🇺 Rus tili ..... +{result['russian_bonus']:,}
-🎓 IELTS ........ +{result['ielts_bonus']:,}
-🔄 Cover ........ +{result['cover_bonus']:,}
-
-⚠️ Jarima
-📉 Missed ....... -{result['penalty']:,}
-
-━━━━━━━━━━━━
-
-💎 Yakuniy oylik:
-
-🔥 {result['total_salary']:,} so'm
-""",
-        reply_markup=admin_menu
     )
