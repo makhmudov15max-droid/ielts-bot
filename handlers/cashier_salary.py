@@ -395,7 +395,7 @@ async def custom_days(message: types.Message, state: FSMContext):
 
         return await message.answer(
             "📅 Ishlagan kunni tanlang:",
-            reply_markup=days_keyboard
+            reply_markup=days_keyboard()
         )
 
     try:
@@ -430,7 +430,7 @@ async def get_cover(message: types.Message, state: FSMContext):
 
         return await message.answer(
             "📅 Ishlagan kunni tanlang:",
-            reply_markup=days_keyboard
+            reply_markup=days_keyboard()
         )
 
     if text == "✅ HA":
@@ -452,7 +452,7 @@ async def get_cover(message: types.Message, state: FSMContext):
 
         return await message.answer(
             "📉 Ish qoldirgan kunlaringiz bo'ldimi?",
-            reply_markup=yes_no_keyboard
+            reply_markup=yes_no_keyboard()
         )
 
     return await message.answer(
@@ -517,7 +517,7 @@ async def get_absent(message: types.Message, state: FSMContext):
 
         return await message.answer(
             "⏰ Necha soat ish qoldirdingiz?",
-            reply_markup=manual_keyboard
+            reply_markup=manual_keyboard()
         )
 
     if text == "❌ YO‘Q":
