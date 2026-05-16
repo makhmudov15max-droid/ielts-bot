@@ -1,7 +1,6 @@
 from aiogram import Router, types, F
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.storage.base import StorageKey  # StorageKey import qilindi
 import config  
 from Keyboards.main_menu import (
     main_menu_keyboard, 
@@ -20,17 +19,18 @@ try:
 except ValueError:
     ADMIN_ID = 6500594896  
 
-# Vaqtincha xotira bazasi (Rol va Ismni saqlaydi)
+# Vaqtincha xotira bazasi (Rollar va Ismlarni saqlaydi)
+# Tuzilishi: { user_id: {"role": "Sanitar", "name": None} }
 USERS_ROLES = {
     ADMIN_ID: {"role": "Admin", "name": "Asosiy Admin"}
 }
 
 @start_router.message(CommandStart())
-async def command_start_handler(message: types.Message, state: FSMContext):
+async def command_start_handler(message: types.Message):
     user_id = message.from_user.id
+    user_info = USERS_ROLES.get(user_id)
     
     # 1. Agar foydalanuvchi rad etilgan bo'lsa
-    user_info = USERS_ROLES.get(user_id)
     if isinstance(user_info, dict) and user_info.get("role") == "rejected":
         await message.answer("Assalomu alaykum. Siz botdan foydalana olmaysiz, so'rovingiz rad etilgan.")
         return
@@ -43,7 +43,6 @@ async def command_start_handler(message: types.Message, state: FSMContext):
         )
         
         full_name = message.from_user.full_name
-        
         if message.from_user.username:
             raw_username = message.from_user.username
             user_profile_link = f"https://t.me/{raw_username}"
@@ -72,9 +71,8 @@ async def command_start_handler(message: types.Message, state: FSMContext):
         return
 
     # 3. Agar foydalanuvchiga rol berilganu, lekin hali ismini kiritmagan bo'lsa
-    if isinstance(user_info, dict) and not user_info.get("name"):
+    if isinstance(user_info, dict) and user_info.get("name") is None:
         await message.answer("Iltimos, ism va familiyangizni kiriting!")
-        await state.set_state(TaskStates.waiting_for_user_name)
         return
 
     # 4. Agar ro'yxatdan to'liq o'tgan bo'lsa
@@ -95,7 +93,7 @@ async def admin_approve_callback(call: types.CallbackQuery):
         role = data_parts[1]
         target_user_id = int(data_parts[2])
         
-        # Rolni saqlaymiz, ism (name) hozircha None
+        # Rolni bazaga yozamiz, ismi hali yo'q (None)
         USERS_ROLES[target_user_id] = {"role": role, "name": None}
         
         # Admin xabarini yangilaymiz
@@ -104,27 +102,17 @@ async def admin_approve_callback(call: types.CallbackQuery):
             parse_mode="HTML"
         )
         
-        # FOYDALANUVCHINING HOLATINI (STATE) 100% TO'G'RI O'ZGARTIRISH (YANGI METOD):
-        try:
-            # Router o'z ichiga olgan asosiy storagedan foydalanamiz
-            if start_router.storage:
-                user_key = StorageKey(bot_id=call.bot.id, chat_id=target_user_id, user_id=target_user_id)
-                user_state = FSMContext(storage=start_router.storage, key=user_key)
-                await user_state.set_state(TaskStates.waiting_for_user_name)
-                print(f"[OK] Foydalanuvchi {target_user_id} holati waiting_for_user_name ga o'tkazildi.")
-            
-            # Foydalanuvchiga xabar yuborish
-            user_text = f"Sizga Admin tomonidan \"{role}\" unvoni berildi. Iltimos ism, familiyangizni kiriting!"
-            await call.bot.send_message(
-                chat_id=target_user_id,
-                text=user_text,
-                reply_markup=types.ReplyKeyboardRemove()  
-            )
-        except Exception as e:
-            print(f"❌ Foydalanuvchiga holat berish yoki xabar yuborishda xato: {e}")
+        # FOYDALANUVCHIGA TO'G'RIDAN-TO'G'RI XABAR YUBORISH (HECH QANDAY STATE-XATOLIKLARISIZ)
+        user_text = f"Sizga Admin tomonidan \"{role}\" unvoni berildi. Iltimos ism, familiyangizni kiriting!"
+        await call.bot.send_message(
+            chat_id=target_user_id,
+            text=user_text,
+            reply_markup=types.ReplyKeyboardRemove()  
+        )
+        print(f"[OK] {target_user_id} ga tasdiqlash xabari muvaffaqiyatli ketdi.")
             
     except Exception as general_error:
-        print(f"❌ Callback ishlashida umumiy xatolik: {general_error}")
+        print(f"❌ Callback yoki xabar yuborishda xatolik: {general_error}")
         
     await call.answer()
 
@@ -140,13 +128,10 @@ async def admin_reject_callback(call: types.CallbackQuery):
             parse_mode="HTML"
         )
         
-        try:
-            await call.bot.send_message(
-                chat_id=target_user_id,
-                text="Sizning botdan foydalanish so'rovingiz admin tomonidan rad etildi."
-            )
-        except Exception as e:
-            print(f"❌ Foydalanuvchiga rad xabarini yuborishda xato: {e}")
+        await call.bot.send_message(
+            chat_id=target_user_id,
+            text="Sizning botdan foydalanish so'rovingiz admin tomonidan rad etildi."
+        )
             
     except Exception as general_error:
         print(f"❌ Reject callbackda xatolik: {general_error}")
@@ -154,28 +139,25 @@ async def admin_reject_callback(call: types.CallbackQuery):
     await call.answer()
 
 
-# ================= FOYDALANUVCHI ISMINI QABUL QILISH =================
+# ================= FOYDALANUVCHI ISMINI QABUL QILISH (HOLATSIZ - FILTER ORQALI) =================
 
-@start_router.message(TaskStates.waiting_for_user_name)
-async def get_user_real_name_handler(message: types.Message, state: FSMContext):
+# Bu handler faqat bazada roli boru, lekin ismi None bo'lgan foydalanuvchilar matn yozgandagina ishlaydi!
+@start_router.message(lambda msg: isinstance(USERS_ROLES.get(msg.from_user.id), dict) and USERS_ROLES.get(msg.from_user.id).get("name") is None)
+async def get_user_real_name_handler(message: types.Message):
     user_id = message.from_user.id
     input_text = message.text.strip()
     
     # Ismdan birinchi so'zni ajratib olamiz ("Baxtiyorjon Mahmudov" -> "Baxtiyorjon")
     first_name = input_text.split()[0]
     
-    # Bazada foydalanuvchi ma'lumotlarini yangilaymiz
-    if user_id in USERS_ROLES and isinstance(USERS_ROLES[user_id], dict):
-        USERS_ROLES[user_id]["name"] = input_text
-    else:
-        USERS_ROLES[user_id] = {"role": "User", "name": input_text}
+    # Bazada ismni saqlaymiz
+    USERS_ROLES[user_id]["name"] = input_text
         
     # Muvaffaqiyatli ro'yxatdan o'tganlik xabari va asosiy menyu
     await message.answer(
         text=f"{first_name} siz ro'yxatdan o'tdingiz. Endi esa bot dan bemalol foydalansangiz bo'ladi",
         reply_markup=main_menu_keyboard
     )
-    await state.clear()
 
 
 # ================= TASK LOGICASI =================
@@ -184,7 +166,7 @@ def check_user_access(user_id: int) -> bool:
     user_info = USERS_ROLES.get(user_id)
     if not user_info or not isinstance(user_info, dict):
         return False
-    if user_info.get("role") in [None, "rejected"] or not user_info.get("name"):
+    if user_info.get("role") in [None, "rejected"] or user_info.get("name") is None:
         return False
     return True
 
