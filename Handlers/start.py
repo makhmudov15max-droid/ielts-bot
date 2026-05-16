@@ -1,7 +1,7 @@
 from aiogram import Router, types, F
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
-from config import ADMIN_ID  # config ichidan admin ID ni olamiz
+import config  # config faylini to'liqligicha import qilamiz
 from Keyboards.main_menu import (
     main_menu_keyboard, 
     task_type_keyboard, 
@@ -14,7 +14,13 @@ from Handlers.states import TaskStates
 
 start_router = Router()
 
-# Vaqtincha xotira bazasi (Bot o'chib yonguncha rollarni eslab qoladi)
+# config ichidagi ADMIN_ID ni har qanday holatda raqam (int) ekanligiga ishonch hosil qilamiz
+try:
+    ADMIN_ID = int(config.ADMIN_ID)
+except ValueError:
+    ADMIN_ID = 6500594896  # Agar xatolik bo'lsa xavfsiz ID
+
+# Vaqtincha xotira bazasi
 USERS_ROLES = {
     ADMIN_ID: "Admin"  # Asosiy admin avtomatik tizimda bo'ladi
 }
@@ -48,12 +54,26 @@ async def command_start_handler(message: types.Message):
             f"Iltimos, ushbu foydalanuvchiga unvon (role) bering yoki rad eting 👇"
         )
         
-        await message.bot.send_message(
-            chat_id=ADMIN_ID,
-            text=admin_text,
-            parse_mode="Markdown",
-            reply_markup=get_admin_approval_keyboard(user_id)
-        )
+        # Xabar ketishida xatolik bo'lsa terminalda ko'rish uchun try-except qo'shamiz
+        try:
+            await message.bot.send_message(
+                chat_id=ADMIN_ID,
+                text=admin_text,
+                parse_mode="Markdown",
+                reply_markup=get_admin_approval_keyboard(user_id)
+            )
+            print(f"[OK] Approval xabari muvaffaqiyatli adminga ({ADMIN_ID}) yuborildi.")
+        except Exception as e:
+            print(f"❌ [XATOLIK] Adminga xabar yuborishda muammo chiqdi: {e}")
+            # Agar Markdown formatidan xato bersa, oddiy matnda yuborib ko'radi
+            try:
+                await message.bot.send_message(
+                    chat_id=ADMIN_ID,
+                    text=f"Yangi foydalanuvchi ruxsat so'ramoqda:\nIsm: {full_name}\nID: {user_id}",
+                    reply_markup=get_admin_approval_keyboard(user_id)
+                )
+            except Exception as e2:
+                print(f"❌ [KRITIK XATOLIK] Oddiy matn ham adminga ketmadi: {e2}")
         return
 
     # 3. Agar foydalanuvchi tasdiqlangan bo'lsa
@@ -116,7 +136,7 @@ async def admin_reject_callback(call: types.CallbackQuery):
     await call.answer()
 
 
-# ================= TASK LOGICASI (TEKSHIRUV BILAN) =================
+# ================= TASK LOGICASI =================
 
 @start_router.message(F.text == "Add Task")
 async def add_task_handler(message: types.Message):
