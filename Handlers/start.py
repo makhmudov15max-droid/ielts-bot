@@ -1,3 +1,5 @@
+import asyncio
+from datetime import datetime
 from aiogram import Router, types, F
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
@@ -8,7 +10,10 @@ from Keyboards.main_menu import (
     days_keyboard, 
     frequency_keyboard, 
     get_inline_days_keyboard,
-    get_admin_approval_keyboard
+    get_admin_approval_keyboard,
+    proof_type_keyboard,
+    assign_role_keyboard,
+    get_task_complete_keyboard
 )
 from Handlers.states import TaskStates
 
@@ -20,23 +25,23 @@ except ValueError:
     ADMIN_ID = 6500594896  
 
 # Vaqtincha xotira bazasi (Rollar va Ismlarni saqlaydi)
-# Tuzilishi: { user_id: {"role": "Sanitar", "name": None} }
 USERS_ROLES = {
     ADMIN_ID: {"role": "Admin", "name": "Asosiy Admin"}
 }
+
+# Vazifalarni saqlash bazasi
+TASKS_DATABASE = []
 
 @start_router.message(CommandStart())
 async def command_start_handler(message: types.Message):
     user_id = message.from_user.id
     user_info = USERS_ROLES.get(user_id)
     
-    # 1. Agar foydalanuvchi rad etilgan bo'lsa
     if isinstance(user_info, dict) and user_info.get("role") == "rejected":
         await message.answer("Assalomu alaykum. Siz botdan foydalana olmaysiz, so'rovingiz rad etilgan.")
         return
 
-    # 2. Agar foydalanuvchi mutlaqo yangi (begona) bo'lsa
-    if user_id not in USERS_ROLES:
+    if user_id not in USLES_ROLES if 'USLES_ROLES' in locals() else user_id not in USERS_ROLES:
         await message.answer(
             text="Hello, welcome to Edu_Control. Please wait until the bot administrator approves your request. Thank you!\n"
                  "Assalomu alaykum, Edu_Control’ga xush kelibsiz. Admin tasdiqlaguncha kuting. Rahmat!"
@@ -70,12 +75,10 @@ async def command_start_handler(message: types.Message):
             print(f"❌ Adminga xabar yuborishda muammo: {e}")
         return
 
-    # 3. Agar foydalanuvchiga rol berilganu, lekin hali ismini kiritmagan bo'lsa
     if isinstance(user_info, dict) and user_info.get("name") is None:
         await message.answer("Iltimos, ism va familiyangizni kiriting!")
         return
 
-    # 4. Agar ro'yxatdan to'liq o'tgan bo'lsa
     saved_name = user_info.get("name", message.from_user.full_name)
     await message.answer(
         text=f"Salom, {saved_name}! Botimizga xush kelibsiz.\n"
@@ -93,27 +96,22 @@ async def admin_approve_callback(call: types.CallbackQuery):
         role = data_parts[1]
         target_user_id = int(data_parts[2])
         
-        # Rolni bazaga yozamiz, ismi hali yo'q (None)
         USERS_ROLES[target_user_id] = {"role": role, "name": None}
         
-        # Admin xabarini yangilaymiz
         await call.message.edit_text(
             text=f"{call.message.text}\n\n✅ <b>Tasdiqlandi!</b> Foydalanuvchiga <b>{role}</b> unvoni berildi.",
             parse_mode="HTML"
         )
         
-        # FOYDALANUVCHIGA TO'G'RIDAN-TO'G'RI XABAR YUBORISH (HECH QANDAY STATE-XATOLIKLARISIZ)
         user_text = f"Sizga Admin tomonidan \"{role}\" unvoni berildi. Iltimos ism, familiyangizni kiriting!"
         await call.bot.send_message(
             chat_id=target_user_id,
             text=user_text,
             reply_markup=types.ReplyKeyboardRemove()  
         )
-        print(f"[OK] {target_user_id} ga tasdiqlash xabari muvaffaqiyatli ketdi.")
             
-    except Exception as general_error:
-        print(f"❌ Callback yoki xabar yuborishda xatolik: {general_error}")
-        
+    except Exception as e:
+        print(f"❌ Approval callback xatosi: {e}")
     await call.answer()
 
 
@@ -127,54 +125,38 @@ async def admin_reject_callback(call: types.CallbackQuery):
             text=f"{call.message.text}\n\n❌ <b>So'rov rad etildi!</b> Foydalanuvchi bloklandi.",
             parse_mode="HTML"
         )
-        
-        await call.bot.send_message(
-            chat_id=target_user_id,
-            text="Sizning botdan foydalanish so'rovingiz admin tomonidan rad etildi."
-        )
-            
-    except Exception as general_error:
-        print(f"❌ Reject callbackda xatolik: {general_error}")
-        
+        await call.bot.send_message(chat_id=target_user_id, text="Sizning botdan foydalanish so'rovingiz admin tomonidan rad etildi.")
+    except Exception as e:
+        print(f"❌ Reject callback xatosi: {e}")
     await call.answer()
 
 
-# ================= FOYDALANUVCHI ISMINI QABUL QILISH (HOLATSIZ - FILTER ORQALI) =================
+# ================= FOYDALANUVCHI ISMINI QABUL QILISH =================
 
-# Bu handler faqat bazada roli boru, lekin ismi None bo'lgan foydalanuvchilar matn yozgandagina ishlaydi!
 @start_router.message(lambda msg: isinstance(USERS_ROLES.get(msg.from_user.id), dict) and USERS_ROLES.get(msg.from_user.id).get("name") is None)
 async def get_user_real_name_handler(message: types.Message):
     user_id = message.from_user.id
     input_text = message.text.strip()
-    
-    # Ismdan birinchi so'zni ajratib olamiz ("Baxtiyorjon Mahmudov" -> "Baxtiyorjon")
     first_name = input_text.split()[0]
     
-    # Bazada ismni saqlaymiz
     USERS_ROLES[user_id]["name"] = input_text
-        
-    # Muvaffaqiyatli ro'yxatdan o'tganlik xabari va asosiy menyu
     await message.answer(
         text=f"{first_name} siz ro'yxatdan o'tdingiz. Endi esa bot dan bemalol foydalansangiz bo'ladi",
         reply_markup=main_menu_keyboard
     )
 
 
-# ================= TASK LOGICASI =================
+# ================= TASK MANAGING LOGIC (AVTOMATLASHTIRILGAN OQIM) =================
 
 def check_user_access(user_id: int) -> bool:
     user_info = USERS_ROLES.get(user_id)
-    if not user_info or not isinstance(user_info, dict):
-        return False
-    if user_info.get("role") in [None, "rejected"] or user_info.get("name") is None:
-        return False
+    if not user_info or not isinstance(user_info, dict): return False
+    if user_info.get("role") in [None, "rejected"] or user_info.get("name") is None: return False
     return True
 
 @start_router.message(F.text == "Add Task")
 async def add_task_handler(message: types.Message):
-    if not check_user_access(message.from_user.id): 
-        await message.answer("Siz hali ro'yxatdan o'tmagansiz yoki ruxsatingiz yo'q.")
-        return
+    if not check_user_access(message.from_user.id): return
     await message.answer(text="Qanday turdagi task yaratmoqchisiz?", reply_markup=task_type_keyboard)
 
 @start_router.message(F.text == "Continuously")
@@ -205,10 +187,8 @@ async def toggle_day_callback(call: types.CallbackQuery, state: FSMContext):
     day_code = call.data.split("_")[1]
     user_data = await state.get_data()
     selected_days = user_data.get("selected_days", [])
-    
     if day_code in selected_days: selected_days.remove(day_code)
     else: selected_days.append(day_code)
-        
     await state.update_data(selected_days=selected_days)
     await call.message.edit_reply_markup(reply_markup=get_inline_days_keyboard(selected_days))
     await call.answer()
@@ -226,28 +206,207 @@ async def days_done_callback(call: types.CallbackQuery, state: FSMContext):
     await state.set_state(TaskStates.waiting_for_frequency)
     await call.answer()
 
+# --- SIZ SO'RAGAN YANGI ZANJIR SHU YERDAN BOSHLANADI ---
+
 @start_router.message(TaskStates.waiting_for_frequency, F.text == "Once")
 async def once_frequency_handler(message: types.Message, state: FSMContext):
     await state.update_data(task_frequency="Once")
-    await message.answer(text="What time should the task appear?\n\n*Shablon:* `09:00` yoki `11:30` ko'rinishida yozing.", parse_mode="Markdown", reply_markup=types.ReplyKeyboardRemove())
+    await message.answer(text="What time should the task appear for the user?\n\n*Shablon:* `09:00` yoki `11:30` ko'rinishida kiriting.", parse_mode="Markdown", reply_markup=types.ReplyKeyboardRemove())
     await state.set_state(TaskStates.waiting_for_once_time)
 
 @start_router.message(TaskStates.waiting_for_once_time)
 async def get_once_time_handler(message: types.Message, state: FSMContext):
-    await state.update_data(task_times=message.text)
-    user_data = await state.get_data()
-    await message.answer(text=f"🎉 *Vazifa yaratildi!*\n\n📌 *Nomi:* {user_data.get('task_name')}\n📅 *Kunlar:* {user_data.get('task_days')}\n🔢 *Chastotasi:* {user_data.get('task_frequency')}\n⏰ *Vaqti:* {user_data.get('task_times')}", parse_mode="Markdown", reply_markup=main_menu_keyboard)
-    await state.clear()
+    await state.update_data(task_times=message.text.strip())
+    await message.answer(text="What type of proof is required?", reply_markup=proof_type_keyboard)
+    await state.set_state(TaskStates.waiting_for_proof_type)
 
 @start_router.message(TaskStates.waiting_for_frequency, F.text == "Multiple times")
 async def multiple_frequency_handler(message: types.Message, state: FSMContext):
     await state.update_data(task_frequency="Multiple times")
-    await message.answer(text="What times should the task appear?\n\n*Shablon:* Vaqtlarni vergul bilan ajratib yozing.\nMasalan: `09:00, 12:30, 15:00`", parse_mode="Markdown", reply_markup=types.ReplyKeyboardRemove())
+    await message.answer(text="What time should the task appear for the user?\n\n*Shablon:* Vaqtlarni vergul bilan ajratib yozing.\nMasalan: `08:00, 14:00`", parse_mode="Markdown", reply_markup=types.ReplyKeyboardRemove())
     await state.set_state(TaskStates.waiting_for_multiple_times)
 
 @start_router.message(TaskStates.waiting_for_multiple_times)
 async def get_multiple_times_handler(message: types.Message, state: FSMContext):
-    await state.update_data(task_times=message.text)
+    await state.update_data(task_times=message.text.strip())
+    await message.answer(text="What type of proof is required?", reply_markup=proof_type_keyboard)
+    await state.set_state(TaskStates.waiting_for_proof_type)
+
+@start_router.message(TaskStates.waiting_for_proof_type, F.text.in_(["Video message", "Photo"]))
+async def get_proof_type_handler(message: types.Message, state: FSMContext):
+    await state.update_data(proof_type=message.text)
+    await message.answer(text="Who would you like to assign the task to?", reply_markup=assign_role_keyboard)
+    await state.set_state(TaskStates.waiting_for_target_role)
+
+@start_router.message(TaskStates.waiting_for_target_role, F.text.in_(["Admin", "Cashier", "Sanitar", "Manager"]))
+async def get_target_role_handler(message: types.Message, state: FSMContext):
+    selected_role = message.text
+    await state.update_data(target_role=selected_role)
+    
+    inline_kb = []
+    found_users = False
+    
+    for u_id, u_info in USERS_ROLES.items():
+        if isinstance(u_info, dict) and u_info.get("role") == selected_role and u_info.get("name"):
+            found_users = True
+            inline_kb.append([types.InlineKeyboardButton(text=u_info.get("name"), callback_data=f"assignuser_{u_id}")])
+            
+    if not found_users:
+        await message.answer(text=f"Xatolik: Tizimda hali tasdiqlangan va ismi bor '{selected_role}' xodimlari mavjud emas!")
+        return
+        
+    await message.answer(text=f"Aynan qaysi '{selected_role}' xodimiga biriktirmoqchisiz? Tanlang 👇", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_kb))
+    await state.set_state(TaskStates.waiting_for_target_user)
+
+@start_router.callback_query(TaskStates.waiting_for_target_user, F.data.startswith("assignuser_"))
+async def finalize_task_assignment_handler(call: types.CallbackQuery, state: FSMContext):
+    target_user_id = int(call.data.split("_")[1])
     user_data = await state.get_data()
-    await message.answer(text=f"🎉 *Vazifa yaratildi!*\n\n📌 *Nomi:* {user_data.get('task_name')}\n📅 *Kunlar:* {user_data.get('task_days')}\n🔢 *Chastotasi:* {user_data.get('task_frequency')}\n⏰ *Vaqtlari:* {user_data.get('task_times')}", parse_mode="Markdown", reply_markup=main_menu_keyboard)
+    
+    employee_name = USERS_ROLES.get(target_user_id, {}).get("name", "Noma'lum")
+    task_id = len(TASKS_DATABASE) + 1
+    
+    # Vaqtlarni listga o'tkazib tozalaymiz
+    raw_times = user_data.get("task_times", "")
+    times_list = [t.strip() for t in raw_times.split(",") if t.strip()]
+    
+    new_task = {
+        "id": task_id,
+        "task_name": user_data.get("task_name"),
+        "task_days": user_data.get("task_days"),
+        "task_frequency": user_data.get("task_frequency"),
+        "task_times": times_list,
+        "proof_type": user_data.get("proof_type"),
+        "assigned_to_id": target_user_id,
+        "assigned_to_name": employee_name,
+        "sent_today_times": [] # Takroriy yuborilmasligi uchun kunlik nazorat
+    }
+    
+    TASKS_DATABASE.append(new_task)
+    
+    # Admin uchun yakuniy hisobot chiqadi
+    report_text = (
+        f"🎉 <b>Vazifa yaratildi!</b>\n\n"
+        f"📌 <b>Nomi:</b> {new_task['task_name']}\n"
+        f"📅 <b>Kunlar:</b> {new_task['task_days']}\n"
+        f"🔢 <b>Chastotasi:</b> {new_task['task_frequency']}\n"
+        f"⏰ <b>Vaqtlari:</b> {', '.join(new_task['task_times'])}\n"
+        f"📸 <b>Talab etiladi:</b> {new_task['proof_type']}\n"
+        f"👤 <b>Mas'ul xodim:</b> {new_task['assigned_to_name']}"
+    )
+    await call.message.edit_text(text=report_text, parse_mode="HTML")
+    await call.message.answer(text="Asosiy menyuga qaytdingiz.", reply_markup=main_menu_keyboard)
+    
+    # Hodimga bildirishnoma boradi
+    try:
+        await call.bot.send_message(
+            chat_id=target_user_id,
+            text=f"🔔 <b>Sizga yangi vazifa yuklatildi!</b>\n\n📌 Vazifa nomi: {new_task['task_name']}\n⏰ Vaqtlari: {', '.join(new_task['task_times'])}"
+        )
+    except Exception as e:
+        print(f"Hodimga sms yuborishda xato: {e}")
+        
     await state.clear()
+    await call.answer()
+
+
+# ================= XODIM VAZIFANI BAJARISH BOSQICHI =================
+
+@start_router.callback_query(F.data.startswith("completetask_"))
+async def employee_complete_task_callback(call: types.CallbackQuery, state: FSMContext):
+    task_id = int(call.data.split("_")[1])
+    
+    # Vazifani qidirib topamiz
+    task = next((t for t in TASKS_DATABASE if t["id"] == task_id), None)
+    if not task:
+        await call.answer(text="Vazifa topilmadi!", show_alert=True)
+        return
+        
+    await state.update_data(active_task_id=task_id, proof_required=task["proof_type"])
+    
+    # Talabga qarab xabarni chiqaramiz
+    if task["proof_type"] == "Photo":
+        await call.message.answer(text="Ushbu vazifani tasdiqlash uchun iltimos, <b>Rasm (Photo)</b> yuboring!", parse_mode="HTML")
+    else:
+        await call.message.answer(text="Ushbu vazifani tasdiqlash uchun iltimos, <b>Dumaloq video (Video message)</b> yuboring!", parse_mode="HTML")
+        
+    await state.set_state(TaskStates.waiting_for_task_proof)
+    await call.answer()
+
+
+# Majburiy Isbotni Tekshirish va Qabul Qilish handleri
+@start_router.message(TaskStates.waiting_for_task_proof)
+async def receive_task_proof_handler(message: types.Message, state: FSMContext):
+    state_data = await state.get_data()
+    proof_required = state_data.get("proof_required")
+    task_id = state_data.get("active_task_id")
+    
+    task = next((t for t in TASKS_DATABASE if t["id"] == task_id), None)
+    
+    # 1. Agar Photo talab qilinganda rasm yuborilsa
+    if proof_required == "Photo" and message.photo:
+        await message.answer(text="Task completed", reply_markup=main_menu_keyboard)
+        # Adminga hisobot ketadi
+        if task:
+            await message.bot.send_message(
+                chat_id=ADMIN_ID,
+                text=f"✅ <b>Vazifa bajarildi!</b>\n\n📌 <b>Nomi:</b> {task['task_name']}\n👤 <b>Bajaruvchi:</b> {task['assigned_to_name']}\n📸 O'rnatilgan talab (Rasm) muvaffaqiyatli topshirildi."
+            )
+            await message.bot.send_photo(chat_id=ADMIN_ID, photo=message.photo[-1].file_id)
+        await state.clear()
+        
+    # 2. Agar Video message talab qilinganda dumaloq video yuborilsa
+    elif proof_required == "Video message" and message.video_note:
+        await message.answer(text="Task completed", reply_markup=main_menu_keyboard)
+        # Adminga hisobot ketadi
+        if task:
+            await message.bot.send_message(
+                chat_id=ADMIN_ID,
+                text=f"✅ <b>Vazifa bajarildi!</b>\n\n📌 <b>Nomi:</b> {task['task_name']}\n👤 <b>Bajaruvchi:</b> {task['assigned_to_name']}\n📸 O'rnatilgan talab (Dumaloq video) muvaffaqiyatli topshirildi."
+            )
+            await message.bot.send_video_note(chat_id=ADMIN_ID, video_note=message.video_note.file_id)
+        await state.clear()
+        
+    # 3. Agar talab qilingan narsadan boshqa narsa yuborilsa
+    else:
+        if proof_required == "Photo":
+            await message.answer(text="⚠️ Noto'g'ri isbot! Iltimos, faqat <b>Rasm (Photo)</b> yuboring.", parse_mode="HTML")
+        else:
+            await message.answer(text="⚠️ Noto'g'ri isbot! Iltimos, faqat <b>Dumaloq video (Video message)</b> yuboring.", parse_mode="HTML")
+
+
+# ================= ORQA FONDA ISHLOVCHI AVTOMATIK TAYMER TIZIMI =================
+
+async def auto_task_scheduler(bot):
+    """ Har daqiqada vaqtni tekshirib, xodimga vazifani dynamic yuboradigan taymer """
+    while True:
+        try:
+            now = datetime.now()
+            current_time_str = now.strftime("%H:%M") # "08:00" formatida
+            
+            # Yangi kun boshlanganda yuborilgan vaqtlar nazoratini tozalaymiz
+            if current_time_str == "00:00":
+                for task in TASKS_DATABASE:
+                    task["sent_today_times"] = []
+            
+            for task in TASKS_DATABASE:
+                # Agar hozirgi soat vazifaning vaqtlari ichida bo'lsa va bugun hali shu soatda yuborilmagan bo'lsa
+                if current_time_str in task["task_times"] and current_time_str not in task["sent_today_times"]:
+                    
+                    # Xodimga eslatma boradi
+                    text_to_employee = f"📌 <b>{task['task_name']}</b>"
+                    await bot.send_message(
+                        chat_id=task["assigned_to_id"],
+                        text=text_to_employee,
+                        parse_mode="HTML",
+                        reply_markup=get_task_complete_keyboard(task["id"])
+                    )
+                    
+                    # Yuborilgan soatni belgilab qo'yamiz (Takroran yubormasligi uchun)
+                    task["sent_today_times"].append(current_time_str)
+                    print(f"[TAYMER] {task['task_name']} eslatmasi {task['assigned_to_name']}ga yuborildi.")
+                    
+        except Exception as e:
+            print(f"Taymer ishlashida xato: {e}")
+            
+        await asyncio.sleep(30) # Har 30 soniyada tekshirib turadi
