@@ -68,14 +68,12 @@ def get_admin_approval_keyboard(user_id: int) -> InlineKeyboardMarkup:
     inline_keyboard = []
     row = []
     
-    # Rollarni 2 tadan qilib bitta qatorga joylashtiramiz
     for role in roles:
         row.append(InlineKeyboardButton(text=role, callback_data=f"approve_{role}_{user_id}"))
         if len(row) == 2:
             inline_keyboard.append(row)
             row = []
             
-    # Rad etish tugmasini alohida pastdan to'liq qator qilib qo'shamiz
     inline_keyboard.append([InlineKeyboardButton(text="❌ Rad etish (Reject)", callback_data=f"reject_{user_id}")])
     
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
