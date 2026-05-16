@@ -31,7 +31,7 @@ days_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-# Kuniga necha marta bajarilishini so'rash tugmalari (Yangi qo'shildi)
+# Kuniga necha marta bajarilishini so'rash tugmalari
 frequency_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [
@@ -59,5 +59,23 @@ def get_inline_days_keyboard(selected_days: list = None) -> InlineKeyboardMarkup
         inline_keyboard.append([InlineKeyboardButton(text=text, callback_data=f"day_{code}")])
         
     inline_keyboard.append([InlineKeyboardButton(text="Done ➡️", callback_data="days_done")])
+    
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+# Admin uchun ruxsat berish va rollarni tanlash Inline klaviaturasi (Yangi qo'shildi)
+def get_admin_approval_keyboard(user_id: int) -> InlineKeyboardMarkup:
+    roles = ["Admin", "Cashier", "Sanitar", "Manager"]
+    inline_keyboard = []
+    row = []
+    
+    # Rollarni 2 tadan qilib bitta qatorga joylashtiramiz
+    for role in roles:
+        row.append(InlineKeyboardButton(text=role, callback_data=f"approve_{role}_{user_id}"))
+        if len(row) == 2:
+            inline_keyboard.append(row)
+            row = []
+            
+    # Rad etish tugmasini alohida pastdan to'liq qator qilib qo'shamiz
+    inline_keyboard.append([InlineKeyboardButton(text="❌ Rad etish (Reject)", callback_data=f"reject_{user_id}")])
     
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
