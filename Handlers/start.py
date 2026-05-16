@@ -1,7 +1,8 @@
 from aiogram import Router, types, F
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext # FSM bilan ishlash uchun
-from Keyboards.main_menu import main_menu_keyboard, task_type_keyboard, days_keyboard
+# Yangi frequency_keyboard tugmasini ham chaqirib oldik
+from Keyboards.main_menu import main_menu_keyboard, task_type_keyboard, days_keyboard, frequency_keyboard
 from Handlers.states import TaskStates # Holatlarimizni chaqiramiz
 
 start_router = Router()
@@ -44,3 +45,18 @@ async def get_task_name_handler(message: types.Message, state: FSMContext):
     )
     # Holatni kunlarni kutish bosqichiga o'tkazamiz
     await state.set_state(TaskStates.waiting_for_days)
+
+# 3. Kunlar tanlanganda (ODD, EVEN yoki 6 days a week) uni ushlab qolish va Chastotani so'rash
+# F.text.in_([...]) filtri orqali ushbu 3 ta tugmadan biri bosilganini aniqlaymiz
+@start_router.message(TaskStates.waiting_for_days, F.text.in_(["ODD", "EVEN", "6 days a week"]))
+async def get_task_days_handler(message: types.Message, state: FSMContext):
+    # Tanlangan kun turini bot xotirasiga saqlaymiz
+    await state.update_data(task_days=message.text)
+    
+    # Keyingi bosqich savolini beramiz va "Once" hamda "Multiple times" tugmalarini chiqaramiz
+    await message.answer(
+        text="How many times per day? (Once or multiple times?)",
+        reply_markup=frequency_keyboard
+    )
+    # Holatni kunlik chastotani kutish bosqichiga o'tkazamiz
+    await state.set_state(TaskStates.waiting_for_frequency)
