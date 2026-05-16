@@ -210,9 +210,8 @@ async def days_done_callback(call: types.CallbackQuery, state: FSMContext):
 @start_router.message(TaskStates.waiting_for_frequency, F.text == "Once")
 async def once_frequency_handler(message: types.Message, state: FSMContext):
     await state.update_data(task_frequency="Once")
-    # To'g'rilandi: Shrift teglari HTML formatiga o'tkazildi, toza va aniq savol beriladi
     await message.answer(
-        text="What time should the task appear for the user?\n\n<b>Shablon:</b> <code>08:00</code> ko'rinishida qo'lda yozib yuboring.", 
+        text="What time should the task appear for the user?\n\n<b>Shablon:</b> <code>08:00</code> ko'rinishida kiriting.", 
         parse_mode="HTML", 
         reply_markup=types.ReplyKeyboardRemove()
     )
@@ -227,9 +226,8 @@ async def get_once_time_handler(message: types.Message, state: FSMContext):
 @start_router.message(TaskStates.waiting_for_frequency, F.text == "Multiple times")
 async def multiple_frequency_handler(message: types.Message, state: FSMContext):
     await state.update_data(task_frequency="Multiple times")
-    # To'g'rilandi: Shrift teglari HTML formatiga o'tkazildi, toza va aniq savol beriladi
     await message.answer(
-        text="What time should the task appear for the user?\n\n<b>Shablon:</b> Vaqtlarni vergul bilan ajratib yozing.\nMasalan: <code>08:00, 14:00, 19:30</code>", 
+        text="What time should the task appear for the user?\n\n<b>Shablon:</b> Vaqtlarni vergul bilan ajratib yozing.\nMasalan: <code>08:00, 14:00, 18:00</code>", 
         parse_mode="HTML", 
         reply_markup=types.ReplyKeyboardRemove()
     )
@@ -261,7 +259,7 @@ async def get_target_role_handler(message: types.Message, state: FSMContext):
             inline_kb.append([types.InlineKeyboardButton(text=u_info.get("name"), callback_data=f"assignuser_{u_id}")])
             
     if not found_users:
-        await message.answer(text=f"Xatolik: Tizimda hali tasdiqlangan va ismi bor '{selected_role}' xodimlari maintaga ega emas!")
+        await message.answer(text=f"Xatolik: Tizimda hali tasdiqlangan va ismi bor '{selected_role}' xodimlari mavjud emas!")
         return
         
     await message.answer(text=f"Aynan qaysi '{selected_role}' xodimiga biriktirmoqchisiz? Tanlang 👇", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_kb))
@@ -281,7 +279,7 @@ async def finalize_task_assignment_handler(call: types.CallbackQuery, state: FSM
     new_task = {
         "id": task_id,
         "task_name": user_data.get("task_name"),
-        "task_days": user_data.get("task_days"),
+        "task_days": user_data.get("task_days"), 
         "task_frequency": user_data.get("task_frequency"),
         "task_times": times_list,
         "proof_type": user_data.get("proof_type"),
@@ -304,7 +302,6 @@ async def finalize_task_assignment_handler(call: types.CallbackQuery, state: FSM
     await call.message.edit_text(text=report_text, parse_mode="HTML")
     await call.message.answer(text="Asosiy menyuga qaytdingiz.", reply_markup=main_menu_keyboard)
     
-    # 1-MASALA TUZATILDI: parse_mode="HTML" qo'shildi, belgilar chiroyli qalin bo'lib chiqadi
     try:
         await call.bot.send_message(
             chat_id=target_user_id,
@@ -314,7 +311,7 @@ async def finalize_task_assignment_handler(call: types.CallbackQuery, state: FSM
             parse_mode="HTML"
         )
     except Exception as e:
-        print(f"Hodimga sms yuborishda xato: {e}")
+        print(f"Xodimga sms yuborishda xato: {e}")
         
     await state.clear()
     await call.answer()
@@ -354,7 +351,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
         if task:
             await message.bot.send_message(
                 chat_id=ADMIN_ID,
-                text=f"✅ <b>Vazifa bajarildi!</b>\n\n📌 <b>Nomi:</b> {task['task_name']}\n👤 <b>Bajaruvchi:</b> {task['assigned_to_name']}\n📸 O'rnatilgan talab (Rasm) muvaffaqiyatli topshirildi.",
+                text=f"✅ <b>Vazifa baja'rildi!</b>\n\n📌 <b>Nomi:</b> {task['task_name']}\n👤 <b>Bajaruvchi:</b> {task['assigned_to_name']}\n📸 O'rnatilgan talab (Rasm) muvaffaqiyatli topshirildi.",
                 parse_mode="HTML"
             )
             await message.bot.send_photo(chat_id=ADMIN_ID, photo=message.photo[-1].file_id)
@@ -378,53 +375,63 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             await message.answer(text="⚠️ Noto'g'ri isbot! Iltimos, faqat <b>Dumaloq video (Video message)</b> yuboring.", parse_mode="HTML")
 
 
-# ================= 2-MASALA TUZATILDI: HAFTANING ANIQ KUNLARINI TEKSHIROVCHI TAYMER =================
+# ================= MUKAMMAL TAYMER (SCHEDULER) KODI =================
 
 async def auto_task_scheduler(bot):
+    last_checked_minute = ""
+    
     while True:
         try:
             now = datetime.now()
             current_time_str = now.strftime("%H:%M")
             
-            # Bugungi kun nomini inglizcha olamiz (Katta-kichik harf muammosi bo'lmasligi uchun .strip().lower() qilamiz)
-            current_day_name = now.strftime("%a").strip().lower() # "sun", "mon" va h.k.
+            # Bugungi kunning qisqa inglizcha nomi (mon, tue, wed, thu, fri, sat, sun)
+            current_day_name = now.strftime("%a").strip().lower() 
             day_of_month = now.day
             
+            # Har kuni yarim tunda bugun yuborilgan vaqtlar bazasini tozalaymiz
             if current_time_str == "00:00":
                 for task in TASKS_DATABASE:
                     task["sent_today_times"] = []
             
-            for task in TASKS_DATABASE:
-                if current_time_str in task["task_times"] and current_time_str not in task["sent_today_times"]:
-                    
-                    day_match = False
-                    task_days = str(task["task_days"]).strip()
-                    
-                    if task_days == "ODD" and day_of_month % 2 != 0:
-                        day_match = True
-                    elif task_days == "EVEN" and day_of_month % 2 == 0:
-                        day_match = True
-                    elif task_days == "6 days a week" and current_day_name != "sun":
-                        day_match = True
-                    else:
-                        # OTHER tanlanganda "Sun, Mon, Wed" matnini tozalab, haqiqiy ro'yxatga aylantiramiz
-                        # va ichida bugungi kun borligini tekshiramiz
-                        clean_days = [d.strip().lower() for d in task_days.split(",") if d.strip()]
-                        if current_day_name in clean_days:
+            # Dublikat sms ketishini oldini olish va aynan shu daqiqani tekshirish
+            if current_time_str != last_checked_minute:
+                
+                for task in TASKS_DATABASE:
+                    if current_time_str in task["task_times"] and current_time_str not in task["sent_today_times"]:
+                        
+                        day_match = False
+                        task_days = str(task["task_days"]).strip()
+                        
+                        # Kunlarni tekshirish mantig'i
+                        if task_days == "ODD" and day_of_month % 2 != 0:
                             day_match = True
-                    
-                    if day_match:
-                        text_to_employee = f"📌 <b>{task['task_name']}</b>"
-                        await bot.send_message(
-                            chat_id=task["assigned_to_id"],
-                            text=text_to_employee,
-                            parse_mode="HTML",
-                            reply_markup=get_task_complete_keyboard(task["id"])
-                        )
-                        task["sent_today_times"].append(current_time_str)
-                        print(f"[TAYMER] {task['task_name']} vazifasi o'z vaqtida xodimga ketdi.")
+                        elif task_days == "EVEN" and day_of_month % 2 == 0:
+                            day_match = True
+                        elif task_days == "6 days a week" and current_day_name != "sun":
+                            day_match = True
+                        else:
+                            # OTHER tanlanganda ro'yxatni tozalab solishtiramiz
+                            clean_days = [d.strip().lower() for d in task_days.split(",") if d.strip()]
+                            if current_day_name in clean_days:
+                                day_match = True
+                        
+                        # Agar ham soat, ham kun mos kelsa xodimga eslatma yuboramiz
+                        if day_match:
+                            text_to_employee = f"📌 <b>{task['task_name']}</b>"
+                            await bot.send_message(
+                                chat_id=task["assigned_to_id"],
+                                text=text_to_employee,
+                                parse_mode="HTML",
+                                reply_markup=get_task_complete_keyboard(task["id"])
+                            )
+                            task["sent_today_times"].append(current_time_str)
+                            print(f"[TAYMER] Eslatma muvaffaqiyatli ketdi: {task['task_name']}")
+                
+                last_checked_minute = current_time_str
+                
         except Exception as e:
-            print(f"Taymer xatosi: {e}")
+            print(f"Taymer tizimida kutilmagan xato: {e}")
             
-        # Daqiqani o'tkazib yubormaslik uchun tekshirish intervalini 15 soniyaga tushiramiz
-        await asyncio.sleep(15)
+        # Daqiqani o'tkazib yubormaslik uchun har 5 soniyada loop aylanadi
+        await asyncio.sleep(5)
