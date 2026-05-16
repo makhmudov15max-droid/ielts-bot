@@ -3,8 +3,9 @@ import logging
 import sys
 from aiogram import Bot, Dispatcher
 from config import BOT_TOKEN
-# Handlers papkasidagi start.py ichidan routerni chaqirib olamiz
-from Handlers.start import start_router
+
+# MUAMMO SHU YERDA EDI: start_router bilan birga auto_task_scheduler ham import qilindi
+from Handlers.start import start_router, auto_task_scheduler
 
 # Bot ishga tushganda terminalda ma'lumotlarni chiroyli ko'rsatib turishi uchun logging
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -19,6 +20,7 @@ async def main():
     # Boyagi start_router'ni asosiy dispatcherga ulaymiz
     dp.include_router(start_router)
 
+    # Orqa fonda vaqtni tekshirib turuvchi taymerni ishga tushiramiz
     asyncio.create_task(auto_task_scheduler(bot))
 
     # Botni yangi xabarlarni kutish rejimida ishga tushiramiz (Polling)
