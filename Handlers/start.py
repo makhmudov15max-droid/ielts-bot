@@ -42,38 +42,45 @@ async def command_start_handler(message: types.Message):
                  "Assalomu alaykum, Edu_Control’ga xush kelibsiz. Admin tasdiqlaguncha kuting. Rahmat!"
         )
         
-        # Adminga ma'lumotlarni yuboramiz
-        username = f"@{message.from_user.username}" if message.from_user.username else "Mavjud emas"
         full_name = message.from_user.full_name
         
+        # Username bor-yo'qligini aniqlab, havolali matn tayyorlaymiz
+        if message.from_user.username:
+            raw_username = message.from_user.username
+            user_profile_link = f"https://t.me/{raw_username}"
+            username_text = f"@{raw_username} ([Profilga o'tish]({user_profile_link}))"
+        else:
+            username_text = f"Mavjud emas ([Profilga o'tish](tg://user?id={user_id}))"
+        
+        # Markdown formatidagi chiroyli report xabari
         admin_text = (
             f"🔔 *Yangi foydalanuvchi ruxsat so'ramoqda!*\n\n"
             f"👤 *Ism Familiya:* {full_name}\n"
             f"🆔 *ID Raqami:* `{user_id}`\n"
-            f"🌐 *Username:* {username}\n\n"
+            f"🌐 *Username:* {username_text}\n\n"
             f"Iltimos, ushbu foydalanuvchiga unvon (role) bering yoki rad eting 👇"
         )
         
-        # Xabar ketishida xatolik bo'lsa terminalda ko'rish uchun try-except qo'shamiz
         try:
             await message.bot.send_message(
                 chat_id=ADMIN_ID,
                 text=admin_text,
                 parse_mode="Markdown",
+                disable_web_page_preview=True,
                 reply_markup=get_admin_approval_keyboard(user_id)
             )
-            print(f"[OK] Approval xabari muvaffaqiyatli adminga ({ADMIN_ID}) yuborildi.")
+            print(f"[OK] Approval xabari havolalar bilan adminga yuborildi.")
         except Exception as e:
-            print(f"❌ [XATOLIK] Adminga xabar yuborishda muammo chiqdi: {e}")
-            # Agar Markdown formatidan xato bersa, oddiy matnda yuborib ko'radi
-            try:
-                await message.bot.send_message(
-                    chat_id=ADMIN_ID,
-                    text=f"Yangi foydalanuvchi ruxsat so'ramoqda:\nIsm: {full_name}\nID: {user_id}",
-                    reply_markup=get_admin_approval_keyboard(user_id)
-                )
-            except Exception as e2:
-                print(f"❌ [KRITIK XATOLIK] Oddiy matn ham adminga ketmadi: {e2}")
+            print(f"❌ [XATOLIK] Markdown xatosi: {e}. Zaxira varianti ishga tushdi.")
+            backup_username = f"@{message.from_user.username}" if message.from_user.username else "Mavjud emas"
+            await message.bot.send_message(
+                chat_id=ADMIN_ID,
+                text=f"🔔 Yangi foydalanuvchi ruxsat so'ramoqda:\n\n"
+                     f"👤 Ism: {full_name}\n"
+                     f"🆔 ID: {user_id}\n"
+                     f"🌐 Username: {backup_username}",
+                reply_markup=get_admin_approval_keyboard(user_id)
+            )
         return
 
     # 3. Agar foydalanuvchi tasdiqlangan bo'lsa
