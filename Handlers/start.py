@@ -386,9 +386,8 @@ async def auto_task_scheduler(bot):
             now = datetime.now()
             current_time_str = now.strftime("%H:%M")
             
-            # Bugungi kun nomini inglizcha kichik harflarda olish (masalan: mon, tue, wed, thu, fri, sat, sun)
-            current_day_name = now.strftime("%a").lower()
-            # Oyning nechanchi kuni (juft yoki toq kunligini aniqlash uchun)
+            # Bugungi kun nomini inglizcha olamiz (Katta-kichik harf muammosi bo'lmasligi uchun .strip().lower() qilamiz)
+            current_day_name = now.strftime("%a").strip().lower() # "sun", "mon" va h.k.
             day_of_month = now.day
             
             if current_time_str == "00:00":
@@ -398,9 +397,8 @@ async def auto_task_scheduler(bot):
             for task in TASKS_DATABASE:
                 if current_time_str in task["task_times"] and current_time_str not in task["sent_today_times"]:
                     
-                    # Kun mos kelishini tekshirish mantig'i
                     day_match = False
-                    task_days = task["task_days"]
+                    task_days = str(task["task_days"]).strip()
                     
                     if task_days == "ODD" and day_of_month % 2 != 0:
                         day_match = True
@@ -408,10 +406,13 @@ async def auto_task_scheduler(bot):
                         day_match = True
                     elif task_days == "6 days a week" and current_day_name != "sun":
                         day_match = True
-                    elif current_day_name in task_days.lower(): # OTHER tanlanganda tanlangan kunlarni solishtiradi (masalan: mon, wed)
-                        day_match = True
-                        
-                    # Agar vaqt ham, tanlangan kun ham to'g'ri kelsagina xodimga SMS ketadi
+                    else:
+                        # OTHER tanlanganda "Sun, Mon, Wed" matnini tozalab, haqiqiy ro'yxatga aylantiramiz
+                        # va ichida bugungi kun borligini tekshiramiz
+                        clean_days = [d.strip().lower() for d in task_days.split(",") if d.strip()]
+                        if current_day_name in clean_days:
+                            day_match = True
+                    
                     if day_match:
                         text_to_employee = f"📌 <b>{task['task_name']}</b>"
                         await bot.send_message(
@@ -421,8 +422,9 @@ async def auto_task_scheduler(bot):
                             reply_markup=get_task_complete_keyboard(task["id"])
                         )
                         task["sent_today_times"].append(current_time_str)
-                        print(f"[TAYMER] {task['task_name']} vazifasi o'z kunida xodimga yuborildi.")
+                        print(f"[TAYMER] {task['task_name']} vazifasi o'z vaqtida xodimga ketdi.")
         except Exception as e:
             print(f"Taymer xatosi: {e}")
             
-        await asyncio.sleep(30)
+        # Daqiqani o'tkazib yubormaslik uchun tekshirish intervalini 15 soniyaga tushiramiz
+        await asyncio.sleep(15)
