@@ -18,7 +18,9 @@ async def main():
     
     # Boyagi start_router'ni asosiy dispatcherga ulaymiz
     dp.include_router(start_router)
-    
+
+    asyncio.create_task(auto_task_scheduler(bot))
+
     # Botni yangi xabarlarni kutish rejimida ishga tushiramiz (Polling)
     await dp.start_polling(bot)
 
