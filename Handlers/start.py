@@ -44,34 +44,36 @@ async def command_start_handler(message: types.Message):
         
         full_name = message.from_user.full_name
         
-        # Username bor-yo'qligini aniqlab, havolali matn tayyorlaymiz
+        # HTML formatida chiroyli va pastki chiziqchalarni buzmaydigan link tayyorlaymiz
         if message.from_user.username:
             raw_username = message.from_user.username
             user_profile_link = f"https://t.me/{raw_username}"
-            username_text = f"@{raw_username} ([Profilga o'tish]({user_profile_link}))"
+            username_text = f"@{raw_username} (<a href='{user_profile_link}'>Profilga o'tish</a>)"
         else:
-            username_text = f"Mavjud emas ([Profilga o'tish](tg://user?id={user_id}))"
+            username_text = f"Mavjud emas (<a href='tg://user?id={user_id}'>Profilga o'tish</a>)"
         
-        # Markdown formatidagi chiroyli report xabari
+        # HTML teglari bilan chiroyli xabar matni
         admin_text = (
-            f"🔔 *Yangi foydalanuvchi ruxsat so'ramoqda!*\n\n"
-            f"👤 *Ism Familiya:* {full_name}\n"
-            f"🆔 *ID Raqami:* `{user_id}`\n"
-            f"🌐 *Username:* {username_text}\n\n"
+            f"🔔 <b>Yangi foydalanuvchi ruxsat so'ramoqda!</b>\n\n"
+            f"👤 <b>Ism Familiya:</b> {full_name}\n"
+            f"🆔 <b>ID Raqami:</b> <code>{user_id}</code>\n"
+            f"🌐 <b>Username:</b> {username_text}\n\n"
             f"Iltimos, ushbu foydalanuvchiga unvon (role) bering yoki rad eting 👇"
         )
         
         try:
+            # parse_mode parametrini "HTML" ga o'zgartirdik!
             await message.bot.send_message(
                 chat_id=ADMIN_ID,
                 text=admin_text,
-                parse_mode="Markdown",
+                parse_mode="HTML",
                 disable_web_page_preview=True,
                 reply_markup=get_admin_approval_keyboard(user_id)
             )
-            print(f"[OK] Approval xabari havolalar bilan adminga yuborildi.")
+            print(f"[OK] Approval xabari HTML formatida adminga yuborildi.")
         except Exception as e:
-            print(f"❌ [XATOLIK] Markdown xatosi: {e}. Zaxira varianti ishga tushdi.")
+            print(f"❌ [XATOLIK] HTML yuborishda muammo: {e}")
+            # Agar biror sabab bilan HTML ham xato bersa, eng oddiy matn rejimida yuboriladi
             backup_username = f"@{message.from_user.username}" if message.from_user.username else "Mavjud emas"
             await message.bot.send_message(
                 chat_id=ADMIN_ID,
