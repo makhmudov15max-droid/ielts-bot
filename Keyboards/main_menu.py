@@ -30,3 +30,14 @@ days_keyboard = ReplyKeyboardMarkup(
     ],
     resize_keyboard=True
 )
+
+# Kuniga necha marta bajarilishini so'rash tugmalari (Yangi qo'shildi)
+frequency_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text="Once"),
+            KeyboardButton(text="Multiple times")
+        ]
+    ],
+    resize_keyboard=True
+)
