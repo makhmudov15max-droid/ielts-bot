@@ -97,51 +97,66 @@ async def command_start_handler(message: types.Message):
 
 @start_router.callback_query(F.data.startswith("approve_"))
 async def admin_approve_callback(call: types.CallbackQuery):
-    data_parts = call.data.split("_")
-    role = data_parts[1]
-    target_user_id = int(data_parts[2])
-    
-    USERS_ROLES[target_user_id] = role
-    
-    await call.message.edit_text(
-        text=f"{call.message.text}\n\n✅ *Tasdiqlandi!* Foydalanuvchiga *{role}* unvoni berildi.",
-        parse_mode="Markdown"
-    )
-    
     try:
-        user_text = (
-            f"You have been assigned the \"{role}\" role by the Admin. Welcome and good luck!\n"
-            f"Sizga Admin tomonidan \"{role}\" unvoni berildi. Vaqtingizni maroqli o'tqazing, omad!"
-        )
-        await call.bot.send_message(
-            chat_id=target_user_id,
-            text=user_text,
-            reply_markup=main_menu_keyboard
-        )
-    except Exception as e:
-        print(f"Xabar yuborishda xatolik: {e}")
+        # Callback ma'lumotlarini ajratib olamiz
+        data_parts = call.data.split("_")
+        role = data_parts[1]
+        target_user_id = int(data_parts[2])
         
+        # Foydalanuvchiga rolni yuklaymiz
+        USERS_ROLES[target_user_id] = role
+        
+        # Admin xabarini yangilaymiz (HTML formatida xavfsiz tahrirlash)
+        await call.message.edit_text(
+            text=f"{call.message.text}\n\n✅ <b>Tasdiqlandi!</b> Foydalanuvchiga <b>{role}</b> unvoni berildi.",
+            parse_mode="HTML"
+        )
+        print(f"[OK] Admin {target_user_id} ga {role} rolini berdi.")
+        
+        # Foydalanuvchining o'ziga quvonchli xabarni yuboramiz
+        try:
+            user_text = (
+                f"You have been assigned the \"{role}\" role by the Admin. Welcome and good luck!\n\n"
+                f"Sizga Admin tomonidan \"{role}\" unvoni berildi. Vaqtingizni maroqli o'tqazing, omad!"
+            )
+            await call.bot.send_message(
+                chat_id=target_user_id,
+                text=user_text,
+                reply_markup=main_menu_keyboard
+            )
+        except Exception as e:
+            print(f"❌ Foydalanuvchiga tasdiq xabarini yuborishda xato: {e}")
+            
+    except Exception as general_error:
+        print(f"❌ Callback ishlashida umumiy xatolik: {general_error}")
+        
+    # Loading aylanib qolmasligi uchun Telegramga "javob oldim" signalini yuboramiz
     await call.answer()
 
 
 @start_router.callback_query(F.data.startswith("reject_"))
 async def admin_reject_callback(call: types.CallbackQuery):
-    target_user_id = int(call.data.split("_")[1])
-    USERS_ROLES[target_user_id] = "rejected"
-    
-    await call.message.edit_text(
-        text=f"{call.message.text}\n\n❌ *So'rov rad etildi!*",
-        parse_mode="Markdown"
-    )
-    
     try:
-        await call.bot.send_message(
-            chat_id=target_user_id,
-            text="Sizning botdan foydalanish so'rovingiz admin tomonidan rad etildi."
-        )
-    except Exception as e:
-        print(f"Xabar yuborishda xatolik: {e}")
+        target_user_id = int(call.data.split("_")[1])
+        USERS_ROLES[target_user_id] = "rejected"
         
+        await call.message.edit_text(
+            text=f"{call.message.text}\n\n❌ <b>So'rov rad etildi!</b> Foydalanuvchi bloklandi.",
+            parse_mode="HTML"
+        )
+        
+        try:
+            await call.bot.send_message(
+                chat_id=target_user_id,
+                text="Sizning botdan foydalanish so'rovingiz admin tomonidan rad etildi."
+            )
+        except Exception as e:
+            print(f"❌ Foydalanuvchiga rad xabarini yuborishda xato: {e}")
+            
+    except Exception as general_error:
+        print(f"❌ Reject callbackda xatolik: {general_error}")
+        
+    # Loadingni o'chirish
     await call.answer()
 
 
