@@ -1,4 +1,4 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 
 # Asosiy menyu tugmalari
 main_menu_keyboard = ReplyKeyboardMarkup(
@@ -41,3 +41,28 @@ frequency_keyboard = ReplyKeyboardMarkup(
     ],
     resize_keyboard=True
 )
+
+# "OTHER" bosilganda chiqadigan maxsus Inline klaviatura funksiyasi (Yangi qo'shildi)
+def get_inline_days_keyboard(selected_days: list = None) -> InlineKeyboardMarkup:
+    if selected_days is None:
+        selected_days = []
+        
+    # Hafta kunlari ro'yxati (kalit va ko'rinadigan matn)
+    weeks = {
+        "mon": "Dushanba", "tue": "Seshanba", "wed": "Chorshanba",
+        "thu": "Payshanba", "fri": "Juma", "sat": "Shanba", "sun": "Yakshanba"
+    }
+    
+    inline_keyboard = []
+    
+    # Har bir kunni aylanib chiqib, tugma hosil qilamiz
+    for code, name in weeks.items():
+        # Agar kun tanlangan bo'lsa, yoniga ✅ belgisini qo'shamiz
+        text = f"✅ {name}" if code in selected_days else name
+        # callback_data orqali bot orqa fonda qaysi kun bosilganini bilib oladi
+        inline_keyboard.append([InlineKeyboardButton(text=text, callback_data=f"day_{code}")])
+        
+    # Eng oxiriga "Done" (Tayyor) tugmasini qo'shamiz
+    inline_keyboard.append([InlineKeyboardButton(text="Done ➡️", callback_data="days_done")])
+    
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
