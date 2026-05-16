@@ -6,12 +6,12 @@ main_menu_keyboard = ReplyKeyboardMarkup(
         [
             KeyboardButton(text="Add Task"), 
             KeyboardButton(text="List of tasks")
-        ] # Ikkalasi bitta qatorda
+        ]
     ],
     resize_keyboard=True
 )
 
-# Task turini tanlash uchun yangi tugmalar (bitta qatorda yonma-yon)
+# Task turini tanlash uchun yangi tugmalar
 task_type_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [
@@ -42,6 +42,28 @@ frequency_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
+# --- YANGI QO'SHILGAN KLAVIATURALAR ---
+
+# Isbot turi tugmalari
+proof_type_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text="Video message"),
+            KeyboardButton(text="Photo")
+        ]
+    ],
+    resize_keyboard=True
+)
+
+# Vazifani qaysi unvonga topshirish tugmalari
+assign_role_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Admin"), KeyboardButton(text="Cashier")],
+        [KeyboardButton(text="Sanitar"), KeyboardButton(text="Manager")]
+    ],
+    resize_keyboard=True
+)
+
 # "OTHER" bosilganda chiqadigan maxsus Inline klaviatura funksiyasi
 def get_inline_days_keyboard(selected_days: list = None) -> InlineKeyboardMarkup:
     if selected_days is None:
@@ -62,7 +84,7 @@ def get_inline_days_keyboard(selected_days: list = None) -> InlineKeyboardMarkup
     
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
-# Admin uchun ruxsat berish va rollarni tanlash Inline klaviaturasi (Yangi qo'shildi)
+# Admin uchun ruxsat berish va rollarni tanlash Inline klaviaturasi
 def get_admin_approval_keyboard(user_id: int) -> InlineKeyboardMarkup:
     roles = ["Admin", "Cashier", "Sanitar", "Manager"]
     inline_keyboard = []
@@ -77,3 +99,11 @@ def get_admin_approval_keyboard(user_id: int) -> InlineKeyboardMarkup:
     inline_keyboard.append([InlineKeyboardButton(text="❌ Rad etish (Reject)", callback_data=f"reject_{user_id}")])
     
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+# Xodimga boradigan inline 'Completed' tugmasi
+def get_task_complete_keyboard(task_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="❌ Completed", callback_data=f"completetask_{task_id}")]
+        ]
+    )
