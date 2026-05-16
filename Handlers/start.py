@@ -1,7 +1,8 @@
 from aiogram import Router, types, F
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
-import config  # config faylini to'liqligicha import qilamiz
+from aiogram.fsm.storage.base import StorageKey
+import config  
 from Keyboards.main_menu import (
     main_menu_keyboard, 
     task_type_keyboard, 
@@ -14,29 +15,32 @@ from Handlers.states import TaskStates
 
 start_router = Router()
 
-# config ichidagi ADMIN_ID ni har qanday holatda raqam (int) ekanligiga ishonch hosil qilamiz
 try:
     ADMIN_ID = int(config.ADMIN_ID)
 except ValueError:
-    ADMIN_ID = 6500594896  # Agar xatolik bo'lsa xavfsiz ID
+    ADMIN_ID = 6500594896  
 
-# Vaqtincha xotira bazasi
+# Vaqtincha xotira bazasi (Endi rol bilan birga ismni ham saqlaydi)
+# Tuzilishi: { user_id: {"role": "Sanitar", "name": "Baxtiyorjon Mahmudov"} }
 USERS_ROLES = {
-    ADMIN_ID: "Admin"  # Asosiy admin avtomatik tizimda bo'ladi
+    ADMIN_ID: {"role": "Admin", "name": "Asosiy Admin"}
 }
 
 @start_router.message(CommandStart())
-async def command_start_handler(message: types.Message):
+async def command_start_handler(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
     
     # 1. Agar foydalanuvchi rad etilgan bo'lsa
-    if USERS_ROLES.get(user_id) == "rejected":
+    user_info = USERS_ROLES.get(user_id)
+    if isinstance(user_info, dict) and user_info.get("role") == "rejected":
+        await message.answer("Assalomu alaykum. Siz botdan foydalana olmaysiz, so'rovingiz rad etilgan.")
+        return
+    elif user_info == "rejected":
         await message.answer("Assalomu alaykum. Siz botdan foydalana olmaysiz, so'rovingiz rad etilgan.")
         return
 
     # 2. Agar foydalanuvchi mutlaqo yangi (begona) bo'lsa
     if user_id not in USERS_ROLES:
-        # Foydalanuvchiga kutish xabarini beramiz
         await message.answer(
             text="Hello, welcome to Edu_Control. Please wait until the bot administrator approves your request. Thank you!\n"
                  "Assalomu alaykum, Edu_Control’ga xush kelibsiz. Admin tasdiqlaguncha kuting. Rahmat!"
@@ -44,7 +48,6 @@ async def command_start_handler(message: types.Message):
         
         full_name = message.from_user.full_name
         
-        # HTML formatida chiroyli va pastki chiziqchalarni buzmaydigan link tayyorlaymiz
         if message.from_user.username:
             raw_username = message.from_user.username
             user_profile_link = f"https://t.me/{raw_username}"
@@ -52,7 +55,6 @@ async def command_start_handler(message: types.Message):
         else:
             username_text = f"Mavjud emas (<a href='tg://user?id={user_id}'>Profilga o'tish</a>)"
         
-        # HTML teglari bilan chiroyli xabar matni
         admin_text = (
             f"🔔 <b>Yangi foydalanuvchi ruxsat so'ramoqda!</b>\n\n"
             f"👤 <b>Ism Familiya:</b> {full_name}\n"
@@ -62,7 +64,6 @@ async def command_start_handler(message: types.Message):
         )
         
         try:
-            # parse_mode parametrini "HTML" ga o'zgartirdik!
             await message.bot.send_message(
                 chat_id=ADMIN_ID,
                 text=admin_text,
@@ -70,24 +71,20 @@ async def command_start_handler(message: types.Message):
                 disable_web_page_preview=True,
                 reply_markup=get_admin_approval_keyboard(user_id)
             )
-            print(f"[OK] Approval xabari HTML formatida adminga yuborildi.")
         except Exception as e:
-            print(f"❌ [XATOLIK] HTML yuborishda muammo: {e}")
-            # Agar biror sabab bilan HTML ham xato bersa, eng oddiy matn rejimida yuboriladi
-            backup_username = f"@{message.from_user.username}" if message.from_user.username else "Mavjud emas"
-            await message.bot.send_message(
-                chat_id=ADMIN_ID,
-                text=f"🔔 Yangi foydalanuvchi ruxsat so'ramoqda:\n\n"
-                     f"👤 Ism: {full_name}\n"
-                     f"🆔 ID: {user_id}\n"
-                     f"🌐 Username: {backup_username}",
-                reply_markup=get_admin_approval_keyboard(user_id)
-            )
+            print(f"❌ [XATOLIK] Adminga xabar yuborishda muammo: {e}")
         return
 
-    # 3. Agar foydalanuvchi tasdiqlangan bo'lsa
+    # 3. Agar foydalanuvchiga rol berilganu, lekin hali ismini kiritmagan bo'lsa
+    if isinstance(user_info, dict) and not user_info.get("name"):
+        await message.answer("Iltimos, ism va familiyangizni kiriting!")
+        await state.set_state(TaskStates.waiting_for_user_name)
+        return
+
+    # 4. Agar ro'yxatdan to'liq o'tgan bo'lsa
+    saved_name = user_info.get("name", message.from_user.full_name) if isinstance(user_info, dict) else message.from_user.full_name
     await message.answer(
-        text=f"Salom, {message.from_user.full_name}! Botimizga xush kelibsiz.\n"
+        text=f"Salom, {saved_name}! Botimizga xush kelibsiz.\n"
              f"Quyidagi tugma orqali vazifalarni ko'rishingiz mumkin 👇",
         reply_markup=main_menu_keyboard
     )
@@ -98,39 +95,41 @@ async def command_start_handler(message: types.Message):
 @start_router.callback_query(F.data.startswith("approve_"))
 async def admin_approve_callback(call: types.CallbackQuery):
     try:
-        # Callback ma'lumotlarini ajratib olamiz
         data_parts = call.data.split("_")
         role = data_parts[1]
         target_user_id = int(data_parts[2])
         
-        # Foydalanuvchiga rolni yuklaymiz
-        USERS_ROLES[target_user_id] = role
+        # Rolni saqlaymiz, name qismi hozircha bo'sh (None) turadi
+        USERS_ROLES[target_user_id] = {"role": role, "name": None}
         
-        # Admin xabarini yangilaymiz (HTML formatida xavfsiz tahrirlash)
         await call.message.edit_text(
             text=f"{call.message.text}\n\n✅ <b>Tasdiqlandi!</b> Foydalanuvchiga <b>{role}</b> unvoni berildi.",
             parse_mode="HTML"
         )
-        print(f"[OK] Admin {target_user_id} ga {role} rolini berdi.")
         
-        # Foydalanuvchining o'ziga quvonchli xabarni yuboramiz
         try:
-            user_text = (
-                f"You have been assigned the \"{role}\" role by the Admin. Welcome and good luck!\n\n"
-                f"Sizga Admin tomonidan \"{role}\" unvoni berildi. Vaqtingizni maroqli o'tqazing, omad!"
-            )
+            # Foydalanuvchiga ismini so'rab xabar yuboramiz
+            user_text = f"Sizga Admin tomonidan \"{role}\" unvoni berildi. Iltimos ism, familiyangizni kiriting!"
+            
+            # Aiogram 3 da boshqa foydalanuvchining state (holat)ini masofadan turib o'zgartirish
+            user_key = StorageKey(bot_id=call.bot.id, chat_id=target_user_id, user_id=target_user_id)
+            dp = call.bot.dispatcher if hasattr(call.bot, 'dispatcher') else call.message.bot.dispatcher if hasattr(call.message.bot, 'dispatcher') else None
+            
+            if dp:
+                user_state = FSMContext(storage=dp.storage, key=user_key)
+                await user_state.set_state(TaskStates.waiting_for_user_name)
+            
             await call.bot.send_message(
                 chat_id=target_user_id,
                 text=user_text,
-                reply_markup=main_menu_keyboard
+                reply_markup=types.ReplyKeyboardRemove()  
             )
         except Exception as e:
-            print(f"❌ Foydalanuvchiga tasdiq xabarini yuborishda xato: {e}")
+            print(f"❌ Foydalanuvchiga holat berish yoki xabar yuborishda xato: {e}")
             
     except Exception as general_error:
         print(f"❌ Callback ishlashida umumiy xatolik: {general_error}")
         
-    # Loading aylanib qolmasligi uchun Telegramga "javob oldim" signalini yuboramiz
     await call.answer()
 
 
@@ -138,7 +137,7 @@ async def admin_approve_callback(call: types.CallbackQuery):
 async def admin_reject_callback(call: types.CallbackQuery):
     try:
         target_user_id = int(call.data.split("_")[1])
-        USERS_ROLES[target_user_id] = "rejected"
+        USERS_ROLES[target_user_id] = {"role": "rejected", "name": None}
         
         await call.message.edit_text(
             text=f"{call.message.text}\n\n❌ <b>So'rov rad etildi!</b> Foydalanuvchi bloklandi.",
@@ -156,20 +155,54 @@ async def admin_reject_callback(call: types.CallbackQuery):
     except Exception as general_error:
         print(f"❌ Reject callbackda xatolik: {general_error}")
         
-    # Loadingni o'chirish
     await call.answer()
 
 
-# ================= TASK LOGICASI =================
+# ================= FOYDALANUVCHI ISMINI QABUL QILISH =================
+
+@start_router.message(TaskStates.waiting_for_user_name)
+async def get_user_real_name_handler(message: types.Message, state: FSMContext):
+    user_id = message.from_user.id
+    input_text = message.text.strip()
+    
+    # Ismdan birinchi so'zni ajratib olamiz ("Baxtiyorjon Mahmudov" -> "Baxtiyorjon")
+    first_name = input_text.split()[0]
+    
+    # Bazada foydalanuvchi ma'lumotlarini yangilaymiz
+    if user_id in USERS_ROLES and isinstance(USERS_ROLES[user_id], dict):
+        USERS_ROLES[user_id]["name"] = input_text
+    else:
+        USERS_ROLES[user_id] = {"role": "User", "name": input_text}
+        
+    # Muvaffaqiyatli ro'yxatdan o'tganlik xabari va asosiy menyu
+    await message.answer(
+        text=f"{first_name} siz ro'yxatdan o'tdingiz. Endi esa bot dan bemalol foydalansangiz bo'ladi",
+        reply_markup=main_menu_keyboard
+    )
+    await state.clear()
+
+
+# ================= TASK LOGICASI (FAQAT RO'YXATDAN O'TGANLAR UCHUN) =================
+
+def check_user_access(user_id: int) -> bool:
+    """Foydalanuvchi to'liq ro'yxatdan o'tganini tekshirish filtri"""
+    user_info = USERS_ROLES.get(user_id)
+    if not user_info or not isinstance(user_info, dict):
+        return False
+    if user_info.get("role") in [None, "rejected"] or not user_info.get("name"):
+        return False
+    return True
 
 @start_router.message(F.text == "Add Task")
 async def add_task_handler(message: types.Message):
-    if USERS_ROLES.get(message.from_user.id) in [None, "rejected"]: return
+    if not check_user_access(message.from_user.id): 
+        await message.answer("Siz hali ro'yxatdan o'tmagansiz yoki ruxsatingiz yo'q.")
+        return
     await message.answer(text="Qanday turdagi task yaratmoqchisiz?", reply_markup=task_type_keyboard)
 
 @start_router.message(F.text == "Continuously")
 async def continuously_handler(message: types.Message, state: FSMContext):
-    if USERS_ROLES.get(message.from_user.id) in [None, "rejected"]: return
+    if not check_user_access(message.from_user.id): return
     await message.answer(text="Vazifa nomini kiriting!", reply_markup=types.ReplyKeyboardRemove())
     await state.set_state(TaskStates.waiting_for_name)
 
