@@ -1,7 +1,7 @@
 from aiogram import Router, types, F
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.storage.base import StorageKey
+from aiogram.fsm.storage.base import StorageKey  # StorageKey import qilindi
 import config  
 from Keyboards.main_menu import (
     main_menu_keyboard, 
@@ -20,8 +20,7 @@ try:
 except ValueError:
     ADMIN_ID = 6500594896  
 
-# Vaqtincha xotira bazasi (Endi rol bilan birga ismni ham saqlaydi)
-# Tuzilishi: { user_id: {"role": "Sanitar", "name": "Baxtiyorjon Mahmudov"} }
+# Vaqtincha xotira bazasi (Rol va Ismni saqlaydi)
 USERS_ROLES = {
     ADMIN_ID: {"role": "Admin", "name": "Asosiy Admin"}
 }
@@ -33,9 +32,6 @@ async def command_start_handler(message: types.Message, state: FSMContext):
     # 1. Agar foydalanuvchi rad etilgan bo'lsa
     user_info = USERS_ROLES.get(user_id)
     if isinstance(user_info, dict) and user_info.get("role") == "rejected":
-        await message.answer("Assalomu alaykum. Siz botdan foydalana olmaysiz, so'rovingiz rad etilgan.")
-        return
-    elif user_info == "rejected":
         await message.answer("Assalomu alaykum. Siz botdan foydalana olmaysiz, so'rovingiz rad etilgan.")
         return
 
@@ -72,7 +68,7 @@ async def command_start_handler(message: types.Message, state: FSMContext):
                 reply_markup=get_admin_approval_keyboard(user_id)
             )
         except Exception as e:
-            print(f"❌ [XATOLIK] Adminga xabar yuborishda muammo: {e}")
+            print(f"❌ Adminga xabar yuborishda muammo: {e}")
         return
 
     # 3. Agar foydalanuvchiga rol berilganu, lekin hali ismini kiritmagan bo'lsa
@@ -82,7 +78,7 @@ async def command_start_handler(message: types.Message, state: FSMContext):
         return
 
     # 4. Agar ro'yxatdan to'liq o'tgan bo'lsa
-    saved_name = user_info.get("name", message.from_user.full_name) if isinstance(user_info, dict) else message.from_user.full_name
+    saved_name = user_info.get("name", message.from_user.full_name)
     await message.answer(
         text=f"Salom, {saved_name}! Botimizga xush kelibsiz.\n"
              f"Quyidagi tugma orqali vazifalarni ko'rishingiz mumkin 👇",
@@ -99,26 +95,26 @@ async def admin_approve_callback(call: types.CallbackQuery):
         role = data_parts[1]
         target_user_id = int(data_parts[2])
         
-        # Rolni saqlaymiz, name qismi hozircha bo'sh (None) turadi
+        # Rolni saqlaymiz, ism (name) hozircha None
         USERS_ROLES[target_user_id] = {"role": role, "name": None}
         
+        # Admin xabarini yangilaymiz
         await call.message.edit_text(
             text=f"{call.message.text}\n\n✅ <b>Tasdiqlandi!</b> Foydalanuvchiga <b>{role}</b> unvoni berildi.",
             parse_mode="HTML"
         )
         
+        # FOYDALANUVCHINING HOLATINI (STATE) 100% TO'G'RI O'ZGARTIRISH (YANGI METOD):
         try:
-            # Foydalanuvchiga ismini so'rab xabar yuboramiz
-            user_text = f"Sizga Admin tomonidan \"{role}\" unvoni berildi. Iltimos ism, familiyangizni kiriting!"
-            
-            # Aiogram 3 da boshqa foydalanuvchining state (holat)ini masofadan turib o'zgartirish
-            user_key = StorageKey(bot_id=call.bot.id, chat_id=target_user_id, user_id=target_user_id)
-            dp = call.bot.dispatcher if hasattr(call.bot, 'dispatcher') else call.message.bot.dispatcher if hasattr(call.message.bot, 'dispatcher') else None
-            
-            if dp:
-                user_state = FSMContext(storage=dp.storage, key=user_key)
+            # Router o'z ichiga olgan asosiy storagedan foydalanamiz
+            if start_router.storage:
+                user_key = StorageKey(bot_id=call.bot.id, chat_id=target_user_id, user_id=target_user_id)
+                user_state = FSMContext(storage=start_router.storage, key=user_key)
                 await user_state.set_state(TaskStates.waiting_for_user_name)
+                print(f"[OK] Foydalanuvchi {target_user_id} holati waiting_for_user_name ga o'tkazildi.")
             
+            # Foydalanuvchiga xabar yuborish
+            user_text = f"Sizga Admin tomonidan \"{role}\" unvoni berildi. Iltimos ism, familiyangizni kiriting!"
             await call.bot.send_message(
                 chat_id=target_user_id,
                 text=user_text,
@@ -182,10 +178,9 @@ async def get_user_real_name_handler(message: types.Message, state: FSMContext):
     await state.clear()
 
 
-# ================= TASK LOGICASI (FAQAT RO'YXATDAN O'TGANLAR UCHUN) =================
+# ================= TASK LOGICASI =================
 
 def check_user_access(user_id: int) -> bool:
-    """Foydalanuvchi to'liq ro'yxatdan o'tganini tekshirish filtri"""
     user_info = USERS_ROLES.get(user_id)
     if not user_info or not isinstance(user_info, dict):
         return False
