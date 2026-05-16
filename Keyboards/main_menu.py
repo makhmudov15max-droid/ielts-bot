@@ -1,11 +1,10 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-# "Tasklar ro'yxati" tugmasini yaratamiz
+# Ustma-ust tushadigan tugmalar
 main_menu_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [
-            KeyboardButton(text="Tasklar ro'yxati") # Tugma nomi
-        ]
+        [KeyboardButton(text="Task qo'shish")], # 1-qator
+        [KeyboardButton(text="Tasklar ro'yxati")] # 2-qator
     ],
-    resize_keyboard=True # Tugma ekran o'lchamiga moslashishi uchun
+    resize_keyboard=True
 )
