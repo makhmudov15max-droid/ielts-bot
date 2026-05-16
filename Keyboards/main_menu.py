@@ -4,8 +4,8 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 main_menu_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [
-            KeyboardButton(text="Task yaratish"), 
-            KeyboardButton(text="Tasklar ro'yxati")
+            KeyboardButton(text="Add Task"), 
+            KeyboardButton(text="List of tasks")
         ] # Ikkalasi bitta qatorda
     ],
     resize_keyboard=True
