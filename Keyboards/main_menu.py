@@ -21,3 +21,12 @@ task_type_keyboard = ReplyKeyboardMarkup(
     ],
     resize_keyboard=True
 )
+
+# Kunlarni tanlash tugmalari
+days_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="ODD"), KeyboardButton(text="EVEN")],
+        [KeyboardButton(text="6 days a week"), KeyboardButton(text="OTHER")]
+    ],
+    resize_keyboard=True
+)
