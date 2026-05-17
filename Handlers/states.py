@@ -47,7 +47,7 @@ class AdminSalaryStates(StatesGroup):
     active_plan = State()
     actual_active = State()
 
-# 🌟 KASSIR OYLIK HISOBLASH BOSQICHLARI (ESKI PROYEKTDAN TO'G'RILANDI)
+# Kassir oylik bosqichlari
 class CashierSalaryStates(StatesGroup):
     hours = State()
     custom_hours = State()
