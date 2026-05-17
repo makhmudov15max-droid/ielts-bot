@@ -873,7 +873,7 @@ from Handlers.states import AdminSalaryStates
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 # ==============================================================================
-# 🌟 ESKI PROYEKTDAN TUZATILGAN ADMIN OYLIK TUGMALAR ZANJIRI (YANGI TARMOQLANISH)
+# 🌟 ESKI PROYEKTDAN TUZATILGAN ADMIN OYLIK TO'LIQ TUGMALAR ZANJIRI (MUKAMMAL)
 # ==============================================================================
 from Handlers.states import AdminSalaryStates
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
@@ -1000,7 +1000,7 @@ async def process_russian(message: types.Message, state: FSMContext):
     await state.set_state(AdminSalaryStates.missed)
     await message.answer("📉 Ish qoldirgan kunlaringiz bo'ldimi?", reply_markup=get_yes_no_keyboard())
 
-# 7. Ish qoldirgan kunlar savoli (Tarmoqlanish boshlanishi)
+# 7. Ish qoldirgan kunlar savoli
 @start_router.message(AdminSalaryStates.missed)
 async def process_missed(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
@@ -1011,11 +1011,10 @@ async def process_missed(message: types.Message, state: FSMContext):
         await state.set_state(AdminSalaryStates.missed_hours)
         await message.answer("⏰ Necha soat ish qoldirdingiz? (Javobni kiriting):", reply_markup=get_manual_keyboard())
     else:
-        # YO'Q bo'lsa to'g'ridan-to'g'ri Cover bosqichiga o'tadi
         await state.set_state(AdminSalaryStates.cover)
         await message.answer("🔄 Cover qildingizmi?", reply_markup=get_yes_no_keyboard())
 
-# 7a. Ish qoldirilgan soat qo'lda yozilganda -> Cover so'rash
+# 7a. Ish qoldirilgan soat kiritilganda -> Cover so'rash
 @start_router.message(AdminSalaryStates.missed_hours)
 async def process_missed_hours(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
@@ -1025,11 +1024,10 @@ async def process_missed_hours(message: types.Message, state: FSMContext):
     await state.set_state(AdminSalaryStates.cover)
     await message.answer("🔄 Cover qildingizmi?", reply_markup=get_yes_no_keyboard())
 
-# 8. Cover qildingizmi savoli (Ikkinchi tarmoqlanish)
+# 8. Cover qildingizmi savoli
 @start_router.message(AdminSalaryStates.cover)
 async def process_cover(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
-        # Ortga qaytganda baribir ish qoldirganlik savoliga qaytaradi
         await state.set_state(AdminSalaryStates.missed)
         return await message.answer("📉 Ish qoldirgan kunlaringiz bo'ldimi?", reply_markup=get_yes_no_keyboard())
 
@@ -1037,11 +1035,10 @@ async def process_cover(message: types.Message, state: FSMContext):
         await state.set_state(AdminSalaryStates.cover_hours)
         await message.answer("⏰ Nechi soat cover qildingiz? (Javobni kiriting):", reply_markup=get_manual_keyboard())
     else:
-        # YO'Q bo'lsa to'g'ridan-to'g'ri Individual planga o'tadi
         await state.set_state(AdminSalaryStates.individual_plan)
         await message.answer("💰 Individual plan kiriting (Matn ko'rinishida):", reply_markup=get_manual_keyboard())
 
-# 8a. Cover soati qo'lda yozilganda -> Individual plan so'rash
+# 8a. Cover soati kiritilganda -> Individual plan so'rash
 @start_router.message(AdminSalaryStates.cover_hours)
 async def process_cover_hours(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
@@ -1051,12 +1048,67 @@ async def process_cover_hours(message: types.Message, state: FSMContext):
     await state.set_state(AdminSalaryStates.individual_plan)
     await message.answer("💰 Individual plan kiriting (Matn ko'rinishida):", reply_markup=get_manual_keyboard())
 
-# 9. Individual Plan -> Yakunlash bosqichi
+# 9. Individual Plan -> Faktik Savdo so'rash (YANGI ULANGAN DAVOMI)
 @start_router.message(AdminSalaryStates.individual_plan)
-async def process_final_mock(message: types.Message, state: FSMContext):
+async def process_individual_plan(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
         await state.set_state(AdminSalaryStates.cover)
         return await message.answer("🔄 Cover qildingizmi?", reply_markup=get_yes_no_keyboard())
 
+    await state.set_state(AdminSalaryStates.actual_sales)
+    await message.answer("📊 Actual sales (Faktik savdo) kiriting:", reply_markup=get_manual_keyboard())
+
+# 10. Faktik Savdo -> Konversiya rejasi so'rash
+@start_router.message(AdminSalaryStates.actual_sales)
+async def process_actual_sales(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(AdminSalaryStates.individual_plan)
+        return await message.answer("💰 Individual plan kiriting (Matn ko'rinishida):", reply_markup=get_manual_keyboard())
+
+    await state.set_state(AdminSalaryStates.conversion_plan)
+    await message.answer("📈 Conversion plan (Konversiya rejasi) kiriting:", reply_markup=get_manual_keyboard())
+
+# 11. Konversiya rejasi -> Faktik konversiya so'rash
+@start_router.message(AdminSalaryStates.conversion_plan)
+async def process_conversion_plan(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(AdminSalaryStates.actual_sales)
+        return await message.answer("📊 Actual sales (Faktik savdo) kiriting:", reply_markup=get_manual_keyboard())
+
+    await state.set_state(AdminSalaryStates.actual_conversion)
+    await message.answer("📉 Actual conversion (Faktik konversiya) kiriting:", reply_markup=get_manual_keyboard())
+
+# 12. Faktik konversiya -> Aktivlar rejasi so'rash
+@start_router.message(AdminSalaryStates.actual_conversion)
+async def process_actual_conversion(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(AdminSalaryStates.conversion_plan)
+        return await message.answer("📈 Conversion plan (Konversiya rejasi) kiriting:", reply_markup=get_manual_keyboard())
+
+    await state.set_state(AdminSalaryStates.active_plan)
+    await message.answer("👥 Active plan (Aktivlar rejasi) kiriting:", reply_markup=get_manual_keyboard())
+
+# 13. Aktivlar rejasi -> Faktik aktivlar so'rash
+@start_router.message(AdminSalaryStates.active_plan)
+async def process_active_plan(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(AdminSalaryStates.actual_conversion)
+        return await message.answer("📉 Actual conversion (Faktik konversiya) kiriting:", reply_markup=get_manual_keyboard())
+
+    await state.set_state(AdminSalaryStates.actual_active)
+    await message.answer("👤 Actual active (Faktik aktivlar) kiriting:", reply_markup=get_manual_keyboard())
+
+# 14. Faktik aktivlar -> Yakuniy hisobot (Hozircha matematika va formulalarsiz)
+@start_router.message(AdminSalaryStates.actual_active)
+async def process_actual_active_final(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(AdminSalaryStates.active_plan)
+        return await message.answer("👥 Active plan (Aktivlar rejasi) kiriting:", reply_markup=get_manual_keyboard())
+
     await state.clear()
-    await message.answer("🎉 Hozircha tugmalar zanjiri muvaffaqiyatli yakunlandi! Ichki hisob-kitob matematikasi hali ulanmagan.", reply_markup=main_menu_keyboard)
+    await message.answer(
+        "🎉 <b>Barcha ma'lumotlar muvaffaqiyatli qabul qilindi!</b>\n\n"
+        "<i>Eski loyihadagi oylik hisoblash savollar zanjiri to'liq yakunlandi. Ichki matematika va hisob-kitob formulalari hali joriy tizimga ulanmagan.</i>", 
+        parse_mode="HTML",
+        reply_markup=main_menu_keyboard
+    )
