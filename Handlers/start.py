@@ -442,3 +442,49 @@ async def auto_task_scheduler(bot):
             print(f"Taymer tizimida kutilmagan xato: {e}")
             
         await asyncio.sleep(5)
+
+# ================= YANGI QO'SHILGAN: VAZIFANI O'CHIRISH LOGIKASI =================
+
+@start_router.message(F.text == "Remove task")
+async def remove_task_menu_handler(message: types.Message):
+    # Faqat botga kirish huquqi borlarni tekshiramiz
+    if not check_user_access(message.from_user.id): return
+    
+    # Agar bazada xali vazifalar bo'lmasa
+    if not TASKS_DATABASE:
+        await message.answer(text="📭 Hozircha hech qanday faol vazifalar mavjud emas.")
+        return
+        
+    from Keyboards.main_menu import get_remove_tasks_keyboard
+    await message.answer(
+        text="🗑 <b>O'chirmoqchi bo'lgan vazifangizni tanlang:</b>\n<i>(Tugma bosilishi bilan vazifa bazadan butunlay o'chadi!)</i>",
+        parse_mode="HTML",
+        reply_markup=get_remove_tasks_keyboard(TASKS_DATABASE)
+    )
+
+@start_router.callback_query(F.data.startswith("removetask_"))
+async def process_remove_task_callback(call: types.CallbackQuery):
+    task_id = int(call.data.split("_")[1])
+    
+    # Vazifani bazadan qidirib topamiz
+    global TASKS_DATABASE
+    task_to_remove = next((t for t in TASKS_DATABASE if t["id"] == task_id), None)
+    
+    if task_to_remove:
+        # Vazifani o'chirib tashlaymiz
+        TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
+        
+        await call.message.edit_text(
+            text=f"🗑 <b>Vazifa muvaffaqiyatli o'chirildi!</b>\n\n📌 <b>Nomi:</b> {task_to_remove['task_name']}\n👤 <b>Mas'ul bo'lgan xodim:</b> {task_to_remove['assigned_to_name']}",
+            parse_mode="HTML"
+        )
+    else:
+        await call.answer(text="⚠️ Bu vazifa allaqachon o'chirilgan yoki topilmadi!", show_alert=True)
+        
+    await call.answer()
+
+@start_router.callback_query(F.data == "remove_cancel")
+async def cancel_remove_callback(call: types.CallbackQuery):
+    await call.message.delete()
+    await call.message.answer(text="O'chirish jarayoni bekor qilindi.", reply_markup=main_menu_keyboard)
+    await call.answer()
