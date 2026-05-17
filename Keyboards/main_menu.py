@@ -1,17 +1,20 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 
-# Asosiy menyu tugmalari
+# Asosiy menyu tugmalari (Remove task qo'shildi)
 main_menu_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [
             KeyboardButton(text="Add Task"), 
             KeyboardButton(text="List of tasks")
+        ],
+        [
+            KeyboardButton(text="Remove task")  # <-- YANGI TUGMA
         ]
     ],
     resize_keyboard=True
 )
 
-# Task turini tanlash uchun yangi tugmalar
+# Task turini tanlash uchun tugmalar
 task_type_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [
@@ -42,8 +45,6 @@ frequency_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-# --- YANGI QO'SHILGAN KLAVIATURALAR ---
-
 # Isbot turi tugmalari
 proof_type_keyboard = ReplyKeyboardMarkup(
     keyboard=[
@@ -64,11 +65,8 @@ assign_role_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-# "OTHER" bosilganda chiqadigan maxsus Inline klaviatura funksiyasi
-def get_inline_days_keyboard(selected_days: list = None) -> InlineKeyboardMarkup:
-    if selected_days is None:
-        selected_days = []
-        
+# Hafta kunlarini bittalab tanlash uchun Inline klaviatura
+def get_inline_days_keyboard(selected_days: list) -> InlineKeyboardMarkup:
     weeks = {
         "mon": "Dushanba", "tue": "Seshanba", "wed": "Chorshanba",
         "thu": "Payshanba", "fri": "Juma", "sat": "Shanba", "sun": "Yakshanba"
@@ -104,6 +102,17 @@ def get_admin_approval_keyboard(user_id: int) -> InlineKeyboardMarkup:
 def get_task_complete_keyboard(task_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="❌ Completed", callback_data=f"completetask_{task_id}")]
+            [InlineKeyboardButton(text="Bajarildi (Completed) ✅", callback_data=f"completetask_{task_id}")]
         ]
     )
+
+# 🌟 YANGI QO'SHILGAN: Vazifalarni o'chirish uchun dinamik klaviatura
+def get_remove_tasks_keyboard(tasks_list: list) -> InlineKeyboardMarkup:
+    inline_keyboard = []
+    for task in tasks_list:
+        # Har bir tugmaga vazifa nomi va uning kimga biriktirilganini yozamiz
+        btn_text = f"❌ {task['task_name']} ({task['assigned_to_name']})"
+        inline_keyboard.append([InlineKeyboardButton(text=btn_text, callback_data=f"removetask_{task['id']}")])
+        
+    inline_keyboard.append([InlineKeyboardButton(text="🔙 Orqaga", callback_data="remove_cancel")])
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
