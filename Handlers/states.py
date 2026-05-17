@@ -14,3 +14,6 @@ class TaskStates(StatesGroup):
     waiting_for_target_role = State()     # Qaysi unvonga biriktirishni kutish
     waiting_for_target_user = State()     # Aniq qaysi xodimga biriktirishni kutish
     waiting_for_task_proof = State()      # Xodim tomonidan rasm yoki videoni kutish
+    
+    # 🌟 YANGI: Kunlik (bir martalik) vazifa uchun izoh kutish holati
+    waiting_for_description = State()     # Admin tomonidan izoh kiritilishini kutish
