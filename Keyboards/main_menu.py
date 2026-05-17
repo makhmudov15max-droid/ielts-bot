@@ -1,6 +1,6 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 
-# Asosiy menyu tugmalari (Toza va xatosiz format)
+# Asosiy menyu tugmalari
 main_menu_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [
@@ -22,7 +22,6 @@ main_menu_keyboard = ReplyKeyboardMarkup(
         [
             KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball")
         ]
-        
     ],
     resize_keyboard=True
 )
@@ -52,7 +51,7 @@ frequency_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [
             KeyboardButton(text="Kuniga 1 marta"),
-            KeyboardButton(text="Bir necha marta")
+            KeyboardButton(text="Kuniga bir nechta marta")
         ]
     ],
     resize_keyboard=True
@@ -62,8 +61,8 @@ frequency_keyboard = ReplyKeyboardMarkup(
 proof_type_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [
-            KeyboardButton(text="Dumaloq video"),
-            KeyboardButton(text="Rasm yuborish")
+            KeyboardButton(text="Video xabar (Kruglyash)"),
+            KeyboardButton(text="Rasm (Photo)")
         ]
     ],
     resize_keyboard=True
@@ -72,23 +71,19 @@ proof_type_keyboard = ReplyKeyboardMarkup(
 # Vazifani qaysi unvonga topshirish tugmalari
 assign_role_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Admin"), KeyboardButton(text="Kassir")],
-        [KeyboardButton(text="Sanitar"), KeyboardButton(text="Manager")]
+        [KeyboardButton(text="Kassir"), KeyboardButton(text="Sanitar")],
+        [KeyboardButton(text="Manager"), KeyboardButton(text="Hamma xodimlarga")]
     ],
     resize_keyboard=True
 )
 
-# Hafta kunlarini bittalab tanlash uchun Inline klaviatura
-def get_inline_days_keyboard(selected_days: list) -> InlineKeyboardMarkup:
-    weeks = {
-        "mon": "Dushanba", "tue": "Seshanba", "wed": "Chorshanba",
-        "thu": "Payshanba", "fri": "Juma", "sat": "Shanba", "sun": "Yakshanba"
-    }
+# Kunlarni inline formatda tanlash (Boshqa kunlar uchun)
+def get_inline_days_keyboard() -> InlineKeyboardMarkup:
+    days = ["Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba", "Yakirshanba"]
     inline_keyboard = []
-    for code, name in weeks.items():
-        text = f"✅ {name}" if code in selected_days else name
-        inline_keyboard.append([InlineKeyboardButton(text=text, callback_data=f"day_{code}")])
-    inline_keyboard.append([InlineKeyboardButton(text="Tayyor ➡️", callback_data="days_done")])
+    for day in days:
+        inline_keyboard.append([InlineKeyboardButton(text=day, callback_data=f"day_{day}")])
+    inline_keyboard.append([InlineKeyboardButton(text="✅ Tanlab bo'ldim (Done)", callback_data="days_done")])
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
 # Admin uchun ruxsat berish va rollarni tanlash Inline klaviaturasi
@@ -118,5 +113,38 @@ def get_remove_tasks_keyboard(tasks_list: list) -> InlineKeyboardMarkup:
     for task in tasks_list:
         btn_text = f"❌ {task['task_name']} ({task['assigned_to_name']})"
         inline_keyboard.append([InlineKeyboardButton(text=btn_text, callback_data=f"removetask_{task['id']}")])
-    inline_keyboard.append([InlineKeyboardButton(text="🔙 Bekor qilish", callback_data="remove_cancel")])
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
+# ================== 📊 JONLI GOOGLE SHEETS USTOZLAR TUGMALARI ==================
+
+# Google Sheets'dan olingan ustozlar ro'yxatini chiqarish tugmasi
+def get_sheets_teachers_keyboard(teachers_list: list) -> InlineKeyboardMarkup:
+    inline_keyboard = []
+    for t in teachers_list:
+        # t[0] - ID, t[1] - Ism, t[2] - IELTS Ball
+        btn_text = f"👨‍🏫 {t[1]} (IELTS: {t[2]})"
+        inline_keyboard.append([InlineKeyboardButton(text=btn_text, callback_data=f"gs_viewt_{t[0]}")])
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+# Tanlangan ustoz uchun boshqaruv variantlari
+def get_sheets_teacher_options_keyboard(teacher_id: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="✍️ IELTS balini o'zgartirish", callback_data=f"gs_editscore_{teacher_id}")],
+            [InlineKeyboardButton(text="⬅️ Ro'yxatga qaytish", callback_data="back_to_gs_teachers")]
+        ]
+    )
+
+# Yangi ballarni inline tanlash klaviaturasi
+def get_sheets_ielts_scores_keyboard(teacher_id: str) -> InlineKeyboardMarkup:
+    scores = ["6.5", "7.0", "7.5", "8.0", "8.5", "9.0"]
+    inline_keyboard = []
+    row = []
+    for score in scores:
+        row.append(InlineKeyboardButton(text=score, callback_data=f"gs_setscore_{score}_{teacher_id}"))
+        if len(row) == 3:
+            inline_keyboard.append(row)
+            row = []
+    inline_keyboard.append([InlineKeyboardButton(text="❌ Bekor qilish", callback_data="back_to_gs_teachers")])
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
