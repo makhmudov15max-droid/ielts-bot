@@ -398,7 +398,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     task = next((t for t in TASKS_DATABASE if t["id"] == task_id), None)
     
     # 🌟 Oʻzingizning guruh ID raqamingizni kiriting (-100 belgisi bilan boshlanishi shart!)
-    GROUP_CHAT_ID = -1002233445566  
+    GROUP_CHAT_ID = -5226036627  
     
     if proof_required == "Photo" and message.photo:
         await message.answer(text="Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.", reply_markup=main_menu_keyboard)
