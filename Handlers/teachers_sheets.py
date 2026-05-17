@@ -20,24 +20,28 @@ except ValueError:
 
 # ==================== 📊 JONLI GOOGLE SHEETS ULASH TIZIMI ====================
 try:
-    # oauth2client'siz, to'g'ridan-to'g'ri gspread orqali json kalitni ulash:
+    # To'g'ridan-to'g'ri gspread orqali json kalitni ulash
     client = gspread.service_account(filename="google_creds.json")
     
-    # ⚠️ JADVAL NOMINI O'ZINGIZNIKI BILAN ALMASHTIRING:
-    sheet = client.open("Google_Sheets_Jadval_Nomi").worksheet("Ustozlar")
+    # ⚠️ JADVAL NOMINI O'ZINGIZNIKI BILAN ALMASHTIRING (Masalan: "Nova Oylik Tizimi")
+    sheet = client.open("XD general management topics").worksheet("Ustozlar")
     print("Google Sheets 'Ustozlar' sahifasiga ulanish muvaffaqiyatli!")
 except Exception as e:
     print(f"Google Sheets ulanishda xatolik yuz berdi: {e}")
     sheet = None
 
 def get_teachers_from_google_sheets():
-    if not sheet: return []
+    if not sheet: 
+        print("Xatolik: 'sheet' obyekti yaratilmagan!")
+        return []
     try:
         all_records = sheet.get_all_values()
-        if len(all_records) <= 1: return []
+        print(f"Jadvaldan olingan barcha qatorlar: {all_records}") # Konsolda tekshirish uchun log
+        if len(all_records) <= 1: 
+            return []
         return all_records[1:] # Sarlavha satridan keyingi ma'lumotlar
     except Exception as e:
-        print(f"Ma'lumotlarni o'qishda xatolik: {e}")
+        print(f"Ma'lumotlarni o'qishda xatolik yuz berdi: {e}")
         return []
 # ==============================================================================
 
@@ -49,7 +53,7 @@ async def process_sheets_teachers_menu(message: types.Message):
     
     teachers = get_teachers_from_google_sheets()
     if not teachers:
-        await message.answer("❌ Google Sheets 'Ustozlar' sahifasidan ma'lumotlarni o'qib bo'lmadi yoki sahifa bo'sh.")
+        await message.answer("❌ Google Sheets 'Ustozlar' sahifasidan ma'lumotlarni o'qib bo'lmadi yoki sahifa bo'sh.\n\n⚠️ Iltimos, jadvalni bot pochtasiga 'Editor' qilib ruxsat berganingizni tekshiring!")
         return
         
     await message.answer(
@@ -91,6 +95,7 @@ async def view_sheets_teacher_profile_callback(call: types.CallbackQuery):
     await call.message.edit_text(text=text, parse_mode="HTML", reply_markup=get_sheets_teacher_options_keyboard(t_id))
     await call.answer()
 
+# ⚠️ MANA SHU YERDAGI start_router XATOSI sheets_router DEB TO'G'RILANDI!
 @sheets_router.callback_query(F.data.startswith("gs_editscore_"))
 async def edit_sheets_teacher_score_callback(call: types.CallbackQuery):
     t_id = call.data.split("_")[2]
