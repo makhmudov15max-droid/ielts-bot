@@ -4,11 +4,11 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMar
 main_menu_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [
-            KeyboardButton(text="Add Task"), 
-            KeyboardButton(text="List of tasks")
+            KeyboardButton(text="Task qo'shish"), 
+            KeyboardButton(text="Takslar ro'yxati")
         ],
         [
-            KeyboardButton(text="Remove task")  # <-- YANGI TUGMA
+            KeyboardButton(text="Task o'chirish")  # <-- YANGI TUGMA
         ]
     ],
     resize_keyboard=True
@@ -18,8 +18,8 @@ main_menu_keyboard = ReplyKeyboardMarkup(
 task_type_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [
-            KeyboardButton(text="Continuously"),
-            KeyboardButton(text="Daily")
+            KeyboardButton(text="Uzluksiz"),
+            KeyboardButton(text="Bir martta")
         ]
     ],
     resize_keyboard=True
@@ -28,8 +28,8 @@ task_type_keyboard = ReplyKeyboardMarkup(
 # Kunlarni tanlash tugmalari
 days_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="ODD"), KeyboardButton(text="EVEN")],
-        [KeyboardButton(text="6 days a week"), KeyboardButton(text="OTHER")]
+        [KeyboardButton(text="Toq"), KeyboardButton(text="Juft")],
+        [KeyboardButton(text="Haftada 6"), KeyboardButton(text="Boshqa")]
     ],
     resize_keyboard=True
 )
@@ -38,8 +38,8 @@ days_keyboard = ReplyKeyboardMarkup(
 frequency_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [
-            KeyboardButton(text="Once"),
-            KeyboardButton(text="Multiple times")
+            KeyboardButton(text="Bir martta"),
+            KeyboardButton(text="Ko'p martta")
         ]
     ],
     resize_keyboard=True
@@ -49,8 +49,8 @@ frequency_keyboard = ReplyKeyboardMarkup(
 proof_type_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [
-            KeyboardButton(text="Video message"),
-            KeyboardButton(text="Photo")
+            KeyboardButton(text="Video isbot"),
+            KeyboardButton(text="Rasm isbot")
         ]
     ],
     resize_keyboard=True
@@ -59,7 +59,7 @@ proof_type_keyboard = ReplyKeyboardMarkup(
 # Vazifani qaysi unvonga topshirish tugmalari
 assign_role_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Admin"), KeyboardButton(text="Cashier")],
+        [KeyboardButton(text="Admin"), KeyboardButton(text="Kassir")],
         [KeyboardButton(text="Sanitar"), KeyboardButton(text="Manager")]
     ],
     resize_keyboard=True
@@ -84,7 +84,7 @@ def get_inline_days_keyboard(selected_days: list) -> InlineKeyboardMarkup:
 
 # Admin uchun ruxsat berish va rollarni tanlash Inline klaviaturasi
 def get_admin_approval_keyboard(user_id: int) -> InlineKeyboardMarkup:
-    roles = ["Admin", "Cashier", "Sanitar", "Manager"]
+    roles = ["Admin", "Kassir", "Sanitar", "Manager"]
     inline_keyboard = []
     row = []
     
