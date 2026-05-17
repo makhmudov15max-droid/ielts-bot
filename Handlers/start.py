@@ -259,7 +259,7 @@ async def get_target_role_handler(message: types.Message, state: FSMContext):
             inline_kb.append([types.InlineKeyboardButton(text=u_info.get("name"), callback_data=f"assignuser_{u_id}")])
             
     if not found_users:
-        await message.answer(text=f"Xatolik: Tizimda hali tasdiqlangan va ismi bor '{selected_role}' xodimlari mavjud emas!")
+        await message.answer(text=f"Xatolik: Tizimda hali tasdiqlangan va ismi bor '{selected_role}' xodimlari magenta emas!")
         return
         
     await message.answer(text=f"Aynan qaysi '{selected_role}' xodimiga biriktirmoqchisiz? Tanlang 👇", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_kb))
@@ -338,6 +338,8 @@ async def employee_complete_task_callback(call: types.CallbackQuery, state: FSMC
     await call.answer()
 
 
+# ================= UPDATE: XODIM ISBOTINI GURUHGA YUBORISH HUNDLERI =================
+
 @start_router.message(TaskStates.waiting_for_task_proof)
 async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     state_data = await state.get_data()
@@ -346,26 +348,37 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     
     task = next((t for t in TASKS_DATABASE if t["id"] == task_id), None)
     
+    # 🌟 ID RAQAMNI SHU YERGA YOZING (Boshidagi minus -100 belgisi shart!)
+    GROUP_CHAT_ID = -5226036627  # <-- O'zingizning guruhingiz ID raqamini shu yerga yozing
+    
     if proof_required == "Photo" and message.photo:
         await message.answer(text="Task completed", reply_markup=main_menu_keyboard)
         if task:
-            await message.bot.send_message(
-                chat_id=ADMIN_ID,
-                text=f"✅ <b>Vazifa bajarildi!</b>\n\n📌 <b>Nomi:</b> {task['task_name']}\n👤 <b>Bajaruvchi:</b> {task['assigned_to_name']}\n📸 O'rnatilgan talab (Rasm) muvaffaqiyatli topshirildi.",
-                parse_mode="HTML"
+            group_text = (
+                f"✅ <b>VAZIFA BAJARILDI!</b>\n\n"
+                f"📌 <b>Vazifa nomi:</b> {task['task_name']}\n"
+                f"👤 <b>Xodim:</b> {task['assigned_to_name']}\n"
+                f"📸 <b>Isbot turi:</b> Rasm (Photo)\n"
+                f"⏰ <b>Topshirilgan vaqt:</b> {datetime.now(timezone(timedelta(hours=5))).strftime('%H:%M')}"
             )
-            await message.bot.send_photo(chat_id=ADMIN_ID, photo=message.photo[-1].file_id)
+            # Hisobot va rasmni Telegram guruhga jo'natamiz
+            await message.bot.send_message(chat_id=GROUP_CHAT_ID, text=group_text, parse_mode="HTML")
+            await message.bot.send_photo(chat_id=GROUP_CHAT_ID, photo=message.photo[-1].file_id)
         await state.clear()
         
     elif proof_required == "Video message" and message.video_note:
         await message.answer(text="Task completed", reply_markup=main_menu_keyboard)
         if task:
-            await message.bot.send_message(
-                chat_id=ADMIN_ID,
-                text=f"✅ <b>Vazifa bajarildi!</b>\n\n📌 <b>Nomi:</b> {task['task_name']}\n👤 <b>Bajaruvchi:</b> {task['assigned_to_name']}\n📸 O'rnatilgan talab (Dumaloq video) muvaffaqiyatli topshirildi.",
-                parse_mode="HTML"
+            group_text = (
+                f"✅ <b>VAZIFA BAJARILDI!</b>\n\n"
+                f"📌 <b>Vazifa nomi:</b> {task['task_name']}\n"
+                f"👤 <b>Xodim:</b> {task['assigned_to_name']}\n"
+                f"📸 <b>Isbot turi:</b> Dumaloq video (Video message)\n"
+                f"⏰ <b>Topshirilgan vaqt:</b> {datetime.now(timezone(timedelta(hours=5))).strftime('%H:%M')}"
             )
-            await message.bot.send_video_note(chat_id=ADMIN_ID, video_note=message.video_note.file_id)
+            # Hisobot va dumaloq videoni Telegram guruhga jo'natamiz
+            await message.bot.send_message(chat_id=GROUP_CHAT_ID, text=group_text, parse_mode="HTML")
+            await message.bot.send_video_note(chat_id=GROUP_CHAT_ID, video_note=message.video_note.file_id)
         await state.clear()
         
     else:
@@ -375,16 +388,14 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             await message.answer(text="⚠️ Noto'g'ri isbot! Iltimos, faqat <b>Dumaloq video (Video message)</b> yuboring.", parse_mode="HTML")
 
 
-# ================= MUKAMMAL TAYMER (TAUQIQAT/KUTUBXONASIZ UZBEKISTAN TIMEZONE) =================
+# ================= MUKAMMAL TAYMER (UZBEKISTAN TIMEZONE) =================
 
 async def auto_task_scheduler(bot):
     last_checked_minute = ""
-    # Toshkent vaqt mintaqasi UTC+5 ga teng
     tashkent_tz = timezone(timedelta(hours=5))
     
     while True:
         try:
-            # Server qayerdaligidan qat'iy nazar Python-ning o'zida UTC+5 vaqtini hisoblaymiz
             now = datetime.now(timezone.utc).astimezone(tashkent_tz)
             current_time_str = now.strftime("%H:%M")
             
