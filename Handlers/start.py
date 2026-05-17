@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from aiogram import Router, types, F
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
+from calculators.admin_calc import calculate_admin_salary
 import config  
 from Keyboards.main_menu import (
     main_menu_keyboard, 
