@@ -1,12 +1,6 @@
 # calculators/admin_calc.py
 
-HOURLY_RATES = {
-    "nova": 11000,
-    "prime": 12000,
-    "apex": 13000,
-    "leader": 15000,
-}
-
+# Rasmga asosan yangilangan bonus stavkalari shkalasi
 BONUS_RATES = [
     (0, 49, 0),
     (50, 60, 5000),
@@ -16,10 +10,17 @@ BONUS_RATES = [
     (91, 95, 18000),
     (96, 100, 25000),
     (101, 110, 30000),
-    (111, 120, 32000),
-    (121, 130, 35000),
+    (111, 120, 35000),  # Rasmga asosan 32k emas, 35k qilib belgilandi
+    (121, 130, 37000),
     (131, 9999, 40000),
 ]
+
+HOURLY_RATES = {
+    "nova": 11000,
+    "prime": 12000,
+    "apex": 13000,
+    "leader": 15000,
+}
 
 def percent(actual, plan):
     if plan <= 0:
@@ -34,12 +35,11 @@ def get_bonus_rate(individual_kpi):
     return 0
 
 def calculate_admin_salary(data: dict) -> dict:
-    # Ma'lumotlarni xavfsiz raqamlarga o'tkazish (FSM dan string bo'lib kelishi mumkin)
+    # Ma'lumotlarni raqamlarga o'tkazish
     status = str(data.get("status", "nova")).lower()
     daily_hours = float(data.get("daily_hours", 0))
     worked_days = float(data.get("worked_days", 0))
     
-    # Reja va faktlar
     individual_plan = float(data.get("individual_plan", 0))
     actual_sales = float(data.get("actual_sales", 0))
     conversion_plan = float(data.get("conversion_plan", 0))
@@ -47,37 +47,40 @@ def calculate_admin_salary(data: dict) -> dict:
     active_plan = float(data.get("active_plan", 0))
     actual_active = float(data.get("actual_active", 0))
     
-    # Qoldirilgan va cover soatlar
     missed_hours = float(data.get("missed_hours", 0))
     cover_hours = float(data.get("cover_hours", 0))
     
-    # Tillar uchun bool tekshiruv
     has_ielts = data.get("has_ielts") in [True, "✅ HA", "HA"]
     knows_russian = data.get("knows_russian") in [True, "✅ HA", "HA"]
 
-    # --- HISOB-KITOB BOSQICHI ---
+    # Fixa hisoblash
     hourly_rate = HOURLY_RATES.get(status, 11000)
     fixa = daily_hours * worked_days * hourly_rate
 
+    # Har bir bo'limning bajarilish foizi
     individual_kpi = percent(actual_sales, individual_plan)
     conversion_kpi = percent(actual_conversion, conversion_plan)
     active_kpi = percent(actual_active, active_plan)
 
+    # 🌟 TO'G'RILANDI: Vaznlar rasmga asosan (50% / 30% / 20%) qilindi
     weighted_kpi = (
-        (individual_kpi * 0.4) + 
+        (individual_kpi * 0.5) + 
         (conversion_kpi * 0.3) + 
-        (active_kpi * 0.3)
+        (active_kpi * 0.2)
     )
 
+    # 🌟 TO'G'RILANDI: KPI bonusni to'g'ri ko'paytirish mantiqi
     bonus_rate = get_bonus_rate(individual_kpi)
-    base_kpi_bonus = actual_sales * (bonus_rate / 100)
-    final_kpi_bonus = base_kpi_bonus * (weighted_kpi / 100)
+    base_kpi_bonus = actual_sales * bonus_rate  # Sotuvlar soni * bonus stavkasi
+    final_kpi_bonus = base_kpi_bonus * (weighted_kpi / 100)  # Umumiy KPI foiziga ko'paytiriladi
 
+    # Bonus va jarimalar
     russian_bonus = 500000 if knows_russian else 0
     ielts_bonus = 1000000 if has_ielts else 0
     cover_bonus = cover_hours * hourly_rate
     penalty = missed_hours * hourly_rate
 
+    # Yakuniy oylik
     total_salary = fixa + final_kpi_bonus + russian_bonus + ielts_bonus + cover_bonus - penalty
 
     return {
@@ -87,7 +90,6 @@ def calculate_admin_salary(data: dict) -> dict:
         "active_kpi": round(active_kpi, 1),
         "weighted_kpi": round(weighted_kpi, 1),
         "bonus_rate": int(bonus_rate),
-        "base_kpi_bonus": int(base_kpi_bonus),
         "final_kpi_bonus": int(final_kpi_bonus),
         "russian_bonus": int(russian_bonus),
         "ielts_bonus": int(ielts_bonus),
