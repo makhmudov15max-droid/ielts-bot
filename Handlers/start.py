@@ -744,3 +744,127 @@ async def cancel_edit_staff_callback(call: types.CallbackQuery, state: FSMContex
     await call.message.answer(text="Xodimlarni boshqarish paneli yopildi.", reply_markup=main_menu_keyboard)
     await state.clear()
     await call.answer()
+
+# ==============================================================================
+# 🌟 YANGI INTEGRATSIYA: ARXIV PANELINI BOSHQARISH VA QAYTA FAOLLASHTIRISH
+# ==============================================================================
+
+# 1. "Arxiv" tugmasi bosilganda chetlashtirilgan/rad etilganlarni chatga chiqarish
+@start_router.message(F.text == "Arxiv")
+async def list_of_archive_handler(message: types.Message):
+    if not check_user_access(message.from_user.id): return
+    
+    # Faqat 'rejected' (rad etilgan yoki chetlashtirilgan) foydalanuvchilarni saralash
+    archived_users = {
+        u_id: u_info for u_id, u_info in USERS_ROLES.items()
+        if isinstance(u_info, dict) and u_info.get("role") == "rejected"
+    }
+    
+    if not archived_users:
+        await message.answer(text="📭 Arxiv boʻsh. Chetlashtirilgan yoki rad etilgan foydalanuvchilar mavjud emas.")
+        return
+        
+    response_text = "🗄 <b>Arxivdagi foydalanuvchilar roʻyxati:</b>\n\n"
+    inline_kb = []
+    
+    for idx, (u_id, u_info) in enumerate(archived_users.items(), 1):
+        # Agar foydalanuvchi ismi hali kiritilmasdan rad etilgan bo'lsa, "Yangi so'rovchi" deb ko'rsatiladi
+        display_name = u_info.get("name") if u_info.get("name") else f"Foydalanuvchi [ID: {u_id}]"
+        
+        response_text += f"{idx}. ❌ <b>{display_name}</b> — <i>Tizimdan chetlashtirilgan</i>\n"
+        # Qayta faollashtirish tugmasini generatsiya qilamiz
+        inline_kb.append([types.InlineKeyboardButton(text=f"🔄 {display_name}", callback_data=f"restorestaff_{u_id}")])
+        
+    response_text += "\n<i>Ushbu foydalanuvchilarni qayta faollashtirish va lavozim berish uchun mos tugmani bosing:</i>"
+    
+    await message.answer(
+        text=response_text,
+        parse_mode="HTML",
+        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_kb)
+    )
+
+
+# 2. Arxivdagi xodim bosilganda unga yangi lavozim tanlash menyusini ochish
+@start_router.callback_query(F.data.startswith("restorestaff_"))
+async def process_restore_staff_callback(call: types.CallbackQuery):
+    target_user_id = int(call.data.split("_")[1])
+    user_info = USERS_ROLES.get(target_user_id)
+    
+    if not user_info:
+        await call.answer(text="⚠️ Bu foydalanuvchi ma'lumotlar bazasidan topilmadi!", show_alert=True)
+        return
+        
+    display_name = user_info.get("name") if user_info.get("name") else f"Foydalanuvchi [{target_user_id}]"
+    
+    # Tizimdagi mavjud faol rollar ro'yxati
+    roles = ["Admin", "Kassir", "Sanitar", "Manager"]
+    inline_kb = []
+    row = []
+    
+    for r in roles:
+        row.append(types.InlineKeyboardButton(text=r, callback_data=f"savearchiverole_{r}_{target_user_id}"))
+        if len(row) == 2:
+            inline_kb.append(row)
+            row = []
+            
+    inline_kb.append([types.InlineKeyboardButton(text="⬅️ Bekor qilish", callback_data="editstaff_cancel")])
+    
+    await call.message.edit_text(
+        text=f"🔄 <b>Foydalanuvchi:</b> {display_name}\n\n"
+             f"Ushbu xodimni faollashtirish uchun <b>yangi lavozimni (rol)</b> tanlang:",
+        parse_mode="HTML",
+        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_kb)
+    )
+    await call.answer()
+
+
+# 3. Lavozim tanlangach arxivdan chiqarish, saqlash va unga xabarnoma yuborish
+@start_router.callback_query(F.data.startswith("savearchiverole_"))
+async def save_archive_role_callback(call: types.CallbackQuery, state: FSMContext):
+    data_parts = call.data.split("_")
+    new_role = data_parts[1]
+    target_user_id = int(data_parts[2])
+    
+    if target_user_id in USERS_ROLES:
+        # Rolni yangilaymiz (Arxivdan avtomatik chiqadi)
+        USERS_ROLES[target_user_id]["role"] = new_role
+        
+        # Agar foydalanuvchining ismi avval kiritilmagan bo'lsa, ism so'rash bosqichiga tayyorlaymiz
+        has_name = USERS_ROLES[target_user_id].get("name") is not None
+        display_name = USERS_ROLES[target_user_id]["name"] if has_name else "Xodim"
+        
+        await call.message.edit_text(
+            text=f"✅ <b>Muvaffaqiyatli tiklandi!</b>\n\n"
+                 f"👤 Xodim: <b>{display_name}</b>\n"
+                 f"🎖 Yangi biriktirilgan lavozim: <b>{new_role}</b>\n\n"
+                 f"<i>Xodimga tizim qayta faollashtirilgani haqida xabarnoma yuborildi.</i>",
+            parse_mode="HTML"
+        )
+        
+        # Tiklangan xodimning o'ziga xushxabarni va menyuni yuboramiz
+        try:
+            if has_name:
+                # Ismi bor bo'lsa to'g'ridan to'g'ri asosiy menyu
+                await call.bot.send_message(
+                    chat_id=target_user_id,
+                    text=f"🎉 <b>Xushxabar!</b> Administrator sizni arxivdan chiqardi va joriy lavozimingizni <b>{new_role}</b> etib belgiladi.\n"
+                         f"Bot imkoniyatlaridan toʻliq foydalanishingiz mumkin!",
+                    parse_mode="HTML",
+                    reply_markup=main_menu_keyboard
+                )
+            else:
+                # Ismi yo'q bo'lsa oldingi mantiq asosida ism so'raymiz
+                await call.bot.send_message(
+                    chat_id=target_user_id,
+                    text=f"🎉 <b>Xushxabar!</b> Administrator sizning ruxsat soʻrovingizni tasdiqladi va <b>{new_role}</b> unvonini berdi.\n"
+                         f"Iltimos, tizimdan foydalanish uchun ism va familiyangizni kiriting:",
+                    parse_mode="HTML",
+                    reply_markup=types.ReplyKeyboardRemove()
+                )
+        except Exception as e:
+            print(f"Arxivdan tiklangan xodimga xabar yuborishda xatolik: {e}")
+    else:
+        await call.answer(text="⚠️ Tizim xatoligi yuz berdi!", show_alert=True)
+        
+    await state.clear()
+    await call.answer()
