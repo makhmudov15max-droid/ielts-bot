@@ -8,6 +8,7 @@ main_menu_keyboard = ReplyKeyboardMarkup(
             KeyboardButton(text="Vazifalar roʻyxati")
         ],
         [
+            KeyboardButton(text="Xodimlar"),          # 🌟 YANGI TUGMA
             KeyboardButton(text="Vazifani oʻchirish")
         ]
     ],
