@@ -1195,7 +1195,7 @@ async def process_actual_active_final(message: types.Message, state: FSMContext)
 # 💰 KASSIR OYLIK SAVOLLAR ZANJIRI VA REAL HISOB-KITOB
 # ==============================================================================
 
-@start_router.message(F.text == "💰 Cashier Salary")
+@start_router.message(F.text == "Kassir oylik")
 async def start_cashier_salary(message: types.Message, state: FSMContext):
     await state.set_state(CashierSalaryStates.hours)
     await message.answer("⏰ Kunlik ish soatini tanlang:", reply_markup=get_hours_keyboard())
