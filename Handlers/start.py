@@ -4,6 +4,8 @@ from aiogram import Router, types, F
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from calculators.admin_calc import calculate_admin_salary
+from calculators.cashier_calc import calculate_cashier_salary
+from Handlers.states import CashierSalaryStates
 import config  
 from Keyboards.main_menu import (
     main_menu_keyboard, 
@@ -1187,4 +1189,186 @@ async def process_actual_active_final(message: types.Message, state: FSMContext)
         f"🏁 <b>JAMI OYLIK MAOSH:</b> <u>{result['total_salary']:,} so'm</u>"
     )
     
+    await message.answer(text=report_text, parse_mode="HTML", reply_markup=main_menu_keyboard)
+
+# ==============================================================================
+# 💰 KASSIR OYLIK SAVOLLAR ZANJIRI VA REAL HISOB-KITOB
+# ==============================================================================
+
+@start_router.message(F.text == "💰 Cashier Salary")
+async def start_cashier_salary(message: types.Message, state: FSMContext):
+    await state.set_state(CashierSalaryStates.hours)
+    await message.answer("⏰ Kunlik ish soatini tanlang:", reply_markup=get_hours_keyboard())
+
+@start_router.message(CashierSalaryStates.hours)
+async def process_cashier_hours(message: types.Message, state: FSMContext):
+    if message.text == "🏠 Bosh sahifa":
+        await state.clear()
+        return await message.answer("Asosiy menyudasiz:", reply_markup=main_menu_keyboard)
+    if message.text == "✍️ Boshqa":
+        await state.set_state(CashierSalaryStates.custom_hours)
+        return await message.answer("⏰ Soatni o'zingiz kiriting:", reply_markup=get_manual_keyboard())
+    if not message.text.isdigit():
+        return await message.answer("❌ Iltimos, raqam kiriting yoki tugmalardan foydalaning:")
+    
+    await state.update_data(hours=int(message.text))
+    await state.set_state(CashierSalaryStates.days)
+    await message.answer("📅 Ishlagan kunni tanlang:", reply_markup=get_days_keyboard())
+
+@start_router.message(CashierSalaryStates.custom_hours)
+async def process_cashier_custom_hours(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(CashierSalaryStates.hours)
+        return await message.answer("⏰ Kunlik ish soatini tanlang:", reply_markup=get_hours_keyboard())
+    if not message.text.isdigit():
+        return await message.answer("❌ Faqat raqam kiriting:")
+    
+    await state.update_data(hours=int(message.text))
+    await state.set_state(CashierSalaryStates.days)
+    await message.answer("📅 Ishlagan kunni tanlang:", reply_markup=get_days_keyboard())
+
+@start_router.message(CashierSalaryStates.days)
+async def process_cashier_days(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(CashierSalaryStates.hours)
+        return await message.answer("⏰ Kunlik ish soatini tanlang:", reply_markup=get_hours_keyboard())
+    if message.text == "✍️ Boshqa":
+        await state.set_state(CashierSalaryStates.custom_days)
+        return await message.answer("📅 Ishlagan kunni o'zingiz kiriting:", reply_markup=get_manual_keyboard())
+    if not message.text.isdigit():
+        return await message.answer("❌ To'g'ri kun kiriting:")
+
+    await state.update_data(days=int(message.text))
+    await state.set_state(CashierSalaryStates.cover)
+    await message.answer("🔄 Cover qildingizmi?", reply_markup=get_yes_no_keyboard())
+
+@start_router.message(CashierSalaryStates.custom_days)
+async def process_cashier_custom_days(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(CashierSalaryStates.days)
+        return await message.answer("📅 Ishlagan kunni tanlang:", reply_markup=get_days_keyboard())
+    if not message.text.isdigit():
+        return await message.answer("❌ Faqat raqam kiriting:")
+
+    await state.update_data(days=int(message.text))
+    await state.set_state(CashierSalaryStates.cover)
+    await message.answer("🔄 Cover qildingizmi?", reply_markup=get_yes_no_keyboard())
+
+@start_router.message(CashierSalaryStates.cover)
+async def process_cashier_cover(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(CashierSalaryStates.days)
+        return await message.answer("📅 Ishlagan kunni tanlang:", reply_markup=get_days_keyboard())
+    if message.text == "✅ HA":
+        await state.set_state(CashierSalaryStates.cover_hours)
+        await message.answer("⏰ Necha soat cover qildingiz? (Faqat raqam):", reply_markup=get_manual_keyboard())
+    else:
+        await state.update_data(cover_hours=0.0)
+        await state.set_state(CashierSalaryStates.missed)
+        await message.answer("📉 Ish qoldirgan kunlaringiz bo'ldimi?", reply_markup=get_yes_no_keyboard())
+
+@start_router.message(CashierSalaryStates.cover_hours)
+async def process_cashier_cover_hours(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(CashierSalaryStates.cover)
+        return await message.answer("🔄 Cover qildingizmi?", reply_markup=get_yes_no_keyboard())
+    if not message.text.replace('.', '', 1).isdigit():
+        return await message.answer("❌ Soatni raqamda kiriting:")
+
+    await state.update_data(cover_hours=float(message.text))
+    await state.set_state(CashierSalaryStates.missed)
+    await message.answer("📉 Ish qoldirgan kunlaringiz bo'ldimi?", reply_markup=get_yes_no_keyboard())
+
+@start_router.message(CashierSalaryStates.missed)
+async def process_cashier_missed(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(CashierSalaryStates.cover)
+        return await message.answer("🔄 Cover qildingizmi?", reply_markup=get_yes_no_keyboard())
+    if message.text == "✅ HA":
+        await state.set_state(CashierSalaryStates.missed_hours)
+        await message.answer("⏰ Necha soat ish qoldirdingiz? (Faqat raqam):", reply_markup=get_manual_keyboard())
+    else:
+        await state.update_data(missed_hours=0.0)
+        await state.set_state(CashierSalaryStates.active_students)
+        await message.answer("👥 Active students (Aktiv talabalar) sonini kiriting:", reply_markup=get_manual_keyboard())
+
+@start_router.message(CashierSalaryStates.missed_hours)
+async def process_cashier_missed_hours(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(CashierSalaryStates.missed)
+        return await message.answer("📉 Ish qoldirgan kunlaringiz bo'ldimi?", reply_markup=get_yes_no_keyboard())
+    if not message.text.replace('.', '', 1).isdigit():
+        return await message.answer("❌ Soatni raqamda kiriting:")
+
+    await state.update_data(missed_hours=float(message.text))
+    await state.set_state(CashierSalaryStates.active_students)
+    await message.answer("👥 Active students (Aktiv talabalar) sonini kiriting:", reply_markup=get_manual_keyboard())
+
+@start_router.message(CashierSalaryStates.active_students)
+async def process_active_students(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(CashierSalaryStates.missed)
+        return await message.answer("📉 Ish qoldirgan kunlaringiz bo'ldimi?", reply_markup=get_yes_no_keyboard())
+    if not message.text.isdigit():
+        return await message.answer("❌ Iltimos, faqat butun raqam kiriting:")
+
+    await state.update_data(active_students=int(message.text))
+    await state.set_state(CashierSalaryStates.active_debtors)
+    await message.answer("💸 Active debtors (Aktiv qarzdorlar) sonini kiriting:", reply_markup=get_manual_keyboard())
+
+@start_router.message(CashierSalaryStates.active_debtors)
+async def process_active_debtors(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(CashierSalaryStates.active_students)
+        return await message.answer("👥 Active students (Aktiv talabalar) sonini kiriting:", reply_markup=get_manual_keyboard())
+    if not message.text.isdigit():
+        return await message.answer("❌ Iltimos, faqat butun raqam kiriting:")
+
+    await state.update_data(active_debtors=int(message.text))
+    await state.set_state(CashierSalaryStates.archive_students)
+    await message.answer("🗄 Archive students (Arxiv talabalar) sonini kiriting:", reply_markup=get_manual_keyboard())
+
+@start_router.message(CashierSalaryStates.archive_students)
+async def process_archive_students(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(CashierSalaryStates.active_debtors)
+        return await message.answer("💸 Active debtors (Aktiv qarzdorlar) sonini kiriting:", reply_markup=get_manual_keyboard())
+    if not message.text.isdigit():
+        return await message.answer("❌ Iltimos, faqat butun raqam kiriting:")
+
+    await state.update_data(archive_students=int(message.text))
+    await state.set_state(CashierSalaryStates.archive_debtors)
+    await message.answer("📉 Archive debtors (Arxiv qarzdorlar) sonini kiriting:", reply_markup=get_manual_keyboard())
+
+@start_router.message(CashierSalaryStates.archive_debtors)
+async def process_cashier_final(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(CashierSalaryStates.archive_students)
+        return await message.answer("🗄 Archive students (Arxiv talabalar) sonini kiriting:", reply_markup=get_manual_keyboard())
+    if not message.text.isdigit():
+        return await message.answer("❌ Iltimos, faqat raqam kiriting:")
+
+    await state.update_data(archive_debtors=int(message.text))
+    data = await state.get_data()
+    await state.clear()
+
+    # 🧮 Matematik hisob-kitobni chaqiramiz
+    result = calculate_cashier_salary(data)
+
+    # Natija shabloni
+    report_text = (
+        f"💰 <b>KASSIR OYLIK HISOB-KITOB PANELI</b>\n\n"
+        f"⏰ <b>Ish tartibi:</b> {data.get('hours')} soat / {data.get('days')} kun\n"
+        f"📊 <b>Umumiy talabalar:</b> {result['total_students']} ta\n"
+        f"💸 <b>Jami qarzdor xodimlar:</b> {result['total_debtors']} ta\n"
+        f"📉 <b>Qarzdorlik foizi:</b> {result['debt_percentage']}%\n"
+        f"🎯 <b>Natija darajasi:</b> {result['status_text']}\n\n"
+        f"💵 <b>Ishbay sof oylik:</b> {result['worked_salary']:,} so'm\n"
+        f"🏆 <b>Qarzdorlik karrali bonusi (Multiplier):</b> +{result['kpi_bonus_profit']:,} so'm\n"
+        f"🔄 <b>Cover bonus:</b> +{result['cover_bonus']:,} so'm\n"
+        f"⚠️ <b>Ish qoldirish jarimasi:</b> -{result['missed_penalty']:,} so'm\n"
+        f"-----------------------------------------\n"
+        f"🏁 <b>JAMI OYLIK MAOSH:</b> <u>{result['total_salary']:,} so'm</u>"
+    )
+
     await message.answer(text=report_text, parse_mode="HTML", reply_markup=main_menu_keyboard)
