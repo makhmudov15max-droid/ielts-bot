@@ -927,9 +927,13 @@ async def back_to_home_salary(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer("🏠 Bosh sahifaga qaytdingiz.", reply_markup=main_menu_keyboard)
 
-# 2. Status tanlanganda -> Soat so'rash
+# 2. Status tanlanganda -> Soat so'rash va statusni saqlash
 @start_router.message(AdminSalaryStates.status)
 async def process_status(message: types.Message, state: FSMContext):
+    if message.text not in ["NOVA", "PRIME", "APEX", "LEADER"]:
+        return await message.answer("❌ Iltimos, tugmalardan birini tanlang:")
+        
+    await state.update_data(status=message.text.lower())
     await state.set_state(AdminSalaryStates.daily_hours)
     await message.answer("⏰ Kunlik ish soatini tanlang:", reply_markup=get_hours_keyboard())
 
@@ -944,6 +948,10 @@ async def process_hours(message: types.Message, state: FSMContext):
         await state.set_state(AdminSalaryStates.custom_daily_hours)
         return await message.answer("⏰ Soatni o'zingiz kiriting:", reply_markup=get_manual_keyboard())
 
+    if not message.text.isdigit():
+        return await message.answer("❌ Iltimos, to'g'ri soatni tanlang yoki raqam kiriting:")
+
+    await state.update_data(daily_hours=int(message.text))
     await state.set_state(AdminSalaryStates.worked_days)
     await message.answer("📅 Ishlagan kunni tanlang:", reply_markup=get_days_keyboard())
 
@@ -954,6 +962,10 @@ async def process_custom_hours(message: types.Message, state: FSMContext):
         await state.set_state(AdminSalaryStates.daily_hours)
         return await message.answer("⏰ Kunlik ish soatini tanlang:", reply_markup=get_hours_keyboard())
 
+    if not message.text.isdigit():
+        return await message.answer("❌ Iltimos, faqat raqam kiriting (Masalan: 8):")
+
+    await state.update_data(daily_hours=int(message.text))
     await state.set_state(AdminSalaryStates.worked_days)
     await message.answer("📅 Ishlagan kunni tanlang:", reply_markup=get_days_keyboard())
 
@@ -968,6 +980,10 @@ async def process_days(message: types.Message, state: FSMContext):
         await state.set_state(AdminSalaryStates.custom_worked_days)
         return await message.answer("📅 Ishlagan kunni o'zingiz kiriting:", reply_markup=get_manual_keyboard())
 
+    if not message.text.isdigit():
+        return await message.answer("❌ Iltimos, to'g'ri kunni tanlang yoki raqam kiriting:")
+
+    await state.update_data(worked_days=int(message.text))
     await state.set_state(AdminSalaryStates.has_ielts)
     await message.answer("🎓 IELTS bormi?", reply_markup=get_yes_no_keyboard())
 
@@ -978,6 +994,10 @@ async def process_custom_days(message: types.Message, state: FSMContext):
         await state.set_state(AdminSalaryStates.worked_days)
         return await message.answer("📅 Ishlagan kunni tanlang:", reply_markup=get_days_keyboard())
 
+    if not message.text.isdigit():
+        return await message.answer("❌ Iltimos, faqat raqam kiriting (Masalan: 26):")
+
+    await state.update_data(worked_days=int(message.text))
     await state.set_state(AdminSalaryStates.has_ielts)
     await message.answer("🎓 IELTS bormi?", reply_markup=get_yes_no_keyboard())
 
@@ -988,6 +1008,7 @@ async def process_ielts(message: types.Message, state: FSMContext):
         await state.set_state(AdminSalaryStates.worked_days)
         return await message.answer("📅 Ishlagan kunni tanlang:", reply_markup=get_days_keyboard())
 
+    await state.update_data(has_ielts=message.text)
     await state.set_state(AdminSalaryStates.knows_russian)
     await message.answer("🇷🇺 Rus tili bormi?", reply_markup=get_yes_no_keyboard())
 
@@ -998,6 +1019,7 @@ async def process_russian(message: types.Message, state: FSMContext):
         await state.set_state(AdminSalaryStates.has_ielts)
         return await message.answer("🎓 IELTS bormi?", reply_markup=get_yes_no_keyboard())
 
+    await state.update_data(knows_russian=message.text)
     await state.set_state(AdminSalaryStates.missed)
     await message.answer("📉 Ish qoldirgan kunlaringiz bo'ldimi?", reply_markup=get_yes_no_keyboard())
 
@@ -1012,6 +1034,7 @@ async def process_missed(message: types.Message, state: FSMContext):
         await state.set_state(AdminSalaryStates.missed_hours)
         await message.answer("⏰ Necha soat ish qoldirdingiz? (Javobni kiriting):", reply_markup=get_manual_keyboard())
     else:
+        await state.update_data(missed_hours=0)
         await state.set_state(AdminSalaryStates.cover)
         await message.answer("🔄 Cover qildingizmi?", reply_markup=get_yes_no_keyboard())
 
@@ -1022,6 +1045,10 @@ async def process_missed_hours(message: types.Message, state: FSMContext):
         await state.set_state(AdminSalaryStates.missed)
         return await message.answer("📉 Ish qoldirgan kunlaringiz bo'ldimi?", reply_markup=get_yes_no_keyboard())
 
+    if not message.text.replace('.', '', 1).isdigit():
+        return await message.answer("❌ Iltimos, soatni faqat raqamda kiriting:")
+
+    await state.update_data(missed_hours=float(message.text))
     await state.set_state(AdminSalaryStates.cover)
     await message.answer("🔄 Cover qildingizmi?", reply_markup=get_yes_no_keyboard())
 
@@ -1036,8 +1063,9 @@ async def process_cover(message: types.Message, state: FSMContext):
         await state.set_state(AdminSalaryStates.cover_hours)
         await message.answer("⏰ Nechi soat cover qildingiz? (Javobni kiriting):", reply_markup=get_manual_keyboard())
     else:
+        await state.update_data(cover_hours=0)
         await state.set_state(AdminSalaryStates.individual_plan)
-        await message.answer("💰 Individual plan kiriting (Matn ko'rinishida):", reply_markup=get_manual_keyboard())
+        await message.answer("💰 Individual plan kiriting (Faqat raqam):", reply_markup=get_manual_keyboard())
 
 # 8a. Cover soati kiritilganda -> Individual plan so'rash
 @start_router.message(AdminSalaryStates.cover_hours)
@@ -1046,16 +1074,24 @@ async def process_cover_hours(message: types.Message, state: FSMContext):
         await state.set_state(AdminSalaryStates.cover)
         return await message.answer("🔄 Cover qildingizmi?", reply_markup=get_yes_no_keyboard())
 
-    await state.set_state(AdminSalaryStates.individual_plan)
-    await message.answer("💰 Individual plan kiriting (Matn ko'rinishida):", reply_markup=get_manual_keyboard())
+    if not message.text.replace('.', '', 1).isdigit():
+        return await message.answer("❌ Iltimos, soatni faqat raqamda kiriting:")
 
-# 9. Individual Plan -> Faktik Savdo so'rash (YANGI ULANGAN DAVOMI)
+    await state.update_data(cover_hours=float(message.text))
+    await state.set_state(AdminSalaryStates.individual_plan)
+    await message.answer("💰 Individual plan kiriting (Faqat raqam):", reply_markup=get_manual_keyboard())
+
+# 9. Individual Plan -> Faktik Savdo so'rash
 @start_router.message(AdminSalaryStates.individual_plan)
 async def process_individual_plan(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
         await state.set_state(AdminSalaryStates.cover)
         return await message.answer("🔄 Cover qildingizmi?", reply_markup=get_yes_no_keyboard())
 
+    if not message.text.replace('.', '', 1).isdigit():
+        return await message.answer("❌ Iltimos, rejani faqat raqamda kiriting:")
+
+    await state.update_data(individual_plan=float(message.text))
     await state.set_state(AdminSalaryStates.actual_sales)
     await message.answer("📊 Actual sales (Faktik savdo) kiriting:", reply_markup=get_manual_keyboard())
 
@@ -1064,10 +1100,14 @@ async def process_individual_plan(message: types.Message, state: FSMContext):
 async def process_actual_sales(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
         await state.set_state(AdminSalaryStates.individual_plan)
-        return await message.answer("💰 Individual plan kiriting (Matn ko'rinishida):", reply_markup=get_manual_keyboard())
+        return await message.answer("💰 Individual plan kiriting (Faqat raqam):", reply_markup=get_manual_keyboard())
 
+    if not message.text.replace('.', '', 1).isdigit():
+        return await message.answer("❌ Iltimos, faktik savdoni faqat raqamda kiriting:")
+
+    await state.update_data(actual_sales=float(message.text))
     await state.set_state(AdminSalaryStates.conversion_plan)
-    await message.answer("📈 Conversion plan (Konversiya rejasi) kiriting:", reply_markup=get_manual_keyboard())
+    await message.answer("📈 Conversion plan (Konversiya rejasi %) kiriting:", reply_markup=get_manual_keyboard())
 
 # 11. Konversiya rejasi -> Faktik konversiya so'rash
 @start_router.message(AdminSalaryStates.conversion_plan)
@@ -1076,16 +1116,24 @@ async def process_conversion_plan(message: types.Message, state: FSMContext):
         await state.set_state(AdminSalaryStates.actual_sales)
         return await message.answer("📊 Actual sales (Faktik savdo) kiriting:", reply_markup=get_manual_keyboard())
 
+    if not message.text.replace('.', '', 1).isdigit():
+        return await message.answer("❌ Iltimos, konversiya rejasini faqat raqamda kiriting:")
+
+    await state.update_data(conversion_plan=float(message.text))
     await state.set_state(AdminSalaryStates.actual_conversion)
-    await message.answer("📉 Actual conversion (Faktik konversiya) kiriting:", reply_markup=get_manual_keyboard())
+    await message.answer("📉 Actual conversion (Faktik konversiya %) kiriting:", reply_markup=get_manual_keyboard())
 
 # 12. Faktik konversiya -> Aktivlar rejasi so'rash
 @start_router.message(AdminSalaryStates.actual_conversion)
 async def process_actual_conversion(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
         await state.set_state(AdminSalaryStates.conversion_plan)
-        return await message.answer("📈 Conversion plan (Konversiya rejasi) kiriting:", reply_markup=get_manual_keyboard())
+        return await message.answer("📈 Conversion plan (Konversiya rejasi %) kiriting:", reply_markup=get_manual_keyboard())
 
+    if not message.text.replace('.', '', 1).isdigit():
+        return await message.answer("❌ Iltimos, faktik konversiyani faqat raqamda kiriting:")
+
+    await state.update_data(actual_conversion=float(message.text))
     await state.set_state(AdminSalaryStates.active_plan)
     await message.answer("👥 Active plan (Aktivlar rejasi) kiriting:", reply_markup=get_manual_keyboard())
 
@@ -1094,22 +1142,49 @@ async def process_actual_conversion(message: types.Message, state: FSMContext):
 async def process_active_plan(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
         await state.set_state(AdminSalaryStates.actual_conversion)
-        return await message.answer("📉 Actual conversion (Faktik konversiya) kiriting:", reply_markup=get_manual_keyboard())
+        return await message.answer("📉 Actual conversion (Faktik konversiya %) kiriting:", reply_markup=get_manual_keyboard())
 
+    if not message.text.replace('.', '', 1).isdigit():
+        return await message.answer("❌ Iltimos, aktivlar rejasini faqat raqamda kiriting:")
+
+    await state.update_data(active_plan=float(message.text))
     await state.set_state(AdminSalaryStates.actual_active)
     await message.answer("👤 Actual active (Faktik aktivlar) kiriting:", reply_markup=get_manual_keyboard())
 
-# 14. Faktik aktivlar -> Yakuniy hisobot (Hozircha matematika va formulalarsiz)
+# 14. Faktik aktivlar -> REAL JAVOBNI HISOBLASH VA CHIQARISH
 @start_router.message(AdminSalaryStates.actual_active)
 async def process_actual_active_final(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
         await state.set_state(AdminSalaryStates.active_plan)
         return await message.answer("👥 Active plan (Aktivlar rejasi) kiriting:", reply_markup=get_manual_keyboard())
 
+    if not message.text.replace('.', '', 1).isdigit():
+        return await message.answer("❌ Iltimos, faktik aktivlarni faqat raqamda kiriting:")
+
+    await state.update_data(actual_active=float(message.text))
+    
+    # Barcha ma'lumotlarni yig'ib olamiz
+    data = await state.get_data()
     await state.clear()
-    await message.answer(
-        "🎉 <b>Barcha ma'lumotlar muvaffaqiyatli qabul qilindi!</b>\n\n"
-        "<i>Eski loyihadagi oylik hisoblash savollar zanjiri to'liq yakunlandi. Ichki matematika va hisob-kitob formulalari hali joriy tizimga ulanmagan.</i>", 
-        parse_mode="HTML",
-        reply_markup=main_menu_keyboard
+
+    # 🧮 Real hisob-kitobni ishga tushiramiz
+    result = calculate_admin_salary(data)
+    
+    # 📝 Chiroyli yakuniy xabar formati
+    report_text = (
+        f"💰 <b>OYLIK HISOB-KITOB PANELI</b>\n\n"
+        f"🧑‍💼 <b>Status:</b> {str(data.get('status')).upper()}\n"
+        f"⏰ <b>Ish tartibi:</b> {data.get('daily_hours')} soat / {data.get('worked_days')} kun\n\n"
+        f"💵 <b>Fixa maosh:</b> {result['fixa']:,} so'm\n"
+        f"🏆 <b>KPI Bonus:</b> {result['final_kpi_bonus']:,} so'm\n\n"
+        f"🎁 <b>Qo'shimchalar:</b>\n"
+        f"🇷🇺 Rus tili bonus: +{result['russian_bonus']:,} so'm\n"
+        f"🎓 IELTS bonus: +{result['ielts_bonus']:,} so'm\n"
+        f"🔄 Cover bonus: +{result['cover_bonus']:,} so'm\n\n"
+        f"📉 <b>Jarima (Ish qoldirish):</b> -{result['penalty']:,} so'm\n"
+        f"📊 <b>Umumiy KPI:</b> {result['weighted_kpi']}%\n"
+        f"-----------------------------------------\n"
+        f"🏁 <b>JAMI OYLIK MAOSH:</b> <u>{result['total_salary']:,} so'm</u>"
     )
+    
+    await message.answer(text=report_text, parse_mode="HTML", reply_markup=main_menu_keyboard)
