@@ -1,16 +1,18 @@
 from aiogram.fsm.state import StatesGroup, State
 
-# Tizim bosqichlari
 class TaskStates(StatesGroup):
-    waiting_for_user_name = State()       # Foydalanuvchi ism-familiyasini kutish
-    waiting_for_name = State()            # Vazifa nomini kutish holati
-    waiting_for_days = State()            # Kunlarni tanlashni kutish holati
-    waiting_for_frequency = State()       # Kunlik takrorlanish sonini kutish holati
-    waiting_for_once_time = State()       # Bitta aniq vaqtni matn ko'rinishida kutish
-    waiting_for_multiple_times = State()  # Bir nechta vaqtni vergul bilan kutish
+    # Foydalanuvchi tizimga birinchi marta kirganda ism-familiyasini kutish
+    waiting_for_user_name = State()       
     
-    # --- YANGI QO'SHILGAN FEATURE BOSQICHLARI ---
-    waiting_for_proof_type = State()      # Isbot turini kutish (Photo/Video)
-    waiting_for_target_role = State()     # Qaysi unvonga biriktirishni kutish
-    waiting_for_target_user = State()     # Aniq qaysi xodimga biriktirishni kutish
-    waiting_for_task_proof = State()      # Xodim tomonidan rasm yoki videoni kutish
+    # Yangi vazifa yaratish bosqichlari (Siz aytgan ketma-ketlikda)
+    waiting_for_target_role = State()     # 1. Qaysi unvonga biriktirishni kutish (Admin/Kassir/...)
+    waiting_for_target_user = State()     # 2. Aniq qaysi xodimga biriktirishni kutish (Inline tugma)
+    waiting_for_name = State()            # 3. Vazifa nomini kutish
+    waiting_for_days = State()            # 4. Kunlarni tanlashni kutish
+    waiting_for_frequency = State()       # 5. Kunlik takrorlanish chastotasini kutish
+    waiting_for_once_time = State()       # 6A. Kuniga 1 marta bo'lsa, vaqtni kutish
+    waiting_for_multiple_times = State()  # 6B. Bir necha marta bo'lsa, vaqtlar ro'yxatini kutish
+    waiting_for_proof_type = State()      # 7. Isbot turini kutish (Dumaloq video/Rasm)
+    
+    # Xodim tomonidan vazifa bajarilganda rasm yoki videoni kutish
+    waiting_for_task_proof = State()
