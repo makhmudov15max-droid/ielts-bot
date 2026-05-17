@@ -4,8 +4,9 @@ import sys
 from aiogram import Bot, Dispatcher
 from config import BOT_TOKEN
 
-# MUAMMO SHU YERDA EDI: start_router bilan birga auto_task_scheduler ham import qilindi
+# Eskilarining yoniga yangi ochgan faylimiz routerni ham import qilamiz
 from Handlers.start import start_router, auto_task_scheduler
+from Handlers.teachers_sheets import sheets_router # <-- YANGI QO'SHILDI
 
 # Bot ishga tushganda terminalda ma'lumotlarni chiroyli ko'rsatib turishi uchun logging
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -17,8 +18,9 @@ async def main():
     # Dispatcher - bu barcha routerlarni o'ziga jamlovchi asosiy markaz
     dp = Dispatcher()
     
-    # Boyagi start_router'ni asosiy dispatcherga ulaymiz
+    # Routerlarni asosiy dispatcherga ulaymiz (Ketma-ketlik muhim!)
     dp.include_router(start_router)
+    dp.include_router(sheets_router) # <-- YANGI QO'SHILDI
 
     # Orqa fonda vaqtni tekshirib turuvchi taymerni ishga tushiramiz
     asyncio.create_task(auto_task_scheduler(bot))
