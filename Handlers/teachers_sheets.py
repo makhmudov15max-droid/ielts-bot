@@ -1,5 +1,4 @@
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
 from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
 import config
@@ -21,11 +20,11 @@ except ValueError:
 
 # ==================== 📊 JONLI GOOGLE SHEETS ULASH TIZIMI ====================
 try:
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("google_creds.json", scope)
-    client = gspread.authorize(creds)
-    # ⚠️ MANA SHU YERDAGI JADVAL NOMINI O'ZINGIZNIKI BILAN ALMASHTIRING:
-    sheet = client.open("XD general management topics").worksheet("Ustozlar")
+    # oauth2client'siz, to'g'ridan-to'g'ri gspread orqali json kalitni ulash:
+    client = gspread.service_account(filename="google_creds.json")
+    
+    # ⚠️ JADVAL NOMINI O'ZINGIZNIKI BILAN ALMASHTIRING:
+    sheet = client.open("Google_Sheets_Jadval_Nomi").worksheet("Ustozlar")
     print("Google Sheets 'Ustozlar' sahifasiga ulanish muvaffaqiyatli!")
 except Exception as e:
     print(f"Google Sheets ulanishda xatolik yuz berdi: {e}")
