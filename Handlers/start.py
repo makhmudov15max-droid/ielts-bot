@@ -868,3 +868,152 @@ async def save_archive_role_callback(call: types.CallbackQuery, state: FSMContex
         
     await state.clear()
     await call.answer()
+
+from Handlers.states import AdminSalaryStates
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+
+# ==============================================================================
+# 🌟 ESKI PROYEKTDAN TUZATILGAN ADMIN OYLIK TUGMALAR ZANJIRI (LOGIKASIZ)
+# ==============================================================================
+
+# Vaqtinchalik klaviatura funksiyalari
+def get_status_keyboard():
+    return ReplyKeyboardMarkup(keyboard=[
+        [KeyboardButton(text="NOVA"), KeyboardButton(text="PRIME")],
+        [KeyboardButton(text="APEX"), KeyboardButton(text="LEADER")],
+        [KeyboardButton(text="🏠 Bosh sahifa")]
+    ], resize_keyboard=True)
+
+def get_hours_keyboard():
+    return ReplyKeyboardMarkup(keyboard=[
+        [KeyboardButton(text="6"), KeyboardButton(text="7"), KeyboardButton(text="8")],
+        [KeyboardButton(text="✍️ Boshqa")],
+        [KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")]
+    ], resize_keyboard=True)
+
+def get_days_keyboard():
+    return ReplyKeyboardMarkup(keyboard=[
+        [KeyboardButton(text="24"), KeyboardButton(text="25")],
+        [KeyboardButton(text="26"), KeyboardButton(text="27")],
+        [KeyboardButton(text="✍️ Boshqa")],
+        [KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")]
+    ], resize_keyboard=True)
+
+def get_yes_no_keyboard():
+    return ReplyKeyboardMarkup(keyboard=[
+        [KeyboardButton(text="✅ HA"), KeyboardButton(text="❌ YO‘Q")],
+        [KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")]
+    ], resize_keyboard=True)
+
+def get_manual_keyboard():
+    return ReplyKeyboardMarkup(keyboard=[
+        [KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")]
+    ], resize_keyboard=True)
+
+
+# 1. Asosiy menyudan "Admin oylik" bosilganda boshlanishi
+@start_router.message(F.text == "Admin oylik")
+async def admin_salary_start(message: types.Message, state: FSMContext):
+    if not check_user_access(message.from_user.id): return
+    await state.set_state(AdminSalaryStates.status)
+    await message.answer("🏅 Status tanlang:", reply_markup=get_status_keyboard())
+
+# Global tekshiruv: Har qanday bosqichda "Bosh sahifa" bosilsa bekor qilish
+@start_router.message(AdminSalaryStates(), F.text == "🏠 Bosh sahifa")
+async def back_to_home_salary(message: types.Message, state: FSMContext):
+    await state.clear()
+    await message.answer("🏠 Bosh sahifaga qaytdingiz.", reply_markup=main_menu_keyboard)
+
+# 2. Status tanlanganda -> Soat so'rash
+@start_router.message(AdminSalaryStates.status)
+async def process_status(message: types.Message, state: FSMContext):
+    await state.set_state(AdminSalaryStates.daily_hours)
+    await message.answer("⏰ Kunlik ish soatini tanlang:", reply_markup=get_hours_keyboard())
+
+# 3. Kunlik soat tanlanganda -> Kun so'rash
+@start_router.message(AdminSalaryStates.daily_hours)
+async def process_hours(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(AdminSalaryStates.status)
+        return await message.answer("🏅 Status tanlang:", reply_markup=get_status_keyboard())
+        
+    if message.text == "✍️ Boshqa":
+        await state.set_state(AdminSalaryStates.custom_daily_hours)
+        return await message.answer("⏰ Soatni o'zingiz kiriting:", reply_markup=get_manual_keyboard())
+
+    await state.set_state(AdminSalaryStates.worked_days)
+    await message.answer("📅 Ishlagan kunni tanlang:", reply_markup=get_days_keyboard())
+
+# 3a. Custom soat kiritilganda -> Kun so'rash
+@start_router.message(AdminSalaryStates.custom_daily_hours)
+async def process_custom_hours(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(AdminSalaryStates.daily_hours)
+        return await message.answer("⏰ Kunlik ish soatini tanlang:", reply_markup=get_hours_keyboard())
+
+    await state.set_state(AdminSalaryStates.worked_days)
+    await message.answer("📅 Ishlagan kunni tanlang:", reply_markup=get_days_keyboard())
+
+# 4. Kun tanlanganda -> IELTS so'rash
+@start_router.message(AdminSalaryStates.worked_days)
+async def process_days(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(AdminSalaryStates.daily_hours)
+        return await message.answer("⏰ Kunlik ish soatini tanlang:", reply_markup=get_hours_keyboard())
+        
+    if message.text == "✍️ Boshqa":
+        await state.set_state(AdminSalaryStates.custom_worked_days)
+        return await message.answer("📅 Ishlagan kunni o'zingiz kiriting:", reply_markup=get_manual_keyboard())
+
+    await state.set_state(AdminSalaryStates.has_ielts)
+    await message.answer("🎓 IELTS bormi?", reply_markup=get_yes_no_keyboard())
+
+# 4a. Custom kun kiritilganda -> IELTS so'rash
+@start_router.message(AdminSalaryStates.custom_worked_days)
+async def process_custom_days(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(AdminSalaryStates.worked_days)
+        return await message.answer("📅 Ishlagan kunni tanlang:", reply_markup=get_days_keyboard())
+
+    await state.set_state(AdminSalaryStates.has_ielts)
+    await message.answer("🎓 IELTS bormi?", reply_markup=get_yes_no_keyboard())
+
+# 5. IELTS -> Rus tili so'rash
+@start_router.message(AdminSalaryStates.has_ielts)
+async def process_ielts(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(AdminSalaryStates.worked_days)
+        return await message.answer("📅 Ishlagan kunni tanlang:", reply_markup=get_days_keyboard())
+
+    await state.set_state(AdminSalaryStates.knows_russian)
+    await message.answer("🇷🇺 Rus tili bormi?", reply_markup=get_yes_no_keyboard())
+
+# 6. Rus tili -> Ish qoldirganini so'rash
+@start_router.message(AdminSalaryStates.knows_russian)
+async def process_russian(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(AdminSalaryStates.has_ielts)
+        return await message.answer("🎓 IELTS bormi?", reply_markup=get_yes_no_keyboard())
+
+    await state.set_state(AdminSalaryStates.missed)
+    await message.answer("📉 Ish qoldirgan kunlaringiz bo'ldimi?", reply_markup=get_yes_no_keyboard())
+
+# 7. Missed -> Rejalar (Individual plan) so'rash
+@start_router.message(AdminSalaryStates.missed)
+async def process_missed(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(AdminSalaryStates.knows_russian)
+        return await message.answer("🇷🇺 Rus tili bormi?", reply_markup=get_yes_no_keyboard())
+
+    await state.set_state(AdminSalaryStates.individual_plan)
+    await message.answer("💰 Individual plan kiriting (Matn ko'rinishida):", reply_markup=get_manual_keyboard())
+
+# 8. Individual Plan -> Yakunlash (Hozircha faqat matn chiqaradi)
+@start_router.message(AdminSalaryStates.individual_plan)
+async def process_final_mock(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(AdminSalaryStates.missed)
+        return await message.answer("📉 Ish qoldirgan kunlaringiz bo'ldimi?", reply_markup=get_yes_no_keyboard())
+
+    await state.clear()
+    await message.answer("🎉 Hozircha tugmalar zanjiri muvaffaqiyatli yakunlandi! Ichki hisob-kitob matematikasi hali ulanmagan.", reply_markup=main_menu_keyboard)
