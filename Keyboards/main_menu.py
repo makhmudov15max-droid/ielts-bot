@@ -16,7 +16,8 @@ main_menu_keyboard = ReplyKeyboardMarkup(
             KeyboardButton(text="💰 Kassir oylik")       
         ],
         [
-            KeyboardButton(text="🗄 Arxiv")
+            KeyboardButton(text="🗄 Arxiv"),
+            KeyboardButton(text="📑 Guruh report")
         ]
     ],
     resize_keyboard=True
