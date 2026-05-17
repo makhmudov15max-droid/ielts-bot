@@ -12,7 +12,11 @@ main_menu_keyboard = ReplyKeyboardMarkup(
             KeyboardButton(text="Vazifani oʻchirish")
         ],
         [
-            KeyboardButton(text="Arxiv")               # 🌟 YANGI TUGMA
+            KeyboardButton(text="Admin oylik"),       # 🌟 YANGI TUGMA
+            KeyboardButton(text="Kassir oylik")       # 🌟 YANGI TUGMA
+        ],
+        [
+            KeyboardButton(text="Arxiv")               
         ]
     ],
     resize_keyboard=True
