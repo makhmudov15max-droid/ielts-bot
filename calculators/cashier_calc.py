@@ -1,7 +1,6 @@
 # calculators/cashier_calc.py
 
 def calculate_cashier_salary(data: dict) -> dict:
-    # Ma'lumotlarni xavfsiz raqamlarga o'tkazish
     hours = float(data.get("hours", 0))
     days = float(data.get("days", 0))
     cover_hours = float(data.get("cover_hours", 0))
@@ -12,7 +11,7 @@ def calculate_cashier_salary(data: dict) -> dict:
     archive_students = float(data.get("archive_students", 0))
     archive_debtors = float(data.get("archive_debtors", 0))
 
-    # ⏰ Kunlik stavka va ishlangan sof maosh (Fixa/Ishbay)
+    # ⏰ Fixa / Ishbay qismini hisoblash
     if hours <= 8:
         daily_salary = hours * 15000
     else:
@@ -21,13 +20,12 @@ def calculate_cashier_salary(data: dict) -> dict:
 
     worked_salary = daily_salary * days
 
-    # 📊 Umumiy talabalar va qarzdorlik foizini hisoblash
+    # 📊 Talabalar va qarzdorlik foizini aniqlash
     total_students = active_students + archive_students
     total_debtors = active_debtors + archive_debtors
-
     debt_percentage = (total_debtors * 100 / total_students) if total_students > 0 else 0
 
-    # 🎯 Rasmga asosan barobar ko'paytirish (Multiplier) mantiqi
+    # 🎯 Yangi rasmga asosan karrali ko'paytirish (Multiplier) shkalasi
     if debt_percentage == 0:
         multiplier = 3.0
         status_text = "Mukammal (3.0x)"
@@ -50,17 +48,15 @@ def calculate_cashier_salary(data: dict) -> dict:
         multiplier = 1.0
         status_text = "Kritik holat (1.0x)"
 
-    # 🔥 JORIE ETILDI: Sof oylikni qarzdorlik koeffitsiyentiga ko'paytiramiz!
+    # 💸 Matematik ko'paytma
     multiplied_salary = worked_salary * multiplier
-    
-    # Ko'paytirish orqali kelgan sof KPI foyda (Bonus)
     kpi_bonus_profit = multiplied_salary - worked_salary
 
-    # 🔄 Cover bonus va ish qoldirish jarimasi (soatbay)
+    # 🔄 Cover va jarimalar
     cover_bonus = cover_hours * 15000
     missed_penalty = missed_hours * 15000
 
-    # 🏁 Yakuniy oylik: ko'paytirilgan pul + cover - jarima
+    # Yakuniy natija
     total_salary = multiplied_salary + cover_bonus - missed_penalty
 
     return {
