@@ -46,3 +46,18 @@ class AdminSalaryStates(StatesGroup):
     actual_conversion = State()
     active_plan = State()
     actual_active = State()
+
+# 🌟 KASSIR OYLIK HISOBLASH BOSQICHLARI (ESKI PROYEKTDAN TO'G'RILANDI)
+class CashierSalaryStates(StatesGroup):
+    hours = State()
+    custom_hours = State()
+    days = State()
+    custom_days = State()
+    cover = State()
+    cover_hours = State()
+    missed = State()
+    missed_hours = State()
+    active_students = State()
+    active_debtors = State()
+    archive_students = State()
+    archive_debtors = State()
