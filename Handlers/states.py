@@ -22,4 +22,7 @@ class TaskStates(StatesGroup):
     waiting_for_edit_staff = State()       
     
     # 🌟 YANGI FEATURE: Arxivni boshqarish bosqichi
-    waiting_for_archive_staff = State()
+    waiting_for_archive_staff = State()    
+    
+    # 🌟 YANGI FEATURE: Oyliklarni boshqarish bosqichi
+    waiting_for_salary_management = State()
