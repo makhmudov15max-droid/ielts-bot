@@ -349,7 +349,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     task = next((t for t in TASKS_DATABASE if t["id"] == task_id), None)
     
     # 🌟 ID RAQAMNI SHU YERGA YOZING (Boshidagi minus -100 belgisi shart!)
-    GROUP_CHAT_ID = -1002233445566  # <-- O'zingizning guruhingiz ID raqamini shu yerga yozing
+    GROUP_CHAT_ID = -5226036627  # <-- O'zingizning guruhingiz ID raqamini shu yerga yozing
     
     if proof_required == "Photo" and message.photo:
         await message.answer(text="Task completed", reply_markup=main_menu_keyboard)
