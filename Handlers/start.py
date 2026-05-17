@@ -20,22 +20,6 @@ from Keyboards.main_menu import (
     get_remove_tasks_keyboard
 )
 from Handlers.states import TaskStates
-from Keyboards.main_menu import (
-    main_menu_keyboard, 
-    task_type_keyboard, 
-    days_keyboard, 
-    frequency_keyboard, 
-    get_inline_days_keyboard,
-    get_admin_approval_keyboard,
-    proof_type_keyboard,
-    assign_role_keyboard,
-    get_task_complete_keyboard,
-    get_remove_tasks_keyboard,
-    get_teachers_list_keyboard,       # YANGI IMPORT
-    get_teacher_options_keyboard,     # YANGI IMPORT
-    get_ielts_scores_keyboard         # YANGI IMPORT
-)
-from Handlers.states import TaskStates, TeacherManagementStates # YANGI IMPORT
 
 start_router = Router()
 
