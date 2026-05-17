@@ -15,19 +15,19 @@ class TaskStates(StatesGroup):
     waiting_for_target_user = State()     # Aniq qaysi xodimga biriktirishni kutish
     waiting_for_task_proof = State()      # Xodim tomonidan rasm yoki videoni kutish
     
-    # 🌟 YANGI: Kunlik (bir martalik) vazifa uchun izoh kutish holati
+    # YANGI: Kunlik (bir martalik) vazifa uchun izoh kutish holati
     waiting_for_description = State()     # Admin tomonidan izoh kiritilishini kutish
 
-    # 🌟 YANGI FEATURE: Xodimlarni tahrirlash bosqichi
+    # YANGI FEATURE: Xodimlarni tahrirlash bosqichi
     waiting_for_edit_staff = State()       
     
-    # 🌟 YANGI FEATURE: Arxivni boshqarish bosqichi
+    # YANGI FEATURE: Arxivni boshqarish bosqichi
     waiting_for_archive_staff = State()    
     
-    # 🌟 YANGI FEATURE: Oyliklarni boshqarish bosqichi
+    # YANGI FEATURE: Oyliklarni boshqarish bosqichi
     waiting_for_salary_management = State()
 
-# 🌟 ADMIN OYLIK HISOBLASH BOSQICHLARI (ESKI PROYEKTDAN TO'G'RILANDI)
+# ADMIN OYLIK HISOBLASH BOSQICHLARI
 class AdminSalaryStates(StatesGroup):
     status = State()
     daily_hours = State()
@@ -61,6 +61,3 @@ class CashierSalaryStates(StatesGroup):
     active_debtors = State()
     archive_students = State()
     archive_debtors = State()
-
-class TeacherManagementStates(StatesGroup):
-    waiting_for_score = State()  # IELTS balini yangilash jarayonini nazorat qilish uchun
