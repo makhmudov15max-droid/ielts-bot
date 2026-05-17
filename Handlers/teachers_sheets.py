@@ -24,7 +24,7 @@ try:
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_name("google_creds.json", scope)
     client = gspread.authorize(creds)
-    # Onlayn Google Sheets jadvalingiz nomini aniq kiriting
+    # ⚠️ MANA SHU YERDAGI JADVAL NOMINI O'ZINGIZNIKI BILAN ALMASHTIRING:
     sheet = client.open("XD general management topics").worksheet("Ustozlar")
     print("Google Sheets 'Ustozlar' sahifasiga ulanish muvaffaqiyatli!")
 except Exception as e:
@@ -92,7 +92,7 @@ async def view_sheets_teacher_profile_callback(call: types.CallbackQuery):
     await call.message.edit_text(text=text, parse_mode="HTML", reply_markup=get_sheets_teacher_options_keyboard(t_id))
     await call.answer()
 
-@start_router.callback_query(F.data.startswith("gs_editscore_"))
+@sheets_router.callback_query(F.data.startswith("gs_editscore_"))
 async def edit_sheets_teacher_score_callback(call: types.CallbackQuery):
     t_id = call.data.split("_")[2]
     teachers = get_teachers_from_google_sheets()
