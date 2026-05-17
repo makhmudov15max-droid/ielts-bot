@@ -1,25 +1,14 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 
-# Asosiy menyu tugmalari
+# Asosiy menyu tugmalari (Emojilar bilan bezatilgan to'liq variant)
 main_menu_keyboard = ReplyKeyboardMarkup(
-    keyboard=[
-        [
-            KeyboardButton(text="Vazifa qoʻshish"), 
-            KeyboardButton(text="Vazifalar roʻyxati")
-        ],
-        [
-            KeyboardButton(text="Xodimlar"),          
-            KeyboardButton(text="Vazifani oʻchirish")
-        ],
-        [
-            KeyboardButton(text="Admin oylik"),       # 🌟 YANGI TUGMA
-            KeyboardButton(text="Kassir oylik")       # 🌟 YANGI TUGMA
-        ],
-        [
-            KeyboardButton(text="Arxiv")               
-        ]
-    ],
-    resize_keyboard=True
+    keyboard=[\n        [\n            KeyboardButton(text="➕ Vazifa qoʻshish"), 
+            KeyboardButton(text="📋 Vazifalar roʻyxati")
+        ],\n        [\n            KeyboardButton(text="👥 Xodimlar"),          \n            KeyboardButton(text="🗑 Vazifani oʻchirish")
+        ],\n        [\n            KeyboardButton(text="📈 Admin oylik"),       
+            KeyboardButton(text="💰 Kassir oylik")       
+        ],\n        [\n            KeyboardButton(text="🗄 Arxiv")               \n        ]
+    ],\n    resize_keyboard=True
 )
 
 # Vazifa turini tanlash uchun tugmalar
