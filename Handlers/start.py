@@ -159,8 +159,8 @@ def check_user_access(user_id: int) -> bool:
     return True
 
 # 1-QADAM: Vazifa turi soʻraladi
-@start_router.message(F.text == "Vazifa qoʻshish")
-async def add_task_handler(message: types.Message):
+@start_router.message(F.text == "➕ Vazifa qoʻshish")
+async def add_task_handler(message: types.Message, state: FSMContext):
     if not check_user_access(message.from_user.id): return
     await message.answer(text="Qanday turdagi vazifa yaratmoqchisiz?", reply_markup=task_type_keyboard)
 
@@ -388,7 +388,7 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
 # ================= VAZIFALAR ROʻYXATINI KOʻRISH =================
 
 @start_router.message(F.text == "📋 Vazifalar roʻyxati")
-async def list_of_tasks_handler(message: types.Message):
+async def list_tasks_handler(message: types.Message):
     if not check_user_access(message.from_user.id): return
     if not TASKS_DATABASE:
         await message.answer(text="📭 Hozircha tizimda hech qanday faol vazifalar magenta emas.")
@@ -587,7 +587,7 @@ async def cancel_remove_callback(call: types.CallbackQuery):
 
 # 1. "Xodimlar" tugmasi bosilganda ro'yxatni CHATga matn ko'rinishida chiqarish
 @start_router.message(F.text == "👥 Xodimlar")
-async def list_of_staff_handler(message: types.Message):
+async def view_employees_handler(message: types.Message):
     if not check_user_access(message.from_user.id): return
     
     # Faqat ismi kiritilgan va tizimda rad etilmagan faol xodimlarni saralash (Asosiy Admin ro'yxatda chiqmaydi)
@@ -754,7 +754,7 @@ async def cancel_edit_staff_callback(call: types.CallbackQuery, state: FSMContex
 
 # 1. "Arxiv" tugmasi bosilganda chetlashtirilgan/rad etilganlarni chatga chiqarish
 @start_router.message(F.text == "🗄 Arxiv")
-async def list_of_archive_handler(message: types.Message):
+async def view_archive_handler(message: types.Message):
     if not check_user_access(message.from_user.id): return
     
     # Faqat 'rejected' (rad etilgan yoki chetlashtirilgan) foydalanuvchilarni saralash
@@ -917,8 +917,8 @@ def get_manual_keyboard():
 
 
 # 1. Asosiy menyudan "Admin oylik" bosilganda boshlanishi
-@start_router.message(F.text == "📊Admin oylik")
-async def admin_salary_start(message: types.Message, state: FSMContext):
+@start_router.message(F.text == "📊 Admin oylik")
+async def start_admin_salary_calc(message: types.Message, state: FSMContext):
     if not check_user_access(message.from_user.id): return
     await state.set_state(AdminSalaryStates.status)
     await message.answer("🏅 Status tanlang:", reply_markup=get_status_keyboard())
