@@ -873,10 +873,12 @@ from Handlers.states import AdminSalaryStates
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 # ==============================================================================
-# 🌟 ESKI PROYEKTDAN TUZATILGAN ADMIN OYLIK TUGMALAR ZANJIRI (LOGIKASIZ)
+# 🌟 ESKI PROYEKTDAN TUZATILGAN ADMIN OYLIK TUGMALAR ZANJIRI (YANGI TARMOQLANISH)
 # ==============================================================================
+from Handlers.states import AdminSalaryStates
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-# Vaqtinchalik klaviatura funksiyalari
+# Ichki vaqtinchalik klaviatura funksiyalari (aiogram 3.x)
 def get_status_keyboard():
     return ReplyKeyboardMarkup(keyboard=[
         [KeyboardButton(text="NOVA"), KeyboardButton(text="PRIME")],
@@ -998,22 +1000,63 @@ async def process_russian(message: types.Message, state: FSMContext):
     await state.set_state(AdminSalaryStates.missed)
     await message.answer("📉 Ish qoldirgan kunlaringiz bo'ldimi?", reply_markup=get_yes_no_keyboard())
 
-# 7. Missed -> Rejalar (Individual plan) so'rash
+# 7. Ish qoldirgan kunlar savoli (Tarmoqlanish boshlanishi)
 @start_router.message(AdminSalaryStates.missed)
 async def process_missed(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
         await state.set_state(AdminSalaryStates.knows_russian)
         return await message.answer("🇷🇺 Rus tili bormi?", reply_markup=get_yes_no_keyboard())
 
-    await state.set_state(AdminSalaryStates.individual_plan)
-    await message.answer("💰 Individual plan kiriting (Matn ko'rinishida):", reply_markup=get_manual_keyboard())
+    if message.text == "✅ HA":
+        await state.set_state(AdminSalaryStates.missed_hours)
+        await message.answer("⏰ Necha soat ish qoldirdingiz? (Javobni kiriting):", reply_markup=get_manual_keyboard())
+    else:
+        # YO'Q bo'lsa to'g'ridan-to'g'ri Cover bosqichiga o'tadi
+        await state.set_state(AdminSalaryStates.cover)
+        await message.answer("🔄 Cover qildingizmi?", reply_markup=get_yes_no_keyboard())
 
-# 8. Individual Plan -> Yakunlash (Hozircha faqat matn chiqaradi)
-@start_router.message(AdminSalaryStates.individual_plan)
-async def process_final_mock(message: types.Message, state: FSMContext):
+# 7a. Ish qoldirilgan soat qo'lda yozilganda -> Cover so'rash
+@start_router.message(AdminSalaryStates.missed_hours)
+async def process_missed_hours(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
         await state.set_state(AdminSalaryStates.missed)
         return await message.answer("📉 Ish qoldirgan kunlaringiz bo'ldimi?", reply_markup=get_yes_no_keyboard())
+
+    await state.set_state(AdminSalaryStates.cover)
+    await message.answer("🔄 Cover qildingizmi?", reply_markup=get_yes_no_keyboard())
+
+# 8. Cover qildingizmi savoli (Ikkinchi tarmoqlanish)
+@start_router.message(AdminSalaryStates.cover)
+async def process_cover(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        # Ortga qaytganda baribir ish qoldirganlik savoliga qaytaradi
+        await state.set_state(AdminSalaryStates.missed)
+        return await message.answer("📉 Ish qoldirgan kunlaringiz bo'ldimi?", reply_markup=get_yes_no_keyboard())
+
+    if message.text == "✅ HA":
+        await state.set_state(AdminSalaryStates.cover_hours)
+        await message.answer("⏰ Nechi soat cover qildingiz? (Javobni kiriting):", reply_markup=get_manual_keyboard())
+    else:
+        # YO'Q bo'lsa to'g'ridan-to'g'ri Individual planga o'tadi
+        await state.set_state(AdminSalaryStates.individual_plan)
+        await message.answer("💰 Individual plan kiriting (Matn ko'rinishida):", reply_markup=get_manual_keyboard())
+
+# 8a. Cover soati qo'lda yozilganda -> Individual plan so'rash
+@start_router.message(AdminSalaryStates.cover_hours)
+async def process_cover_hours(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(AdminSalaryStates.cover)
+        return await message.answer("🔄 Cover qildingizmi?", reply_markup=get_yes_no_keyboard())
+
+    await state.set_state(AdminSalaryStates.individual_plan)
+    await message.answer("💰 Individual plan kiriting (Matn ko'rinishida):", reply_markup=get_manual_keyboard())
+
+# 9. Individual Plan -> Yakunlash bosqichi
+@start_router.message(AdminSalaryStates.individual_plan)
+async def process_final_mock(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Ortga":
+        await state.set_state(AdminSalaryStates.cover)
+        return await message.answer("🔄 Cover qildingizmi?", reply_markup=get_yes_no_keyboard())
 
     await state.clear()
     await message.answer("🎉 Hozircha tugmalar zanjiri muvaffaqiyatli yakunlandi! Ichki hisob-kitob matematikasi hali ulanmagan.", reply_markup=main_menu_keyboard)
