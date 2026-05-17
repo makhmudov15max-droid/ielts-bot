@@ -61,3 +61,6 @@ class CashierSalaryStates(StatesGroup):
     active_debtors = State()
     archive_students = State()
     archive_debtors = State()
+
+class TeacherManagementStates(StatesGroup):
+    waiting_for_score = State()  # IELTS balini yangilash jarayonini nazorat qilish uchun
