@@ -27,7 +27,7 @@ except ValueError:
 
 # Vaqtincha xotira bazasi (Rollar va Ismlarni saqlaydi)
 USERS_ROLES = {
-    ADMIN_ID: {"role": "Admin", "name": "Asosiy Administrator"}
+    ADMIN_ID: {"role": "Admin", "name": "Baxtiyorjon Maxmudov"}
 }
 
 # Vazifalarni saqlash bazasi
