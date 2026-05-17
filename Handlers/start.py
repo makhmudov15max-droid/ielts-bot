@@ -1,3 +1,4 @@
+import pytz  # O'zbekiston vaqt mintaqasini sozlash uchun (Agarda xatolik bersa terminalda: pip install pytz yozing)
 import asyncio
 from datetime import datetime
 from aiogram import Router, types, F
@@ -375,14 +376,17 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             await message.answer(text="⚠️ Noto'g'ri isbot! Iltimos, faqat <b>Dumaloq video (Video message)</b> yuboring.", parse_mode="HTML")
 
 
-# ================= MUKAMMAL TAYMER (SCHEDULER) KODI =================
+# ================= TAYMER FUNKSIYASI (TIMEZONE TUZATILGAN VARIANT) =================
 
 async def auto_task_scheduler(bot):
     last_checked_minute = ""
+    # O'zbekiston (Toshkent) vaqt mintaqasini belgilaymiz
+    tashkent_tz = pytz.timezone("Asia/Tashkent")
     
     while True:
         try:
-            now = datetime.now()
+            # Endi server qayerda bo'lishidan qat'iy nazar aynan Toshkent vaqtini oladi!
+            now = datetime.now(tashkent_tz)
             current_time_str = now.strftime("%H:%M")
             
             # Bugungi kunning qisqa inglizcha nomi (mon, tue, wed, thu, fri, sat, sun)
