@@ -387,7 +387,7 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
 
 # ================= VAZIFALAR ROʻYXATINI KOʻRISH =================
 
-@start_router.message(F.text == "Vazifalar roʻyxati")
+@start_router.message(F.text == "📋 Vazifalar roʻyxati")
 async def list_of_tasks_handler(message: types.Message):
     if not check_user_access(message.from_user.id): return
     if not TASKS_DATABASE:
@@ -546,7 +546,7 @@ async def auto_task_scheduler(bot):
 
 # ================= VAZIFANI O'CHIRISH LOGIKASI =================
 
-@start_router.message(F.text == "Vazifani oʻchirish")
+@start_router.message(F.text == "🗑 Vazifani oʻchirish")
 async def remove_task_menu_handler(message: types.Message):
     if not check_user_access(message.from_user.id): return
     if not TASKS_DATABASE:
@@ -586,7 +586,7 @@ async def cancel_remove_callback(call: types.CallbackQuery):
 # ==============================================================================
 
 # 1. "Xodimlar" tugmasi bosilganda ro'yxatni CHATga matn ko'rinishida chiqarish
-@start_router.message(F.text == "Xodimlar")
+@start_router.message(F.text == "👥 Xodimlar")
 async def list_of_staff_handler(message: types.Message):
     if not check_user_access(message.from_user.id): return
     
@@ -753,7 +753,7 @@ async def cancel_edit_staff_callback(call: types.CallbackQuery, state: FSMContex
 # ==============================================================================
 
 # 1. "Arxiv" tugmasi bosilganda chetlashtirilgan/rad etilganlarni chatga chiqarish
-@start_router.message(F.text == "Arxiv")
+@start_router.message(F.text == "🗄 Arxiv")
 async def list_of_archive_handler(message: types.Message):
     if not check_user_access(message.from_user.id): return
     
@@ -917,7 +917,7 @@ def get_manual_keyboard():
 
 
 # 1. Asosiy menyudan "Admin oylik" bosilganda boshlanishi
-@start_router.message(F.text == "Admin oylik")
+@start_router.message(F.text == "📊Admin oylik")
 async def admin_salary_start(message: types.Message, state: FSMContext):
     if not check_user_access(message.from_user.id): return
     await state.set_state(AdminSalaryStates.status)
@@ -1223,7 +1223,7 @@ def get_cashier_yes_no_keyboard():
     )
 
 # 1. Kassir oylik tugmasi bosilganda (Tugmadagi matn bilan 100% bir xil qilindi)
-@start_router.message(F.text == "Kassir oylik")
+@start_router.message(F.text == "💰 Kassir oylik")
 async def start_cashier_salary(message: types.Message, state: FSMContext):
     await state.set_state(CashierSalaryStates.hours)
     await message.answer("⏰ Kunlik ish soatini tanlang:", reply_markup=get_cashier_hours_keyboard())
