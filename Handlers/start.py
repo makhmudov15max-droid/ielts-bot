@@ -1,6 +1,5 @@
-import pytz  # O'zbekiston vaqt mintaqasini sozlash uchun (Agarda xatolik bersa terminalda: pip install pytz yozing)
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from aiogram import Router, types, F
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
@@ -352,7 +351,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
         if task:
             await message.bot.send_message(
                 chat_id=ADMIN_ID,
-                text=f"✅ <b>Vazifa baja'rildi!</b>\n\n📌 <b>Nomi:</b> {task['task_name']}\n👤 <b>Bajaruvchi:</b> {task['assigned_to_name']}\n📸 O'rnatilgan talab (Rasm) muvaffaqiyatli topshirildi.",
+                text=f"✅ <b>Vazifa bajarildi!</b>\n\n📌 <b>Nomi:</b> {task['task_name']}\n👤 <b>Bajaruvchi:</b> {task['assigned_to_name']}\n📸 O'rnatilgan talab (Rasm) muvaffaqiyatli topshirildi.",
                 parse_mode="HTML"
             )
             await message.bot.send_photo(chat_id=ADMIN_ID, photo=message.photo[-1].file_id)
@@ -376,29 +375,26 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             await message.answer(text="⚠️ Noto'g'ri isbot! Iltimos, faqat <b>Dumaloq video (Video message)</b> yuboring.", parse_mode="HTML")
 
 
-# ================= TAYMER FUNKSIYASI (TIMEZONE TUZATILGAN VARIANT) =================
+# ================= MUKAMMAL TAYMER (TAUQIQAT/KUTUBXONASIZ UZBEKISTAN TIMEZONE) =================
 
 async def auto_task_scheduler(bot):
     last_checked_minute = ""
-    # O'zbekiston (Toshkent) vaqt mintaqasini belgilaymiz
-    tashkent_tz = pytz.timezone("Asia/Tashkent")
+    # Toshkent vaqt mintaqasi UTC+5 ga teng
+    tashkent_tz = timezone(timedelta(hours=5))
     
     while True:
         try:
-            # Endi server qayerda bo'lishidan qat'iy nazar aynan Toshkent vaqtini oladi!
-            now = datetime.now(tashkent_tz)
+            # Server qayerdaligidan qat'iy nazar Python-ning o'zida UTC+5 vaqtini hisoblaymiz
+            now = datetime.now(timezone.utc).astimezone(tashkent_tz)
             current_time_str = now.strftime("%H:%M")
             
-            # Bugungi kunning qisqa inglizcha nomi (mon, tue, wed, thu, fri, sat, sun)
             current_day_name = now.strftime("%a").strip().lower() 
             day_of_month = now.day
             
-            # Har kuni yarim tunda bugun yuborilgan vaqtlar bazasini tozalaymiz
             if current_time_str == "00:00":
                 for task in TASKS_DATABASE:
                     task["sent_today_times"] = []
             
-            # Dublikat sms ketishini oldini olish va aynan shu daqiqani tekshirish
             if current_time_str != last_checked_minute:
                 
                 for task in TASKS_DATABASE:
@@ -407,7 +403,6 @@ async def auto_task_scheduler(bot):
                         day_match = False
                         task_days = str(task["task_days"]).strip()
                         
-                        # Kunlarni tekshirish mantig'i
                         if task_days == "ODD" and day_of_month % 2 != 0:
                             day_match = True
                         elif task_days == "EVEN" and day_of_month % 2 == 0:
@@ -415,12 +410,10 @@ async def auto_task_scheduler(bot):
                         elif task_days == "6 days a week" and current_day_name != "sun":
                             day_match = True
                         else:
-                            # OTHER tanlanganda ro'yxatni tozalab solishtiramiz
                             clean_days = [d.strip().lower() for d in task_days.split(",") if d.strip()]
                             if current_day_name in clean_days:
                                 day_match = True
                         
-                        # Agar ham soat, ham kun mos kelsa xodimga eslatma yuboramiz
                         if day_match:
                             text_to_employee = f"📌 <b>{task['task_name']}</b>"
                             await bot.send_message(
@@ -437,5 +430,4 @@ async def auto_task_scheduler(bot):
         except Exception as e:
             print(f"Taymer tizimida kutilmagan xato: {e}")
             
-        # Daqiqani o'tkazib yubormaslik uchun har 5 soniyada loop aylanadi
         await asyncio.sleep(5)
