@@ -577,3 +577,170 @@ async def cancel_remove_callback(call: types.CallbackQuery):
     await call.message.delete()
     await call.message.answer(text="Oʻchirish jarayoni bekor qilindi.", reply_markup=main_menu_keyboard)
     await call.answer()
+
+# ==============================================================================
+# 🌟 YANGI INTEGRATSIYA: XODIMLAR PANELINI MATN SIFATIDA CHIQARISH VA TAHRIRLASH
+# ==============================================================================
+
+# 1. "Xodimlar" tugmasi bosilganda ro'yxatni CHATga matn ko'rinishida chiqarish
+@start_router.message(F.text == "Xodimlar")
+async def list_of_staff_handler(message: types.Message):
+    if not check_user_access(message.from_user.id): return
+    
+    # Faqat ismi kiritilgan va tizimda rad etilmagan faol xodimlarni saralash (Asosiy Admin ro'yxatda chiqmaydi)
+    active_staff = {
+        u_id: u_info for u_id, u_info in USERS_ROLES.items() 
+        if isinstance(u_info, dict) and u_info.get("name") and u_info.get("role") != "rejected" and u_id != ADMIN_ID
+    }
+    
+    if not active_staff:
+        await message.answer(text="📭 Hozircha tizimda birorta ham tasdiqlangan xodim mavjud emas.")
+        return
+        
+    response_text = "👥 <b>Tizimdagi joriy xodimlar roʻyxati:</b>\n\n"
+    inline_kb = []
+    
+    for idx, (u_id, u_info) in enumerate(active_staff.items(), 1):
+        # Matn ko'rinishida ism-familiya va lavozimi chatga chiqadi
+        response_text += f"{idx}. 👤 <b>{u_info['name']}</b> — 🎖 <i>{u_info['role']}</i>\n"
+        # Tahrirlash tugmasini pastdan chiroyli inline ko'rinishda taqdim etamiz
+        inline_kb.append([types.InlineKeyboardButton(text=f"⚙️ {u_info['name']}", callback_data=f"editstaff_{u_id}")])
+        
+    response_text += "\n<i>Tahrirlash yoki botdan chetlashtirish uchun quyidagi tugmalardan kerakli xodimni tanlang:</i>"
+    
+    await message.answer(
+        text=response_text, 
+        parse_mode="HTML", 
+        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_kb)
+    )
+
+
+# 2. Ro'yxatdagi xodim ustiga bosilganda variantlarni ko'rsatish (Lavozim yoki Chetlashtirish)
+@start_router.callback_query(F.data.startswith("editstaff_"))
+async def process_edit_staff_callback(call: types.CallbackQuery, state: FSMContext):
+    target_user_id = int(call.data.split("_")[1])
+    staff_info = USERS_ROLES.get(target_user_id)
+    
+    if not staff_info:
+        await call.answer(text="⚠️ Bu xodim tizimdan topilmadi!", show_alert=True)
+        return
+        
+    options_kb = [
+        [
+            types.InlineKeyboardButton(text="🎖 Lavozimni o'zgartirish", callback_data=f"rolechange_{target_user_id}"),
+            types.InlineKeyboardButton(text="❌ Botdan chetlashtirish", callback_data=f"firestaff_{target_user_id}")
+        ],
+        [types.InlineKeyboardButton(text="⬅️ Orqaga", callback_data="editstaff_cancel")]
+    ]
+    
+    await call.message.edit_text(
+        text=f"👤 <b>Xodim:</b> {staff_info['name']}\n🎖 <b>Joriy lavozimi:</b> {staff_info['role']}\n\n"
+             f"Ushbu xodim ustida qanday amal bajarmoqchisiz? 👇",
+        parse_mode="HTML",
+        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=options_kb)
+    )
+    await call.answer()
+
+
+# 3. Lavozimni o'zgartirish tugmasi bosilganda tizimdagi barcha rollarni ko'rsatish
+@start_router.callback_query(F.data.startswith("rolechange_"))
+async def process_role_change_menu(call: types.CallbackQuery):
+    target_user_id = int(call.data.split("_")[1])
+    
+    # Tizimingizdagi joriy rollar ro'yxati
+    roles = ["Admin", "Kassir", "Sanitar", "Manager"]
+    inline_kb = []
+    row = []
+    
+    for r in roles:
+        row.append(types.InlineKeyboardButton(text=r, callback_data=f"setnewrole_{r}_{target_user_id}"))
+        if len(row) == 2:
+            inline_kb.append(row)
+            row = []
+            
+    inline_kb.append([types.InlineKeyboardButton(text="⬅️ Orqaga", callback_data=f"editstaff_{target_user_id}")])
+    
+    await call.message.edit_text(
+        text="⚙️ Xodim uchun <b>yangi lavozimni</b> tanlang:",
+        parse_mode="HTML",
+        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_kb)
+    )
+    await call.answer()
+
+
+# 4. Yangi lavozim tanlanganda bazada saqlash va xodimga bildirishnoma yuborish
+@start_router.callback_query(F.data.startswith("setnewrole_"))
+async def save_new_role_callback(call: types.CallbackQuery, state: FSMContext):
+    data_parts = call.data.split("_")
+    new_role = data_parts[1]
+    target_user_id = int(data_parts[2])
+    
+    if target_user_id in USERS_ROLES:
+        USERS_ROLES[target_user_id]["role"] = new_role
+        staff_name = USERS_ROLES[target_user_id]["name"]
+        
+        await call.message.edit_text(
+            text=f"✅ <b>Muvaffaqiyatli oʻzgartirildi!</b>\n\n"
+                 f"👤 Xodim: <b>{staff_name}</b>\n"
+                 f"🎖 Yangi lavozimi: <b>{new_role}</b>",
+            parse_mode="HTML"
+        )
+        
+        # Xodimning o'ziga ham unvoni o'zgargani haqida ogohlantirish xabari yuboramiz
+        try:
+            await call.bot.send_message(
+                chat_id=target_user_id,
+                text=f"🔔 <b>Diqqat!</b> Administrator tomonidan sizning lavozimingiz <b>{new_role}</b> etib belgilandi.",
+                parse_mode="HTML",
+                reply_markup=main_menu_keyboard
+            )
+        except Exception as e:
+            print(f"Xodimni rolda ogohlantirishda xatolik: {e}")
+    else:
+        await call.answer(text="⚠️ Xatolik: Xodim topilmadi!", show_alert=True)
+        
+    await state.clear()
+    await call.answer()
+
+
+# 5. Xodimni botdan butunlay chetlashtirish (Block qilish)
+@start_router.callback_query(F.data.startswith("firestaff_"))
+async def fire_staff_callback(call: types.CallbackQuery, state: FSMContext):
+    target_user_id = int(call.data.split("_")[1])
+    
+    if target_user_id in USERS_ROLES:
+        staff_name = USERS_ROLES[target_user_id]["name"]
+        
+        # Rolni 'rejected' holatiga o'tkazish orqali kirish imkoniyatini yopamiz
+        USERS_ROLES[target_user_id]["role"] = "rejected"
+        
+        await call.message.edit_text(
+            text=f"❌ <b>Xodim botdan chetlashtirildi!</b>\n\n"
+                 f"👤 <b>{staff_name}</b> endi tizimga kira olmaydi va unga avtomatik vazifalar yuborilmaydi.",
+            parse_mode="HTML"
+        )
+        
+        # Chetlashtirilgan xodimga darhol bloklangan xabarini yuborib klaviaturasini tozalaymiz
+        try:
+            await call.bot.send_message(
+                chat_id=target_user_id,
+                text="❌ <b>Siz administrator tomonidan Edu_Control tizimidan chetlashtirildingiz!</b>",
+                parse_mode="HTML",
+                reply_markup=types.ReplyKeyboardRemove()
+            )
+        except Exception as e:
+            print(f"Xodimga chetlashtirish xabarini yuborishda xatolik: {e}")
+    else:
+        await call.answer(text="⚠️ Xodim topilmadi!", show_alert=True)
+        
+    await state.clear()
+    await call.answer()
+
+
+# 6. Tahrirlashni bekor qilish / Orqaga qaytish
+@start_router.callback_query(F.data == "editstaff_cancel")
+async def cancel_edit_staff_callback(call: types.CallbackQuery, state: FSMContext):
+    await call.message.delete()
+    await call.message.answer(text="Xodimlarni boshqarish paneli yopildi.", reply_markup=main_menu_keyboard)
+    await state.clear()
+    await call.answer()
