@@ -17,3 +17,6 @@ class TaskStates(StatesGroup):
     
     # 🌟 YANGI: Kunlik (bir martalik) vazifa uchun izoh kutish holati
     waiting_for_description = State()     # Admin tomonidan izoh kiritilishini kutish
+
+    # 🌟 YANGI FEATURE: Xodimlarni tahrirlash bosqichi
+    waiting_for_edit_staff = State()
