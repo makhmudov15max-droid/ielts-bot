@@ -2,7 +2,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMar
 
 # Asosiy menyu tugmalari (Toza va xatosiz format)
 main_menu_keyboard = ReplyKeyboardMarkup(
-    keyboard=[
+    keyboard=
         [
             KeyboardButton(text="➕ Vazifa qoʻshish"), 
             KeyboardButton(text="📋 Vazifalar roʻyxati")
@@ -48,7 +48,7 @@ frequency_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [
             KeyboardButton(text="Kuniga 1 marta"),
-            KeyboardButton(text="Bir necha marta")
+            KeyboardButton(text="Kuniga bir nechta marta")
         ]
     ],
     resize_keyboard=True
@@ -58,8 +58,8 @@ frequency_keyboard = ReplyKeyboardMarkup(
 proof_type_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [
-            KeyboardButton(text="Dumaloq video"),
-            KeyboardButton(text="Rasm yuborish")
+            KeyboardButton(text="Video xabar (Kruglyash)"),
+            KeyboardButton(text="Rasm (Photo)")
         ]
     ],
     resize_keyboard=True
@@ -68,23 +68,19 @@ proof_type_keyboard = ReplyKeyboardMarkup(
 # Vazifani qaysi unvonga topshirish tugmalari
 assign_role_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Admin"), KeyboardButton(text="Kassir")],
-        [KeyboardButton(text="Sanitar"), KeyboardButton(text="Manager")]
+        [KeyboardButton(text="Kassir"), KeyboardButton(text="Sanitar")],
+        [KeyboardButton(text="Manager"), KeyboardButton(text="Hamma xodimlarga")]
     ],
     resize_keyboard=True
 )
 
-# Hafta kunlarini bittalab tanlash uchun Inline klaviatura
-def get_inline_days_keyboard(selected_days: list) -> InlineKeyboardMarkup:
-    weeks = {
-        "mon": "Dushanba", "tue": "Seshanba", "wed": "Chorshanba",
-        "thu": "Payshanba", "fri": "Juma", "sat": "Shanba", "sun": "Yakshanba"
-    }
+# Kunlarni inline formatda tanlash (Boshqa kunlar uchun)
+def get_inline_days_keyboard() -> InlineKeyboardMarkup:
+    days = ["Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba", "Yakirshanba"]
     inline_keyboard = []
-    for code, name in weeks.items():
-        text = f"✅ {name}" if code in selected_days else name
-        inline_keyboard.append([InlineKeyboardButton(text=text, callback_data=f"day_{code}")])
-    inline_keyboard.append([InlineKeyboardButton(text="Tayyor ➡️", callback_data="days_done")])
+    for day in days:
+        inline_keyboard.append([InlineKeyboardButton(text=day, callback_data=f"day_{day}")])
+    inline_keyboard.append([InlineKeyboardButton(text="✅ Tanlab bo'ldim (Done)", callback_data="days_done")])
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
 # Admin uchun ruxsat berish va rollarni tanlash Inline klaviaturasi
@@ -114,39 +110,37 @@ def get_remove_tasks_keyboard(tasks_list: list) -> InlineKeyboardMarkup:
     for task in tasks_list:
         btn_text = f"❌ {task['task_name']} ({task['assigned_to_name']})"
         inline_keyboard.append([InlineKeyboardButton(text=btn_text, callback_data=f"removetask_{task['id']}")])
-    inline_keyboard.append([InlineKeyboardButton(text="🔙 Bekor qilish", callback_data="remove_cancel")])
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
-# O'qituvchilar (xodimlar) ro'yxatini va ularning joriy ballarini chiqaruvchi klaviatura
-def get_teachers_list_keyboard(users_roles: dict) -> InlineKeyboardMarkup:
+
+# ================== 🌟 YANGI USTOZ/BALL TUGMALARI ==================
+
+# Ustozlar ro'yxatini chiqarish (Botdan foydalanmaydiganlar uchun)
+def get_static_teachers_keyboard(teachers_db: dict) -> InlineKeyboardMarkup:
     inline_keyboard = []
-    for u_id, u_info in users_roles.items():
-        # Tizimda ismi mavjud bo'lgan xodimlarni chiqaramiz (ayniqsa Manager/O'qituvchilar uchun)
-        if isinstance(u_info, dict) and u_info.get("name"):
-            current_score = u_info.get("ielts_score", "Kiritilmagan")
-            btn_text = f"👨‍🏫 {u_info['name']} (IELTS: {current_score})"
-            inline_keyboard.append([InlineKeyboardButton(text=btn_text, callback_data=f"viewteacher_{u_id}")])
-            
+    for t_id, t_info in teachers_db.items():
+        btn_text = f"👨‍🏫 {t_info['name']} (IELTS: {t_info['ielts_score']})"
+        inline_keyboard.append([InlineKeyboardButton(text=btn_text, callback_data=f"viewstatict_{t_id}")])
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
-# Tanlangan xodim profilining boshqaruv variantlari
-def get_teacher_options_keyboard(teacher_id: int) -> InlineKeyboardMarkup:
+# Ustozni tanlaganda chiqadigan variantlar
+def get_static_teacher_options_keyboard(teacher_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="✍️ IELTS balini o'zgartirish", callback_data=f"edits_score_{teacher_id}")],
-            [InlineKeyboardButton(text="⬅️ Ro'yxatga qaytish", callback_data="back_to_teachers")]
+            [InlineKeyboardButton(text="✍️ IELTS balini o'zgartirish", callback_data=f"editstaticscore_{teacher_id}")],
+            [InlineKeyboardButton(text="⬅️ Ro'yxatga qaytish", callback_data="back_to_static_teachers")]
         ]
     )
 
-# IELTS ballarini tezkor tanlash klaviaturasi
-def get_ielts_scores_keyboard(teacher_id: int) -> InlineKeyboardMarkup:
+# Yangi ballarni tanlash klaviaturasi
+def get_static_ielts_scores_keyboard(teacher_id: int) -> InlineKeyboardMarkup:
     scores = ["6.5", "7.0", "7.5", "8.0", "8.5", "9.0"]
     inline_keyboard = []
     row = []
     for score in scores:
-        row.append(InlineKeyboardButton(text=score, callback_data=f"setscore_{score}_{teacher_id}"))
+        row.append(InlineKeyboardButton(text=score, callback_data=f"setstaticscore_{score}_{teacher_id}"))
         if len(row) == 3:
             inline_keyboard.append(row)
             row = []
-    inline_keyboard.append([InlineKeyboardButton(text="❌ Bekor qilish", callback_data="back_to_teachers")])
+    inline_keyboard.append([InlineKeyboardButton(text="❌ Bekor qilish", callback_data="back_to_static_teachers")])
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
