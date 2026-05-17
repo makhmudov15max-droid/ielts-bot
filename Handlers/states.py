@@ -19,4 +19,7 @@ class TaskStates(StatesGroup):
     waiting_for_description = State()     # Admin tomonidan izoh kiritilishini kutish
 
     # 🌟 YANGI FEATURE: Xodimlarni tahrirlash bosqichi
-    waiting_for_edit_staff = State()
+    waiting_for_edit_staff = State()       
+    
+    # 🌟 YANGI FEATURE: Arxivni boshqarish bosqichi
+    waiting_for_archive_staff = State()
