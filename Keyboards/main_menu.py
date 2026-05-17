@@ -116,3 +116,37 @@ def get_remove_tasks_keyboard(tasks_list: list) -> InlineKeyboardMarkup:
         inline_keyboard.append([InlineKeyboardButton(text=btn_text, callback_data=f"removetask_{task['id']}")])
     inline_keyboard.append([InlineKeyboardButton(text="🔙 Bekor qilish", callback_data="remove_cancel")])
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+# O'qituvchilar (xodimlar) ro'yxatini va ularning joriy ballarini chiqaruvchi klaviatura
+def get_teachers_list_keyboard(users_roles: dict) -> InlineKeyboardMarkup:
+    inline_keyboard = []
+    for u_id, u_info in users_roles.items():
+        # Tizimda ismi mavjud bo'lgan xodimlarni chiqaramiz (ayniqsa Manager/O'qituvchilar uchun)
+        if isinstance(u_info, dict) and u_info.get("name"):
+            current_score = u_info.get("ielts_score", "Kiritilmagan")
+            btn_text = f"👨‍🏫 {u_info['name']} (IELTS: {current_score})"
+            inline_keyboard.append([InlineKeyboardButton(text=btn_text, callback_data=f"viewteacher_{u_id}")])
+            
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+# Tanlangan xodim profilining boshqaruv variantlari
+def get_teacher_options_keyboard(teacher_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="✍️ IELTS balini o'zgartirish", callback_data=f"edits_score_{teacher_id}")],
+            [InlineKeyboardButton(text="⬅️ Ro'yxatga qaytish", callback_data="back_to_teachers")]
+        ]
+    )
+
+# IELTS ballarini tezkor tanlash klaviaturasi
+def get_ielts_scores_keyboard(teacher_id: int) -> InlineKeyboardMarkup:
+    scores = ["6.5", "7.0", "7.5", "8.0", "8.5", "9.0"]
+    inline_keyboard = []
+    row = []
+    for score in scores:
+        row.append(InlineKeyboardButton(text=score, callback_data=f"setscore_{score}_{teacher_id}"))
+        if len(row) == 3:
+            inline_keyboard.append(row)
+            row = []
+    inline_keyboard.append([InlineKeyboardButton(text="❌ Bekor qilish", callback_data="back_to_teachers")])
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
