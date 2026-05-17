@@ -1191,12 +1191,11 @@ async def process_actual_active_final(message: types.Message, state: FSMContext)
     
     await message.answer(text=report_text, parse_mode="HTML", reply_markup=main_menu_keyboard)
 
-# ==============================================================================
-# 💰 KASSIR OYLIK SAVOLLAR ZANJIRI VA REAL HISOB-KITOB
-# ==============================================================================
-
-@start_router.message(F.text == "Kassir oylik")
+# 💰 Kassir oylik tugmasi bosilganda (Tugmadagi matn bilan kod 100% bir xil qilindi)
+@start_router.message(F.text == "💰 Kassir oylik")
 async def start_cashier_salary(message: types.Message, state: FSMContext):
+    print("Kassir oyligi tizimi muvaffaqiyatli ishga tushdi!") # Konsolda tekshirish uchun log
+    
     await state.set_state(CashierSalaryStates.hours)
     await message.answer("⏰ Kunlik ish soatini tanlang:", reply_markup=get_hours_keyboard())
 
