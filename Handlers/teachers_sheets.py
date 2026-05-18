@@ -24,7 +24,7 @@ try:
     client = gspread.service_account(filename="google_creds.json")
     
     # Jadvalni ochamiz va "Ustozlar" sahifasini olamiz
-    sheet = client.open_by_key("1X7NWhD18N4LgVv9w7XmUoZ6YIeS50nF57zP93YjEw_Q").worksheet("Ustozlar")
+    sheet = client.open_by_key("1PpGWObeppzsSkaYgGz0fRYP_3zk-3YuxBOXStrn_PCc").worksheet("Ustozlar")
     print("🚀 SUCCESS: Google Sheets 'Ustozlar' sahifasiga ulanish to'liq yakunlandi!")
 except Exception as e:
     print(f"❌ CRITICAL ERROR: Google API ulanishda xatolik: {e}")
