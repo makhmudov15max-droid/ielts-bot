@@ -24,7 +24,7 @@ try:
     client = gspread.service_account(filename="google_creds.json")
     
     # ⚠️ JADVAL NOMINI O'ZINGIZNIKI BILAN ALMASHTIRING (Masalan: "Nova Oylik Tizimi")
-    sheet = client.open("1PpGWObeppzsSkaYgGz0fRYP_3zk-3YuxBOXStrn_PCc").worksheet("Ustozlar")
+    sheet = open_by_key("1PpGWObeppzsSkaYgGz0fRYP_3zk-3YuxBOXStrn_PCc").worksheet("Ustozlar")
     print("Google Sheets 'Ustozlar' sahifasiga ulanish muvaffaqiyatli!")
 except Exception as e:
     print(f"Google Sheets ulanishda xatolik yuz berdi: {e}")
