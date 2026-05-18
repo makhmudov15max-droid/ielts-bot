@@ -18,31 +18,30 @@ try:
 except ValueError:
     ADMIN_ID = 6500594896
 
+import os
+import json
+import gspread
+from aiogram import Router, F, types
+# ... qolgan importlar ...
+
 # ==================== 📊 JONLI GOOGLE SHEETS ULASH TIZIMI ====================
 try:
-    # To'g'ridan-to'g'ri gspread orqali json kalitni ulash
-    client = gspread.service_account(filename="google_creds.json")
-    
-    # BU YERDA KLIENTDAN KEYIN NUQTA QO'YILDI: client.open_by_key(...)
-    # ⚠️ "O'ZINGIZNING_JADVAL_ID" o'rniga brauzerdagi uzun ID raqamini qo'ying!
-    sheet = client.open_by_key("1PpGWObeppzsSkaYgGz0fRYP_3zk-3YuxBOXStrn_PCc").worksheet("Ustozlar")
-    print("Google Sheets 'Ustozlar' sahifasiga ulanish muvaffaqiyatli!")
+    # 1. Birinchi navbatda Railway Variable'dan qidiradi (Eng xavfsiz usul)
+    if os.getenv("GOOGLE_CREDS_JSON"):
+        creds_dict = json.loads(os.getenv("GOOGLE_CREDS_JSON"))
+        client = gspread.service_account_from_dict(creds_dict)
+        print("Railway Variables orqali Google Sheets'ga ulanish muvaffaqiyatli!")
+    else:
+        # 2. Agar u yerda bo'lmasa, ichki fayldan o'qiydi
+        client = gspread.service_account(filename="google_creds.json")
+        print("Fayl orqali Google Sheets'ga ulanish muvaffaqiyatli!")
+        
+    # ID raqamni aniq ko'rsatib ulaymiz
+    sheet = client.open_by_key("1X7NWhD18N4LgVv9w7XmUoZ6YIeS50nF57zP93YjEw_Q").worksheet("Ustozlar")
 except Exception as e:
-    print(f"Google Sheets ulanishda xatolik yuz berdi: {e}")
+    print(f"❌ DIQQAT: Google Sheets ulanishda xatolik: {e}")
     sheet = None
-
-def get_teachers_from_google_sheets():
-    if not sheet: 
-        print("Xatolik: 'sheet' obyekti yaratilmagan!")
-        return []
-    try:
-        all_records = sheet.get_all_values()
-        if len(all_records) <= 1: 
-            return []
-        return all_records[1:] # Sarlavha satridan keyingi ma'lumotlar
-    except Exception as e:
-        print(f"Ma'lumotlarni o'qishda xatolik yuz berdi: {e}")
-        return []
+    
 # ==============================================================================
 
 @sheets_router.message(F.text == "👨🏻‍🏫 Ustoz/Ball")
