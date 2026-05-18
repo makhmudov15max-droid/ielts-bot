@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "ielts-bot-495314",
+  "private_key_id": "61564276bae8fb0d29fa168caed64d9e94824296",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC9sdls/XeFGYeZ\nh1NCmxcfUBRBFxznJEyyd5WzuUwmHCSxtZDbTMcbCWi55qtxWIOdZYtqKRN7BWtj\nZe+SDAfz8ym00LJzuR7VuaMmjbRkINyNQmYKwE+u5qmdLi+NbCKF8z0L7LFT1MfX\nFMvGzNvItK4FolHccBxWM6qz+MbTWL2iQRkxYn5aZK5csI7hJxLkHx+bjP6ECt0q\nf7Q7NzF/2aNisuI8RVn0gn0sVlCifk7r0C5rIfM4zDL3dpcaU+l3mcu0J1+l9qlQ\niD+Cx3SKFfAC+e5lWMzUna+rNIDR+zNK97bZQRMc3AeqasMLqUc6KwEwQk1qowWc\nh9L9U9LVAgMBAAECggEAAKcTYkDfbbOg3wWR/s5+1iGGkxirFkRSqVEi93/wI+of\nIl8gaqIg51NYLdoqnr+70hozmK2ladwSIY64fF+2vphhk5HxHVIz5vSwdjoalTb/\nuo/RvxmizfAzT3O9I+Id4YIDFARhlhCvWLhwdzc9vXgqtlMepHWwBg2jzSVSZ7Ys\nJaynw4pCBKqYjVyMJ5RMMCekQ80BcmN8m2m5PeK4GBeWceYh9Bq1fih5W/Y8+0us\n7xxfuqV068l8klcu9RLwPf7PtL3Ufdru3jkMEbV0zB6P9h2KtQ7Zo9vwmF2mY3P9\nhdKvpvrHzG3hfYMUVPfM8/PkbqadGOjRNEfYCXB6aQKBgQDqSjB0l7J+7muTQVzf\n42Pq1l4bfZJ+vMNWHl7jXAlislBI6c7UOuOF2/R1CXfqxXOH3GNVOZhq5DPUEcgV\nLylA3Seev60XRA7JlGOBL/Ie3OiSsnQNQip+iua55rVsSQI5s5E7xFZ6PE4Seeun\nka+GpHo9rbN41Z00Q55Vh0vlnwKBgQDPRcci8msxUNEetZLsv9cqgHiRPTb8EqJp\nMo12YzjKIVKK1tDfIxX4O6QA7YT3OcpxXFRlzr8832/ICmPggNtd/cEaA2so2dJR\n7vxUH4pR0HVxRx2T8VUaV4UUnk6J2q8BmlKKkQTdG0QzfBE0GsAvcH905hKFvy15\n0CtgKbjrCwKBgFRCzl6AWE/SS5owPci/rSW+ZyYX6WHvXYlRburyJOX8H2e5vwsR\nCtcPnkGhYCFtVfmcx5TVG/4FiKZSptUHmxya7S7o3MWrUm4pEghaSAfVh0eLKrXC\nACp2pjhhwwno0AYUkL0gBcH8gk+ezaP8f1Y7PUOFfzCMEvfDAeTcve0dAoGBAMKc\nw7MeZmMxfIgW+FLudTpk0c+c6GmZnYCkhIpp80JmMzhFJmy8Zr5iUUTFvxjZ3CjA\nBkZo7spbCHuMteZvVolT3uFr4EvE6WMgvy7FRnw2/G5V1YG5EKzhDAUl9pwdBkC9\nA08zhpuMJGcq0IRZsaVZPXMnKrEFpc9AE9oAkq2tAoGANLWnS2EJdV4JF+iuagGi\n9ruX8BMr1ZpeJbLyCXIqVXVotmFxCjIgMYw6qjoujmgrjPQApfuQWQHi4huhJdQ4\nFsv+2oNzavf+MWfPqE3jvjOJEkoq8Q47AskLBunKAi3678asA+xi/Ls2P6UPKGxQ\nlqsKGjROf3RVsrbXh+eFCtk=\n-----END PRIVATE KEY-----\n",
+  "client_email": "ielts-bot-account@ielts-bot-495314.iam.gserviceaccount.com",
+  "client_id": "115549572043998550233",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/ielts-bot-account%40ielts-bot-495314.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
