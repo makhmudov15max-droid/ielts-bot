@@ -23,8 +23,9 @@ try:
     # To'g'ridan-to'g'ri gspread orqali json kalitni ulash
     client = gspread.service_account(filename="google_creds.json")
     
-    # ⚠️ JADVAL NOMINI O'ZINGIZNIKI BILAN ALMASHTIRING (Masalan: "Nova Oylik Tizimi")
-    sheet = client.open_by_key("1PpGWObeppzsSkaYgGz0fRYP_3zk-3YuxBOXStrn_PCc").worksheet("Ustozlar")
+    # BU YERDA KLIENTDAN KEYIN NUQTA QO'YILDI: client.open_by_key(...)
+    # ⚠️ "O'ZINGIZNING_JADVAL_ID" o'rniga brauzerdagi uzun ID raqamini qo'ying!
+    sheet = client.open_by_key("1X7NWhD18N4LgVv9w7XmUoZ6YIeS50nF57zP93YjEw_Q").worksheet("Ustozlar")
     print("Google Sheets 'Ustozlar' sahifasiga ulanish muvaffaqiyatli!")
 except Exception as e:
     print(f"Google Sheets ulanishda xatolik yuz berdi: {e}")
@@ -36,7 +37,6 @@ def get_teachers_from_google_sheets():
         return []
     try:
         all_records = sheet.get_all_values()
-        print(f"Jadvaldan olingan barcha qatorlar: {all_records}") # Konsolda tekshirish uchun log
         if len(all_records) <= 1: 
             return []
         return all_records[1:] # Sarlavha satridan keyingi ma'lumotlar
@@ -95,7 +95,6 @@ async def view_sheets_teacher_profile_callback(call: types.CallbackQuery):
     await call.message.edit_text(text=text, parse_mode="HTML", reply_markup=get_sheets_teacher_options_keyboard(t_id))
     await call.answer()
 
-# ⚠️ MANA SHU YERDAGI start_router XATOSI sheets_router DEB TO'G'RILANDI!
 @sheets_router.callback_query(F.data.startswith("gs_editscore_"))
 async def edit_sheets_teacher_score_callback(call: types.CallbackQuery):
     t_id = call.data.split("_")[2]
