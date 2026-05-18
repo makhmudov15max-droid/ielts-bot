@@ -25,7 +25,7 @@ try:
     
     # BU YERDA KLIENTDAN KEYIN NUQTA QO'YILDI: client.open_by_key(...)
     # ⚠️ "O'ZINGIZNING_JADVAL_ID" o'rniga brauzerdagi uzun ID raqamini qo'ying!
-    sheet = client.open_by_key("1X7NWhD18N4LgVv9w7XmUoZ6YIeS50nF57zP93YjEw_Q").worksheet("Ustozlar")
+    sheet = client.open_by_key("1PpGWObeppzsSkaYgGz0fRYP_3zk-3YuxBOXStrn_PCc").worksheet("Ustozlar")
     print("Google Sheets 'Ustozlar' sahifasiga ulanish muvaffaqiyatli!")
 except Exception as e:
     print(f"Google Sheets ulanishda xatolik yuz berdi: {e}")
