@@ -65,7 +65,7 @@ TASKS_DATABASE = []
 
 @start_router.message(CommandStart())
 async def command_start_handler(message: types.Message):
-    user_id = message.from_user.id
+    user_id = str(message.from_user.id)
     user_info = USERS_ROLES.get(user_id)
 
     if isinstance(user_info, dict) and user_info.get("role") == "rejected":
@@ -79,7 +79,6 @@ async def command_start_handler(message: types.Message):
             text="Assalomu alaykum, Edu_Control tizimiga xush kelibsiz!\n"
                  "Tizim administratoriga ruxsat soʻrovi yuborildi."
         )
-
         return
 
     if isinstance(user_info, dict) and user_info.get("name") is None:
@@ -96,12 +95,12 @@ async def command_start_handler(message: types.Message):
     user_role = user_info.get("role")
 
     await message.answer(
-        text=f"Assalomu alaykum, {saved_name}! Tizimga xush kelibsiz.\n"
+        text=f"Assalomu alaykum, {saved_name}! "
+             f"Tizimga xush kelibsiz.\n"
              f"Quyidagi tugmalar orqali botni boshqarishingiz mumkin 👇",
 
         reply_markup=get_main_menu(user_role)
     )
-
 
 # ================= CALLBACK HANDLERS (ADMIN APPROVAL) =================
 
@@ -112,7 +111,10 @@ async def admin_approve_callback(call: types.CallbackQuery):
         role = data_parts[1]
         target_user_id = int(data_parts[2])
         
-        USERS_ROLES[target_user_id] = {"role": role, "name": None}
+    USERS_ROLES[str(target_user_id)] = {
+        "role": role,
+        "name": None
+    }
         save_users()
         
         await call.message.edit_text(
