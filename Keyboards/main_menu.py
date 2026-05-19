@@ -6,6 +6,52 @@ def get_main_menu(role: str) -> ReplyKeyboardMarkup:
 
     keyboard = []
 
+# ===== OWNER =====
+if role == "Owner":
+
+    keyboard = [
+
+        [
+            KeyboardButton(text="➕ Vazifa qoʻshish"),
+            KeyboardButton(text="📋 Vazifalar roʻyxati")
+        ],
+
+        [
+            KeyboardButton(text="👥 Xodimlar"),
+            KeyboardButton(text="🗑 Vazifani oʻchirish")
+        ],
+
+        [
+            KeyboardButton(text="📊 Admin oylik"),
+            KeyboardButton(text="💰 Kassir oylik")
+        ],
+
+        [
+            KeyboardButton(text="🗄 Arxiv"),
+            KeyboardButton(text="📑 Guruh Report")
+        ],
+
+        [
+            KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball")
+        ]
+    ]
+
+
+# ===== ADMIN =====
+elif role == "Admin":
+
+    keyboard = [
+        [
+            KeyboardButton(text="📋 Vazifalar roʻyxati")
+        ],
+        [
+            KeyboardButton(text="📊 Admin oylik")
+        ],
+        [
+            KeyboardButton(text="📑 Guruh Report")
+        ]
+    ]
+
     # ===== ADMIN =====
     if role == "Admin":
 
