@@ -165,19 +165,19 @@ async def command_start_handler(message: types.Message):
         return
 
     saved_name = user_info.get(
-    "name",
-    message.from_user.full_name
-)
+        "name",
+        message.from_user.full_name
+    )
 
-role = user_info.get("role")
+    role = user_info.get("role")
 
-await message.answer(
-    text=f"Assalomu alaykum, {saved_name}! "
-         f"Tizimga xush kelibsiz.\n"
-         f"Quyidagi tugmalar orqali botni boshqarishingiz mumkin 👇",
+    await message.answer(
+        text=f"Assalomu alaykum, {saved_name}! "
+             f"Tizimga xush kelibsiz.\n"
+             f"Quyidagi tugmalar orqali botni boshqarishingiz mumkin 👇",
 
-    reply_markup=get_main_menu(role)
-)
+        reply_markup=get_main_menu(role)
+    )
 
 
 # ================= CALLBACK HANDLERS (ADMIN APPROVAL) =================
