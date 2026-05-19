@@ -394,7 +394,10 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
     )
     
     await message.answer(text=report_text, parse_mode="HTML")
-    await message.answer(text="Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role)
+    await message.answer(
+        text="Asosiy menyuga qaytdingiz.",
+        reply_markup=get_main_menu(role)
+    )
     
     # Xodimga xabar yuborish qismi (Kunlik bo'lsa darhol inline tugma bilan boradi)
     try:
