@@ -788,7 +788,7 @@ async def save_new_role_callback(call: types.CallbackQuery, state: FSMContext):
         USERS_ROLES[str(target_user_id)]["role"] = new_role
 
         save_users()
-        staff_name = USERS_ROLES[target_user_id]["name"]
+        staff_name = USERS_ROLES[str(target_user_id)]["name"]
         
         await call.message.edit_text(
             text=f"✅ <b>Muvaffaqiyatli oʻzgartirildi!</b>\n\n"
