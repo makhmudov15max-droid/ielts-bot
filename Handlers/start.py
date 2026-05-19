@@ -394,7 +394,7 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
     )
     
     await message.answer(text=report_text, parse_mode="HTML")
-    await message.answer(text="Asosiy menyuga qaytdingiz.", reply_markup=main_menu_keyboard)
+    await message.answer(text="Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role)
     
     # Xodimga xabar yuborish qismi (Kunlik bo'lsa darhol inline tugma bilan boradi)
     try:
@@ -488,7 +488,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     GROUP_CHAT_ID = -5226036627  
     
     if proof_required == "Photo" and message.photo:
-        await message.answer(text="Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.", reply_markup=main_menu_keyboard)
+        await message.answer(text="Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.", reply_markup=get_main_menu(role)
         if task:
             group_text = (
                 f"✅ <b>VAZIFA BAJARILDI!</b>\n\n"
@@ -507,7 +507,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
         await state.clear()
         
     elif proof_required == "Video message" and message.video_note:
-        await message.answer(text="Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.", reply_markup=main_menu_keyboard)
+        await message.answer(text="Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.", reply_markup=get_main_menu(role)
         if task:
             group_text = (
                 f"✅ <b>VAZIFA BAJARILDI!</b>\n\n"
@@ -618,7 +618,7 @@ async def process_remove_task_callback(call: types.CallbackQuery):
 @start_router.callback_query(F.data == "remove_cancel")
 async def cancel_remove_callback(call: types.CallbackQuery):
     await call.message.delete()
-    await call.message.answer(text="Oʻchirish jarayoni bekor qilindi.", reply_markup=main_menu_keyboard)
+    await call.message.answer(text="Oʻchirish jarayoni bekor qilindi.", reply_markup=get_main_menu(role)
     await call.answer()
 
 # ==============================================================================
@@ -788,7 +788,7 @@ async def fire_staff_callback(call: types.CallbackQuery, state: FSMContext):
 @start_router.callback_query(F.data == "editstaff_cancel")
 async def cancel_edit_staff_callback(call: types.CallbackQuery, state: FSMContext):
     await call.message.delete()
-    await call.message.answer(text="Xodimlarni boshqarish paneli yopildi.", reply_markup=main_menu_keyboard)
+    await call.message.answer(text="Xodimlarni boshqarish paneli yopildi.", reply_markup=get_main_menu(role)
     await state.clear()
     await call.answer()
 
@@ -970,7 +970,7 @@ async def start_admin_salary_calc(message: types.Message, state: FSMContext):
 @start_router.message(AdminSalaryStates(), F.text == "🏠 Bosh sahifa")
 async def back_to_home_salary(message: types.Message, state: FSMContext):
     await state.clear()
-    await message.answer("🏠 Bosh sahifaga qaytdingiz.", reply_markup=main_menu_keyboard)
+    await message.answer("🏠 Bosh sahifaga qaytdingiz.", reply_markup=get_main_menu(role)
 
 # 2. Status tanlanganda -> Soat so'rash va statusni saqlash
 @start_router.message(AdminSalaryStates.status)
@@ -1232,7 +1232,7 @@ async def process_actual_active_final(message: types.Message, state: FSMContext)
         f"🏁 <b>JAMI OYLIK MAOSH:</b> <u>{result['total_salary']:,} so'm</u>"
     )
     
-    await message.answer(text=report_text, parse_mode="HTML", reply_markup=main_menu_keyboard)
+    await message.answer(text=report_text, parse_mode="HTML", reply_markup=reply_markup=get_main_menu(role))
 
 # ==============================================================================
 # 💰 KASSIR OYLIK TIZIMI (CASHIER SALARY PROCESS)
@@ -1276,7 +1276,7 @@ async def start_cashier_salary(message: types.Message, state: FSMContext):
 async def process_cashier_hours(message: types.Message, state: FSMContext):
     if message.text == "🏠 Bosh sahifa":
         await state.clear()
-        return await message.answer("Asosiy menyudasiz:", reply_markup=main_menu_keyboard)
+        return await message.answer("Asosiy menyudasiz:", reply_markup=reply_markup=get_main_menu(role))
     if message.text == "✍️ Boshqa":
         await state.set_state(CashierSalaryStates.custom_hours)
         return await message.answer("⏰ Soatni o'zingiz kiriting:", reply_markup=get_manual_keyboard())
