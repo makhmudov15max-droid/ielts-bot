@@ -28,10 +28,87 @@ try:
 except ValueError:
     ADMIN_ID = 6500594896  
 
-# Vaqtincha xotira bazasi (Rollar va Ismlarni saqlaydi)
-USERS_ROLES = {
-    ADMIN_ID: {"role": "Admin", "name": "Asosiy Administrator"}
-}
+# ================= USERS JSON TIZIMI =================
+
+import json
+import os
+
+USERS_FILE = "users.json"
+
+
+def load_users():
+    try:
+        if os.path.exists(USERS_FILE):
+            with open(USERS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+
+    except Exception as e:
+        print(f"Users yuklash xatosi: {e}")
+
+    return {
+        str(ADMIN_ID): {
+            "role": "Owner",
+            "name": "Baxtiyorjon"
+        }
+    }
+
+
+def save_users():
+    try:
+        with open(
+            USERS_FILE,
+            "w",
+            encoding="utf-8"
+        ) as f:
+
+            json.dump(
+                USERS_ROLES,
+                f,
+                ensure_ascii=False,
+                indent=4
+            )
+
+    except Exception as e:
+        print(f"Users saqlash xatosi: {e}")
+
+
+USERS_ROLES = load_users()
+
+
+def get_role(user_id):
+
+    user = USERS_ROLES.get(
+        str(user_id),
+        {}
+    )
+
+    return user.get("role")
+
+
+def check_user_access(user_id):
+
+    user_info = USERS_ROLES.get(
+        str(user_id)
+    )
+
+    if not user_info:
+        return False
+
+    if not isinstance(
+        user_info,
+        dict
+    ):
+        return False
+
+    if user_info.get(
+        "role"
+    ) in [
+        None,
+        "rejected"
+    ]:
+        return False
+
+    return True
 
 # Vazifalarni saqlash bazasi
 TASKS_DATABASE = []
