@@ -110,29 +110,35 @@ async def admin_approve_callback(call: types.CallbackQuery):
         data_parts = call.data.split("_")
         role = data_parts[1]
         target_user_id = int(data_parts[2])
-        
-    USERS_ROLES[str(target_user_id)] = {
-        "role": role,
-        "name": None
-    }
+
+        USERS_ROLES[str(target_user_id)] = {
+            "role": role,
+            "name": None
+        }
+
         save_users()
-        
+
         await call.message.edit_text(
             text=f"{call.message.text}\n\n✅ <b>Tasdiqlandi!</b> Foydalanuvchiga <b>{role}</b> unvoni muvaffaqiyatli berildi.",
             parse_mode="HTML"
         )
-        
-        user_text = f"Sizga administrator tomonidan \"{role}\" unvoni berildi. Iltimos, tizimda foydalanish uchun ism va familiyangizni kiriting:"
+
+        user_text = (
+            f'Sizga administrator tomonidan "{role}" '
+            f'unvoni berildi.\n'
+            f'Iltimos ism va familiyangizni kiriting:'
+        )
+
         await call.bot.send_message(
             chat_id=target_user_id,
             text=user_text,
-            reply_markup=types.ReplyKeyboardRemove()  
+            reply_markup=types.ReplyKeyboardRemove()
         )
-            
-    except Exception as e:
-        print(f"❌ Tasdiqlash jarayonida xatolik: {e}")
-    await call.answer()
 
+    except Exception as e:
+        print(f"❌ Tasdiqlash xatosi: {e}")
+
+    await call.answer()
 
 @start_router.callback_query(F.data.startswith("reject_"))
 async def admin_reject_callback(call: types.CallbackQuery):
