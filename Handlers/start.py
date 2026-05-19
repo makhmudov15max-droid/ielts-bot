@@ -236,7 +236,7 @@ async def admin_reject_callback(call: types.CallbackQuery):
 
 # ================= FOYDALANUVCHI ISMINI QABUL QILISH =================
 
-@start_router.message(lambda msg: isinstance(USERS_ROLES.get(msg.from_user.id), dict) and USERS_ROLES.get(msg.from_user.id).get("name") is None)
+@start_router.message(lambda msg: isinstance(USERS_ROLES.get(str(msg.from_user.id)), dict) and USERS_ROLES.get(msg.from_user.id).get("name") is None)
 async def get_user_real_name_handler(message: types.Message):
     user_id = message.from_user.id
     input_text = message.text.strip()
