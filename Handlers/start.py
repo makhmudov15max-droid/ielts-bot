@@ -9,18 +9,7 @@ from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from calculators.admin_calc import calculate_admin_salary
 import config  
-from Keyboards.main_menu import (
-    main_menu_keyboard, 
-    task_type_keyboard, 
-    days_keyboard, 
-    frequency_keyboard, 
-    get_inline_days_keyboard,
-    get_admin_approval_keyboard,
-    proof_type_keyboard,
-    assign_role_keyboard,
-    get_task_complete_keyboard,
-    get_remove_tasks_keyboard
-)
+from Keyboards.main_menu import get_main_menu
 from Handlers.states import TaskStates
 
 start_router = Router()
@@ -121,12 +110,20 @@ async def command_start_handler(message: types.Message):
         await message.answer("Iltimos, tizimda roʻyxatdan oʻtish uchun ism va familiyangizni kiriting:")
         return
 
-    saved_name = user_info.get("name", message.from_user.full_name)
-    await message.answer(
-        text=f"Assalomu alaykum, {saved_name}! Tizimga xush kelibsiz.\n"
-             f"Quyidagi tugmalar orqali botni boshqarishingiz mumkin 👇",
-        reply_markup=main_menu_keyboard
+saved_name = user_info.get(
+    "name",
+    message.from_user.full_name
+)
+
+user_role=user_info.get("role")
+
+await message.answer(
+    text=f"Assalomu alaykum, {saved_name}! Tizimga xush kelibsiz.\nQuyidagi tugmalar orqali botni boshqarishingiz mumkin 👇",
+
+    reply_markup=get_main_menu(
+        user_role
     )
+)
 
 
 # ================= CALLBACK HANDLERS (ADMIN APPROVAL) =================
@@ -186,7 +183,7 @@ async def get_user_real_name_handler(message: types.Message):
     save_users()
     await message.answer(
         text=f"Hurmatli {first_name}, siz muvaffaqiyatli roʻyxatdan oʻtdingiz. Endi bot imkoniyatlaridan foydalanishingiz mumkin.",
-        reply_markup=main_menu_keyboard
+        reply_markup=get_main_menu(new_role)
     )
 
 
@@ -736,7 +733,7 @@ async def save_new_role_callback(call: types.CallbackQuery, state: FSMContext):
                 chat_id=target_user_id,
                 text=f"🔔 <b>Diqqat!</b> Administrator tomonidan sizning lavozimingiz <b>{new_role}</b> etib belgilandi.",
                 parse_mode="HTML",
-                reply_markup=main_menu_keyboard
+                reply_markup=get_main_menu(new_role)
             )
         except Exception as e:
             print(f"Xodimni rolda ogohlantirishda xatolik: {e}")
@@ -895,7 +892,7 @@ async def save_archive_role_callback(call: types.CallbackQuery, state: FSMContex
                     text=f"🎉 <b>Xushxabar!</b> Administrator sizni arxivdan chiqardi va joriy lavozimingizni <b>{new_role}</b> etib belgiladi.\n"
                          f"Bot imkoniyatlaridan toʻliq foydalanishingiz mumkin!",
                     parse_mode="HTML",
-                    reply_markup=main_menu_keyboard
+                    reply_markup=get_main_menu(new_role)
                 )
             else:
                 # Ismi yo'q bo'lsa oldingi mantiq asosida ism so'raymiz
