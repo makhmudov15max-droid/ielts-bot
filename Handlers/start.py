@@ -164,16 +164,20 @@ async def command_start_handler(message: types.Message):
             print(f"❌ Administratorga xabar yuborishda muammo: {e}")
         return
 
-    if isinstance(user_info, dict) and user_info.get("name") is None:
-        await message.answer("Iltimos, tizimda roʻyxatdan oʻtish uchun ism va familiyangizni kiriting:")
-        return
+    saved_name = user_info.get(
+    "name",
+    message.from_user.full_name
+)
 
-    saved_name = user_info.get("name", message.from_user.full_name)
-    await message.answer(
-        text=f"Assalomu alaykum, {saved_name}! Tizimga xush kelibsiz.\n"
-             f"Quyidagi tugmalar orqali botni boshqarishingiz mumkin 👇",
-        reply_markup=main_menu_keyboard
-    )
+role = user_info.get("role")
+
+await message.answer(
+    text=f"Assalomu alaykum, {saved_name}! "
+         f"Tizimga xush kelibsiz.\n"
+         f"Quyidagi tugmalar orqali botni boshqarishingiz mumkin 👇",
+
+    reply_markup=get_main_menu(role)
+)
 
 
 # ================= CALLBACK HANDLERS (ADMIN APPROVAL) =================
