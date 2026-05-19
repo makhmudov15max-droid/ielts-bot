@@ -1,3 +1,4 @@
+import os
 import json
 import gspread
 from aiogram import Router, F, types
@@ -20,14 +21,16 @@ except ValueError:
 
 # ==================== 📊 JONLI GOOGLE SHEETS ULASH TIZIMI ====================
 try:
-    # To'g'ridan-to'g'ri loyiha ichidagi google_creds.json faylidan o'qiymiz
-    client = gspread.service_account(filename="google_creds.json")
-    
-    # Jadvalni ochamiz va "Ustozlar" sahifasini olamiz
-    sheet = client.open_by_key("1PpGWObeppzsSkaYgGz0fRYP_3zk-3YuxBOXStrn_PCc").worksheet("Ustozlar")
-    print("🚀 SUCCESS: Google Sheets 'Ustozlar' sahifasiga ulanish to'liq yakunlandi!")
+    client = gspread.service_account(
+        filename="google_creds.json"
+    )
+
+    sheet = client.open("EduControl").worksheet("Ustozlar")
+
+    print("Google Sheets muvaffaqiyatli ulandi")
+
 except Exception as e:
-    print(f"❌ CRITICAL ERROR: Google API ulanishda xatolik: {e}")
+    print(f"Google ulanish xatosi: {e}")
     sheet = None
 # ==============================================================================
 
