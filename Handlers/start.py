@@ -232,10 +232,17 @@ async def get_user_real_name_handler(message: types.Message):
     input_text = message.text.strip()
     first_name = input_text.split()[0]
     
-    USERS_ROLES[user_id]["name"] = input_text
+    USERS_ROLES[str(user_id)]["name"] = input_text
+
+    save_users()
+
     await message.answer(
-        text=f"Hurmatli {first_name}, siz muvaffaqiyatli roʻyxatdan oʻtdingiz. Endi bot imkoniyatlaridan foydalanishingiz mumkin.",
-        reply_markup=main_menu_keyboard
+        text=f"Hurmatli {first_name}, siz muvaffaqiyatli roʻyxatdan oʻtdingiz. "
+             f"Endi bot imkoniyatlaridan foydalanishingiz mumkin.",
+
+        reply_markup=get_main_menu(
+            USERS_ROLES[str(user_id)]["role"]
+        )
     )
 
 
