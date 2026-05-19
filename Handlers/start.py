@@ -106,13 +106,15 @@ async def command_start_handler(message: types.Message):
             print(f"❌ Administratorga xabar yuborishda muammo: {e}")
         return
 
-    if isinstance(user_info, dict) and user_info.get("name") is None:
-        await message.answer("Iltimos, tizimda roʻyxatdan oʻtish uchun ism va familiyangizni kiriting:")
-        return
+if isinstance(user_info, dict) and user_info.get("name") is None:
+    await message.answer(
+        "Iltimos, tizimda roʻyxatdan oʻtish uchun ism va familiyangizni kiriting:"
+    )
+    return
 
-saved_name = user_info.get(
-    "name",
-    message.from_user.full_name
+    saved_name = user_info.get(
+        "name",
+        message.from_user.full_name
 )
 
 user_role=user_info.get("role")
