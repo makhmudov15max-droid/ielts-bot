@@ -823,7 +823,9 @@ async def fire_staff_callback(call: types.CallbackQuery, state: FSMContext):
         staff_name = USERS_ROLES[target_user_id]["name"]
         
         # Rolni 'rejected' holatiga o'tkazish orqali kirish imkoniyatini yopamiz
-        USERS_ROLES[target_user_id]["role"] = "rejected"
+        USERS_ROLES[str(target_user_id)]["role"]="rejected"
+
+        save_users()
         
         await call.message.edit_text(
             text=f"❌ <b>Xodim botdan chetlashtirildi!</b>\n\n"
@@ -938,7 +940,9 @@ async def save_archive_role_callback(call: types.CallbackQuery, state: FSMContex
     
     if target_user_id in USERS_ROLES:
         # Rolni yangilaymiz (Arxivdan avtomatik chiqadi)
-        USERS_ROLES[target_user_id]["role"] = new_role
+        USERS_ROLES[str(target_user_id)]["role"]=new_role
+
+        save_users()
         
         # Agar foydalanuvchining ismi avval kiritilmagan bo'lsa, ism so'rash bosqichiga tayyorlaymiz
         has_name = USERS_ROLES[target_user_id].get("name") is not None
