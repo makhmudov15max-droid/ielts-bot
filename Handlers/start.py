@@ -184,9 +184,12 @@ async def get_user_real_name_handler(message: types.Message):
     USERS_ROLES[user_id]["name"] = input_text
     save_users()
     await message.answer(
-        text=f"Hurmatli {first_name}, siz muvaffaqiyatli roʻyxatdan oʻtdingiz. Endi bot imkoniyatlaridan foydalanishingiz mumkin.",
-        reply_markup=get_main_menu(new_role)
+    text=f"Hurmatli {first_name}, siz muvaffaqiyatli roʻyxatdan oʻtdingiz. Endi bot imkoniyatlaridan foydalanishingiz mumkin.",
+
+    reply_markup=get_main_menu(
+        USERS_ROLES[user_id]["role"]
     )
+)
 
 
 # ================= VAZIFA YARATISH LOGIKASI =================
