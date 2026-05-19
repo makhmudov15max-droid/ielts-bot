@@ -785,7 +785,9 @@ async def save_new_role_callback(call: types.CallbackQuery, state: FSMContext):
     target_user_id = int(data_parts[2])
     
     if target_user_id in USERS_ROLES:
-        USERS_ROLES[target_user_id]["role"] = new_role
+        USERS_ROLES[str(target_user_id)]["role"] = new_role
+
+        save_users()
         staff_name = USERS_ROLES[target_user_id]["name"]
         
         await call.message.edit_text(
