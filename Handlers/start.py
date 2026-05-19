@@ -67,65 +67,40 @@ TASKS_DATABASE = []
 async def command_start_handler(message: types.Message):
     user_id = message.from_user.id
     user_info = USERS_ROLES.get(user_id)
-    
+
     if isinstance(user_info, dict) and user_info.get("role") == "rejected":
-        await message.answer("Assalomu alaykum. Afsuski, tizimdan foydalanish soʻrovingiz administrator tomonidan rad etilgan.")
+        await message.answer(
+            "Assalomu alaykum. Afsuski, tizimdan foydalanish soʻrovingiz administrator tomonidan rad etilgan."
+        )
         return
 
     if user_id not in USERS_ROLES:
         await message.answer(
             text="Assalomu alaykum, Edu_Control tizimiga xush kelibsiz!\n"
-                 "Tizim administratoriga ruxsat soʻrovi yuborildi. Iltimos, soʻrovingiz tasdiqlanishini kuting. Rahmat!"
+                 "Tizim administratoriga ruxsat soʻrovi yuborildi."
         )
-        
-        full_name = message.from_user.full_name
-        if message.from_user.username:
-            raw_username = message.from_user.username
-            user_profile_link = f"https://t.me/{raw_username}"
-            username_text = f"@{raw_username} (<a href='{user_profile_link}'>Profilga oʻtish</a>)"
-        else:
-            username_text = f"Mavjud emas (<a href='tg://user?id={user_id}'>Profilga oʻtish</a>)"
-        
-        admin_text = (
-            f"🔔 <b>Yangi foydalanuvchi ruxsat soʻramoqda!</b>\n\n"
-            f"👤 <b>Ism va familiya:</b> {full_name}\n"
-            f"🆔 <b>ID raqami:</b> <code>{user_id}</code>\n"
-            f"🌐 <b>Telegram sahifasi:</b> {username_text}\n\n"
-            f"Iltimos, ushbu foydalanuvchiga tegishli unvonni (rol) bering yoki soʻrovni rad eting 👇"
-        )
-        
-        try:
-            await message.bot.send_message(
-                chat_id=ADMIN_ID,
-                text=admin_text,
-                parse_mode="HTML",
-                disable_web_page_preview=True,
-                reply_markup=get_admin_approval_keyboard(user_id)
-            )
-        except Exception as e:
-            print(f"❌ Administratorga xabar yuborishda muammo: {e}")
+
         return
 
-if isinstance(user_info, dict) and user_info.get("name") is None:
-    await message.answer(
-        "Iltimos, tizimda roʻyxatdan oʻtish uchun ism va familiyangizni kiriting:"
-    )
-    return
+    if isinstance(user_info, dict) and user_info.get("name") is None:
+        await message.answer(
+            "Iltimos, tizimda roʻyxatdan oʻtish uchun ism va familiyangizni kiriting:"
+        )
+        return
 
     saved_name = user_info.get(
         "name",
         message.from_user.full_name
-)
-
-user_role=user_info.get("role")
-
-await message.answer(
-    text=f"Assalomu alaykum, {saved_name}! Tizimga xush kelibsiz.\nQuyidagi tugmalar orqali botni boshqarishingiz mumkin 👇",
-
-    reply_markup=get_main_menu(
-        user_role
     )
-)
+
+    user_role = user_info.get("role")
+
+    await message.answer(
+        text=f"Assalomu alaykum, {saved_name}! Tizimga xush kelibsiz.\n"
+             f"Quyidagi tugmalar orqali botni boshqarishingiz mumkin 👇",
+
+        reply_markup=get_main_menu(user_role)
+    )
 
 
 # ================= CALLBACK HANDLERS (ADMIN APPROVAL) =================
