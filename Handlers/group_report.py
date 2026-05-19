@@ -59,7 +59,7 @@ def get_teacher_scores():
     return scores
 
 
-@report_router.message(F.text == "📄 Guruh Report")
+@report_router.message(F.text == "📑 Guruh Report")
 async def group_report(message: types.Message):
 
     if message.from_user.id != ADMIN_ID:
