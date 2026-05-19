@@ -148,3 +148,98 @@ def get_sheets_ielts_scores_keyboard(teacher_id: str) -> InlineKeyboardMarkup:
             row = []
     inline_keyboard.append([InlineKeyboardButton(text="❌ Bekor qilish", callback_data="back_to_gs_teachers")])
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+# ================= ROLE BO'YICHA ASOSIY MENYU =================
+
+def get_main_menu(role):
+
+    if role == "Owner":
+
+        keyboard = [
+
+            [
+                KeyboardButton(text="➕ Vazifa qoʻshish"),
+                KeyboardButton(text="📋 Vazifalar roʻyxati")
+            ],
+
+            [
+                KeyboardButton(text="👥 Xodimlar"),
+                KeyboardButton(text="🗑 Vazifani oʻchirish")
+            ],
+
+            [
+                KeyboardButton(text="📊 Admin oylik"),
+                KeyboardButton(text="💰 Kassir oylik")
+            ],
+
+            [
+                KeyboardButton(text="🗄 Arxiv"),
+                KeyboardButton(text="📑 Guruh Report")
+            ],
+
+            [
+                KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball")
+            ]
+        ]
+
+    elif role == "Admin":
+
+        keyboard = [
+            [KeyboardButton(text="📋 Vazifalar roʻyxati")],
+            [KeyboardButton(text="📊 Admin oylik")],
+            [KeyboardButton(text="📑 Guruh Report")]
+        ]
+
+    elif role == "Kassir":
+
+        keyboard = [
+            [KeyboardButton(text="📋 Vazifalar roʻyxati")],
+            [KeyboardButton(text="💰 Kassir oylik")]
+        ]
+
+    elif role == "Sanitar":
+
+        keyboard = [
+            [KeyboardButton(text="📋 Vazifalar roʻyxati")]
+        ]
+
+    elif role == "Manager":
+
+        keyboard = [
+
+            [
+                KeyboardButton(text="➕ Vazifa qoʻshish"),
+                KeyboardButton(text="📋 Vazifalar roʻyxati")
+            ],
+
+            [
+                KeyboardButton(text="👥 Xodimlar"),
+                KeyboardButton(text="🗑 Vazifani oʻchirish")
+            ],
+
+            [
+                KeyboardButton(text="📊 Admin oylik"),
+                KeyboardButton(text="💰 Kassir oylik")
+            ],
+
+            [
+                KeyboardButton(text="🗄 Arxiv"),
+                KeyboardButton(text="📑 Guruh Report")
+            ],
+
+            [
+                KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball")
+            ]
+        ]
+
+    else:
+
+        keyboard = [
+            [KeyboardButton(text="📋 Vazifalar roʻyxati")]
+        ]
+
+
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
+        resize_keyboard=True
+    )
