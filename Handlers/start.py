@@ -189,7 +189,12 @@ async def admin_approve_callback(call: types.CallbackQuery):
         role = data_parts[1]
         target_user_id = int(data_parts[2])
         
-        USERS_ROLES[target_user_id] = {"role": role, "name": None}
+        USERS_ROLES[str(target_user_id)] = {
+            "role": role,
+            "name": None
+        }
+
+        save_users()
         
         await call.message.edit_text(
             text=f"{call.message.text}\n\n✅ <b>Tasdiqlandi!</b> Foydalanuvchiga <b>{role}</b> unvoni muvaffaqiyatli berildi.",
