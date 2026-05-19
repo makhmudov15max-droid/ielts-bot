@@ -65,42 +65,66 @@ TASKS_DATABASE = []
 
 @start_router.message(CommandStart())
 async def command_start_handler(message: types.Message):
-    user_id = str(message.from_user.id)
+    user_id = message.from_user.id
     user_info = USERS_ROLES.get(user_id)
-
+    
     if isinstance(user_info, dict) and user_info.get("role") == "rejected":
-        await message.answer(
-            "Assalomu alaykum. Afsuski, tizimdan foydalanish soʻrovingiz administrator tomonidan rad etilgan."
-        )
+        await message.answer("Assalomu alaykum. Afsuski, tizimdan foydalanish soʻrovingiz administrator tomonidan rad etilgan.")
         return
 
     if user_id not in USERS_ROLES:
         await message.answer(
             text="Assalomu alaykum, Edu_Control tizimiga xush kelibsiz!\n"
-                 "Tizim administratoriga ruxsat soʻrovi yuborildi."
+                 "Tizim administratoriga ruxsat soʻrovi yuborildi. Iltimos, soʻrovingiz tasdiqlanishini kuting. Rahmat!"
         )
+        
+        full_name = message.from_user.full_name
+        if message.from_user.username:
+            raw_username = message.from_user.username
+            user_profile_link = f"https://t.me/{raw_username}"
+            username_text = f"@{raw_username} (<a href='{user_profile_link}'>Profilga oʻtish</a>)"
+        else:
+            username_text = f"Mavjud emas (<a href='tg://user?id={user_id}'>Profilga oʻtish</a>)"
+        
+        admin_text = (
+            f"🔔 <b>Yangi foydalanuvchi ruxsat soʻramoqda!</b>\n\n"
+            f"👤 <b>Ism va familiya:</b> {full_name}\n"
+            f"🆔 <b>ID raqami:</b> <code>{user_id}</code>\n"
+            f"🌐 <b>Telegram sahifasi:</b> {username_text}\n\n"
+            f"Iltimos, ushbu foydalanuvchiga tegishli unvonni (rol) bering yoki soʻrovni rad eting 👇"
+        )
+        
+        try:
+            await message.bot.send_message(
+                chat_id=ADMIN_ID,
+                text=admin_text,
+                parse_mode="HTML",
+                disable_web_page_preview=True,
+                reply_markup=get_admin_approval_keyboard(user_id)
+            )
+        except Exception as e:
+            print(f"❌ Administratorga xabar yuborishda muammo: {e}")
         return
 
     if isinstance(user_info, dict) and user_info.get("name") is None:
-        await message.answer(
-            "Iltimos, tizimda roʻyxatdan oʻtish uchun ism va familiyangizni kiriting:"
-        )
+        await message.answer("Iltimos, tizimda roʻyxatdan oʻtish uchun ism va familiyangizni kiriting:")
         return
 
-    saved_name = user_info.get(
-        "name",
-        message.from_user.full_name
+saved_name = user_info.get(
+    "name",
+    message.from_user.full_name
+)
+
+user_role=user_info.get("role")
+
+await message.answer(
+    text=f"Assalomu alaykum, {saved_name}! Tizimga xush kelibsiz.\nQuyidagi tugmalar orqali botni boshqarishingiz mumkin 👇",
+
+    reply_markup=get_main_menu(
+        user_role
     )
+)
 
-    user_role = user_info.get("role")
-
-    await message.answer(
-        text=f"Assalomu alaykum, {saved_name}! "
-             f"Tizimga xush kelibsiz.\n"
-             f"Quyidagi tugmalar orqali botni boshqarishingiz mumkin 👇",
-
-        reply_markup=get_main_menu(user_role)
-    )
 
 # ================= CALLBACK HANDLERS (ADMIN APPROVAL) =================
 
@@ -110,35 +134,26 @@ async def admin_approve_callback(call: types.CallbackQuery):
         data_parts = call.data.split("_")
         role = data_parts[1]
         target_user_id = int(data_parts[2])
-
-        USERS_ROLES[str(target_user_id)] = {
-            "role": role,
-            "name": None
-        }
-
+        
+        USERS_ROLES[target_user_id] = {"role": role, "name": None}
         save_users()
-
+        
         await call.message.edit_text(
             text=f"{call.message.text}\n\n✅ <b>Tasdiqlandi!</b> Foydalanuvchiga <b>{role}</b> unvoni muvaffaqiyatli berildi.",
             parse_mode="HTML"
         )
-
-        user_text = (
-            f'Sizga administrator tomonidan "{role}" '
-            f'unvoni berildi.\n'
-            f'Iltimos ism va familiyangizni kiriting:'
-        )
-
+        
+        user_text = f"Sizga administrator tomonidan \"{role}\" unvoni berildi. Iltimos, tizimda foydalanish uchun ism va familiyangizni kiriting:"
         await call.bot.send_message(
             chat_id=target_user_id,
             text=user_text,
-            reply_markup=types.ReplyKeyboardRemove()
+            reply_markup=types.ReplyKeyboardRemove()  
         )
-
+            
     except Exception as e:
-        print(f"❌ Tasdiqlash xatosi: {e}")
-
+        print(f"❌ Tasdiqlash jarayonida xatolik: {e}")
     await call.answer()
+
 
 @start_router.callback_query(F.data.startswith("reject_"))
 async def admin_reject_callback(call: types.CallbackQuery):
@@ -164,36 +179,18 @@ async def get_user_real_name_handler(message: types.Message):
     input_text = message.text.strip()
     first_name = input_text.split()[0]
     
-    USERS_ROLES[str(user_id)]["name"]=input_text
+    USERS_ROLES[user_id]["name"] = input_text
     save_users()
     await message.answer(
-    text=f"Hurmatli {first_name}, siz muvaffaqiyatli roʻyxatdan oʻtdingiz. Endi bot imkoniyatlaridan foydalanishingiz mumkin.",
-
-    reply_markup=get_main_menu(
-        USERS_ROLES[user_id]["role"]
+        text=f"Hurmatli {first_name}, siz muvaffaqiyatli roʻyxatdan oʻtdingiz. Endi bot imkoniyatlaridan foydalanishingiz mumkin.",
+        reply_markup=get_main_menu(new_role)
     )
-)
 
 
 # ================= VAZIFA YARATISH LOGIKASI =================
 
 def check_user_access(user_id: int) -> bool:
-
-    user_info = USERS_ROLES.get(str(user_id))
-
-    if not user_info:
-        return False
-
-    if not isinstance(user_info, dict):
-        return False
-
-    if user_info.get("role") in [None, "rejected"]:
-        return False
-
-    if user_info.get("name") is None:
-        return False
-
-    return True
+    user_info = USERS_ROLES.get(user_id)
     if not user_info or not isinstance(user_info, dict): return False
     if user_info.get("role") in [None, "rejected"] or user_info.get("name") is None: return False
     return True
@@ -394,12 +391,7 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
     )
     
     await message.answer(text=report_text, parse_mode="HTML")
-    role = USERS_ROLES[str(message.from_user.id)]["role"]
-
-    await message.answer(
-        text="Asosiy menyuga qaytdingiz.",
-        reply_markup=get_main_menu(role)
-    )
+    await message.answer(text="Asosiy menyuga qaytdingiz.", reply_markup=main_menu_keyboard)
     
     # Xodimga xabar yuborish qismi (Kunlik bo'lsa darhol inline tugma bilan boradi)
     try:
@@ -493,14 +485,8 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     GROUP_CHAT_ID = -5226036627  
     
     if proof_required == "Photo" and message.photo:
-        role = USERS_ROLES[str(message.from_user.id)]["role"]
-
-    await message.answer(
-        text="Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
-        reply_markup=get_main_menu(role)
-    )
-
-    if task:
+        await message.answer(text="Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.", reply_markup=main_menu_keyboard)
+        if task:
             group_text = (
                 f"✅ <b>VAZIFA BAJARILDI!</b>\n\n"
                 f"📋 <b>Turi:</b> {task['task_type']}\n"
@@ -515,10 +501,10 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             # Kunlik bir martalik vazifa bajarilgach ro'yxatdan o'chadi
             if task.get("task_type") == "Kunlik (Bir martalik)":
                 TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
-            await state.clear()
+        await state.clear()
         
     elif proof_required == "Video message" and message.video_note:
-        await message.answer(text="Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.", reply_markup=get_main_menu(role)
+        await message.answer(text="Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.", reply_markup=main_menu_keyboard)
         if task:
             group_text = (
                 f"✅ <b>VAZIFA BAJARILDI!</b>\n\n"
@@ -533,7 +519,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             
             if task.get("task_type") == "Kunlik (Bir martalik)":
                 TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
-            await state.clear()
+        await state.clear()
         
     else:
         if proof_required == "Photo":
@@ -629,13 +615,7 @@ async def process_remove_task_callback(call: types.CallbackQuery):
 @start_router.callback_query(F.data == "remove_cancel")
 async def cancel_remove_callback(call: types.CallbackQuery):
     await call.message.delete()
-    role = USERS_ROLES[str(call.from_user.id)]["role"]
-
-    await call.message.answer(
-    text="Oʻchirish jarayoni bekor qilindi.",
-    reply_markup=get_main_menu(role)
-    )
-
+    await call.message.answer(text="Oʻchirish jarayoni bekor qilindi.", reply_markup=main_menu_keyboard)
     await call.answer()
 
 # ==============================================================================
@@ -679,7 +659,7 @@ async def view_employees_handler(message: types.Message):
 @start_router.callback_query(F.data.startswith("editstaff_"))
 async def process_edit_staff_callback(call: types.CallbackQuery, state: FSMContext):
     target_user_id = int(call.data.split("_")[1])
-    staff_info = USERS_ROLES.get(str(target_user_id))
+    staff_info = USERS_ROLES.get(target_user_id)
     
     if not staff_info:
         await call.answer(text="⚠️ Bu xodim tizimdan topilmadi!", show_alert=True)
@@ -735,8 +715,8 @@ async def save_new_role_callback(call: types.CallbackQuery, state: FSMContext):
     new_role = data_parts[1]
     target_user_id = int(data_parts[2])
     
-    if str(target_user_id) in USERS_ROLES:
-        USERS_ROLES[str(target_user_id)]["role"] = new_role
+    if target_user_id in USERS_ROLES:
+        USERS_ROLES[target_user_id]["role"] = new_role
         save_users()
         staff_name = USERS_ROLES[target_user_id]["name"]
         
@@ -769,13 +749,11 @@ async def save_new_role_callback(call: types.CallbackQuery, state: FSMContext):
 async def fire_staff_callback(call: types.CallbackQuery, state: FSMContext):
     target_user_id = int(call.data.split("_")[1])
     
-    if str(target_user_id) in USERS_ROLES:
-
-        staff_name = USERS_ROLES[str(target_user_id)]["name"]
-
-        # Rolni rejected qilamiz
-        USERS_ROLES[str(target_user_id)]["role"] = "rejected"
-
+    if target_user_id in USERS_ROLES:
+        staff_name = USERS_ROLES[target_user_id]["name"]
+        
+        # Rolni 'rejected' holatiga o'tkazish orqali kirish imkoniyatini yopamiz
+        USERS_ROLES[target_user_id]["role"] = "rejected"
         save_users()
         
         await call.message.edit_text(
@@ -805,13 +783,7 @@ async def fire_staff_callback(call: types.CallbackQuery, state: FSMContext):
 @start_router.callback_query(F.data == "editstaff_cancel")
 async def cancel_edit_staff_callback(call: types.CallbackQuery, state: FSMContext):
     await call.message.delete()
-    role = USERS_ROLES[str(call.from_user.id)]["role"]
-
-    await call.message.answer(
-    text="Xodimlarni boshqarish paneli yopildi.",
-    reply_markup=get_main_menu(role)
-    )    
-
+    await call.message.answer(text="Xodimlarni boshqarish paneli yopildi.", reply_markup=main_menu_keyboard)
     await state.clear()
     await call.answer()
 
@@ -895,8 +867,9 @@ async def save_archive_role_callback(call: types.CallbackQuery, state: FSMContex
     new_role = data_parts[1]
     target_user_id = int(data_parts[2])
     
-    if str(target_user_id) in USERS_ROLES:
-        USERS_ROLES[str(target_user_id)]["role"] = new_role
+    if target_user_id in USERS_ROLES:
+        # Rolni yangilaymiz (Arxivdan avtomatik chiqadi)
+        USERS_ROLES[target_user_id]["role"] = new_role
         
         # Agar foydalanuvchining ismi avval kiritilmagan bo'lsa, ism so'rash bosqichiga tayyorlaymiz
         has_name = USERS_ROLES[target_user_id].get("name") is not None
@@ -993,7 +966,7 @@ async def start_admin_salary_calc(message: types.Message, state: FSMContext):
 @start_router.message(AdminSalaryStates(), F.text == "🏠 Bosh sahifa")
 async def back_to_home_salary(message: types.Message, state: FSMContext):
     await state.clear()
-    await message.answer("🏠 Bosh sahifaga qaytdingiz.", reply_markup=get_main_menu(role)
+    await message.answer("🏠 Bosh sahifaga qaytdingiz.", reply_markup=main_menu_keyboard)
 
 # 2. Status tanlanganda -> Soat so'rash va statusni saqlash
 @start_router.message(AdminSalaryStates.status)
@@ -1255,13 +1228,7 @@ async def process_actual_active_final(message: types.Message, state: FSMContext)
         f"🏁 <b>JAMI OYLIK MAOSH:</b> <u>{result['total_salary']:,} so'm</u>"
     )
     
-    role = USERS_ROLES[str(message.from_user.id)]["role"]
-
-    await message.answer(
-        text=report_text,
-        parse_mode="HTML",
-        reply_markup=get_main_menu(role)
-    )
+    await message.answer(text=report_text, parse_mode="HTML", reply_markup=main_menu_keyboard)
 
 # ==============================================================================
 # 💰 KASSIR OYLIK TIZIMI (CASHIER SALARY PROCESS)
@@ -1305,12 +1272,7 @@ async def start_cashier_salary(message: types.Message, state: FSMContext):
 async def process_cashier_hours(message: types.Message, state: FSMContext):
     if message.text == "🏠 Bosh sahifa":
         await state.clear()
-        role = USERS_ROLES[str(message.from_user.id)]["role"]
-
-        return await message.answer(
-            "Asosiy menyudasiz",
-            reply_markup=get_main_menu(role)
-        )
+        return await message.answer("Asosiy menyudasiz:", reply_markup=main_menu_keyboard)
     if message.text == "✍️ Boshqa":
         await state.set_state(CashierSalaryStates.custom_hours)
         return await message.answer("⏰ Soatni o'zingiz kiriting:", reply_markup=get_manual_keyboard())
