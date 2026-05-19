@@ -4,98 +4,63 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMar
 
 def get_main_menu(role: str) -> ReplyKeyboardMarkup:
 
-    keyboard = []
-
-# ===== OWNER =====
-if role == "Owner":
-
-    keyboard = [
-
-        [
-            KeyboardButton(text="➕ Vazifa qoʻshish"),
-            KeyboardButton(text="📋 Vazifalar roʻyxati")
-        ],
-
-        [
-            KeyboardButton(text="👥 Xodimlar"),
-            KeyboardButton(text="🗑 Vazifani oʻchirish")
-        ],
-
-        [
-            KeyboardButton(text="📊 Admin oylik"),
-            KeyboardButton(text="💰 Kassir oylik")
-        ],
-
-        [
-            KeyboardButton(text="🗄 Arxiv"),
-            KeyboardButton(text="📑 Guruh Report")
-        ],
-
-        [
-            KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball")
-        ]
-    ]
-
-
-# ===== ADMIN =====
-elif role == "Admin":
-
-    keyboard = [
-        [
-            KeyboardButton(text="📋 Vazifalar roʻyxati")
-        ],
-        [
-            KeyboardButton(text="📊 Admin oylik")
-        ],
-        [
-            KeyboardButton(text="📑 Guruh Report")
-        ]
-    ]
-
-    # ===== ADMIN =====
-    if role == "Admin":
+    # ===== OWNER =====
+    if role == "Owner":
 
         keyboard = [
             [
+                KeyboardButton(text="➕ Vazifa qoʻshish"),
                 KeyboardButton(text="📋 Vazifalar roʻyxati")
             ],
+
             [
-                KeyboardButton(text="📊 Admin oylik")
+                KeyboardButton(text="👥 Xodimlar"),
+                KeyboardButton(text="🗑 Vazifani oʻchirish")
             ],
+
             [
+                KeyboardButton(text="📊 Admin oylik"),
+                KeyboardButton(text="💰 Kassir oylik")
+            ],
+
+            [
+                KeyboardButton(text="🗄 Arxiv"),
                 KeyboardButton(text="📑 Guruh Report")
+            ],
+
+            [
+                KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball")
             ]
         ]
 
+    # ===== ADMIN =====
+    elif role == "Admin":
+
+        keyboard = [
+            [KeyboardButton(text="📋 Vazifalar roʻyxati")],
+            [KeyboardButton(text="📊 Admin oylik")],
+            [KeyboardButton(text="📑 Guruh Report")]
+        ]
 
     # ===== KASSIR =====
     elif role == "Kassir":
 
         keyboard = [
-            [
-                KeyboardButton(text="📋 Vazifalar roʻyxati")
-            ],
-            [
-                KeyboardButton(text="💰 Kassir oylik")
-            ]
+            [KeyboardButton(text="📋 Vazifalar roʻyxati")],
+            [KeyboardButton(text="💰 Kassir oylik")]
         ]
-
 
     # ===== SANITAR =====
     elif role == "Sanitar":
 
         keyboard = [
-            [
-                KeyboardButton(text="📋 Vazifalar roʻyxati")
-            ]
+            [KeyboardButton(text="📋 Vazifalar roʻyxati")]
         ]
-
 
     # ===== MANAGER =====
     elif role == "Manager":
 
         keyboard = [
-
             [
                 KeyboardButton(text="➕ Vazifa qoʻshish"),
                 KeyboardButton(text="📋 Vazifalar roʻyxati")
@@ -124,11 +89,8 @@ elif role == "Admin":
     else:
 
         keyboard = [
-            [
-                KeyboardButton(text="📋 Vazifalar roʻyxati")
-            ]
+            [KeyboardButton(text="📋 Vazifalar roʻyxati")]
         ]
-
 
     return ReplyKeyboardMarkup(
         keyboard=keyboard,
