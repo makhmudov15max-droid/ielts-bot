@@ -85,7 +85,9 @@ def get_role(user_id):
     return user.get("role")
 
 
-def check_user_access(user_id):
+# ================= ACCESS TEKSHIRUV =================
+
+def check_user_access(user_id: int) -> bool:
 
     user_info = USERS_ROLES.get(
         str(user_id)
@@ -106,6 +108,11 @@ def check_user_access(user_id):
         None,
         "rejected"
     ]:
+        return False
+
+    if user_info.get(
+        "name"
+    ) is None:
         return False
 
     return True
