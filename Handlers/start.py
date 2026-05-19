@@ -1,6 +1,4 @@
 import asyncio
-import json
-import os
 from calculators.cashier_calc import calculate_cashier_salary
 from Handlers.states import CashierSalaryStates
 from datetime import datetime, timedelta, timezone
@@ -9,7 +7,18 @@ from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from calculators.admin_calc import calculate_admin_salary
 import config  
-from Keyboards.main_menu import get_main_menu
+from Keyboards.main_menu import (
+    main_menu_keyboard, 
+    task_type_keyboard, 
+    days_keyboard, 
+    frequency_keyboard, 
+    get_inline_days_keyboard,
+    get_admin_approval_keyboard,
+    proof_type_keyboard,
+    assign_role_keyboard,
+    get_task_complete_keyboard,
+    get_remove_tasks_keyboard
+)
 from Handlers.states import TaskStates
 
 start_router = Router()
@@ -20,87 +29,67 @@ except ValueError:
     ADMIN_ID = 6500594896  
 
 # Vaqtincha xotira bazasi (Rollar va Ismlarni saqlaydi)
-USERS_FILE = "users.json"
-
-def load_users():
-
-    if os.path.exists(USERS_FILE):
-
-        with open(
-            USERS_FILE,
-            "r",
-            encoding="utf-8"
-        ) as f:
-
-            return json.load(f)
-
-    return {
-        str(ADMIN_ID):{
-            "role":"Admin",
-            "name":"Asosiy Administrator"
-        }
-    }
-
-
-def save_users():
-
-    with open(
-        USERS_FILE,
-        "w",
-        encoding="utf-8"
-    ) as f:
-
-        json.dump(
-            USERS_ROLES,
-            f,
-            ensure_ascii=False,
-            indent=4
-        )
-
-
-USERS_ROLES=load_users()
+USERS_ROLES = {
+    ADMIN_ID: {"role": "Admin", "name": "Asosiy Administrator"}
+}
 
 # Vazifalarni saqlash bazasi
 TASKS_DATABASE = []
 
 @start_router.message(CommandStart())
 async def command_start_handler(message: types.Message):
-    user_id = str(message.from_user.id)
+    user_id = message.from_user.id
     user_info = USERS_ROLES.get(user_id)
-
+    
     if isinstance(user_info, dict) and user_info.get("role") == "rejected":
-        await message.answer(
-            "Assalomu alaykum. Afsuski, tizimdan foydalanish soʻrovingiz administrator tomonidan rad etilgan."
-        )
+        await message.answer("Assalomu alaykum. Afsuski, tizimdan foydalanish soʻrovingiz administrator tomonidan rad etilgan.")
         return
 
     if user_id not in USERS_ROLES:
         await message.answer(
             text="Assalomu alaykum, Edu_Control tizimiga xush kelibsiz!\n"
-                 "Tizim administratoriga ruxsat soʻrovi yuborildi."
+                 "Tizim administratoriga ruxsat soʻrovi yuborildi. Iltimos, soʻrovingiz tasdiqlanishini kuting. Rahmat!"
         )
+        
+        full_name = message.from_user.full_name
+        if message.from_user.username:
+            raw_username = message.from_user.username
+            user_profile_link = f"https://t.me/{raw_username}"
+            username_text = f"@{raw_username} (<a href='{user_profile_link}'>Profilga oʻtish</a>)"
+        else:
+            username_text = f"Mavjud emas (<a href='tg://user?id={user_id}'>Profilga oʻtish</a>)"
+        
+        admin_text = (
+            f"🔔 <b>Yangi foydalanuvchi ruxsat soʻramoqda!</b>\n\n"
+            f"👤 <b>Ism va familiya:</b> {full_name}\n"
+            f"🆔 <b>ID raqami:</b> <code>{user_id}</code>\n"
+            f"🌐 <b>Telegram sahifasi:</b> {username_text}\n\n"
+            f"Iltimos, ushbu foydalanuvchiga tegishli unvonni (rol) bering yoki soʻrovni rad eting 👇"
+        )
+        
+        try:
+            await message.bot.send_message(
+                chat_id=ADMIN_ID,
+                text=admin_text,
+                parse_mode="HTML",
+                disable_web_page_preview=True,
+                reply_markup=get_admin_approval_keyboard(user_id)
+            )
+        except Exception as e:
+            print(f"❌ Administratorga xabar yuborishda muammo: {e}")
         return
 
     if isinstance(user_info, dict) and user_info.get("name") is None:
-        await message.answer(
-            "Iltimos, tizimda roʻyxatdan oʻtish uchun ism va familiyangizni kiriting:"
-        )
+        await message.answer("Iltimos, tizimda roʻyxatdan oʻtish uchun ism va familiyangizni kiriting:")
         return
 
-    saved_name = user_info.get(
-        "name",
-        message.from_user.full_name
-    )
-
-    user_role = user_info.get("role")
-
+    saved_name = user_info.get("name", message.from_user.full_name)
     await message.answer(
-        text=f"Assalomu alaykum, {saved_name}! "
-             f"Tizimga xush kelibsiz.\n"
+        text=f"Assalomu alaykum, {saved_name}! Tizimga xush kelibsiz.\n"
              f"Quyidagi tugmalar orqali botni boshqarishingiz mumkin 👇",
-
-        reply_markup=get_main_menu(user_role)
+        reply_markup=main_menu_keyboard
     )
+
 
 # ================= CALLBACK HANDLERS (ADMIN APPROVAL) =================
 
@@ -110,35 +99,25 @@ async def admin_approve_callback(call: types.CallbackQuery):
         data_parts = call.data.split("_")
         role = data_parts[1]
         target_user_id = int(data_parts[2])
-
-        USERS_ROLES[str(target_user_id)] = {
-            "role": role,
-            "name": None
-        }
-
-        save_users()
-
+        
+        USERS_ROLES[target_user_id] = {"role": role, "name": None}
+        
         await call.message.edit_text(
             text=f"{call.message.text}\n\n✅ <b>Tasdiqlandi!</b> Foydalanuvchiga <b>{role}</b> unvoni muvaffaqiyatli berildi.",
             parse_mode="HTML"
         )
-
-        user_text = (
-            f'Sizga administrator tomonidan "{role}" '
-            f'unvoni berildi.\n'
-            f'Iltimos ism va familiyangizni kiriting:'
-        )
-
+        
+        user_text = f"Sizga administrator tomonidan \"{role}\" unvoni berildi. Iltimos, tizimda foydalanish uchun ism va familiyangizni kiriting:"
         await call.bot.send_message(
             chat_id=target_user_id,
             text=user_text,
-            reply_markup=types.ReplyKeyboardRemove()
+            reply_markup=types.ReplyKeyboardRemove()  
         )
-
+            
     except Exception as e:
-        print(f"❌ Tasdiqlash xatosi: {e}")
-
+        print(f"❌ Tasdiqlash jarayonida xatolik: {e}")
     await call.answer()
+
 
 @start_router.callback_query(F.data.startswith("reject_"))
 async def admin_reject_callback(call: types.CallbackQuery):
@@ -165,14 +144,10 @@ async def get_user_real_name_handler(message: types.Message):
     first_name = input_text.split()[0]
     
     USERS_ROLES[user_id]["name"] = input_text
-    save_users()
     await message.answer(
-    text=f"Hurmatli {first_name}, siz muvaffaqiyatli roʻyxatdan oʻtdingiz. Endi bot imkoniyatlaridan foydalanishingiz mumkin.",
-
-    reply_markup=get_main_menu(
-        USERS_ROLES[user_id]["role"]
+        text=f"Hurmatli {first_name}, siz muvaffaqiyatli roʻyxatdan oʻtdingiz. Endi bot imkoniyatlaridan foydalanishingiz mumkin.",
+        reply_markup=main_menu_keyboard
     )
-)
 
 
 # ================= VAZIFA YARATISH LOGIKASI =================
@@ -705,7 +680,6 @@ async def save_new_role_callback(call: types.CallbackQuery, state: FSMContext):
     
     if target_user_id in USERS_ROLES:
         USERS_ROLES[target_user_id]["role"] = new_role
-        save_users()
         staff_name = USERS_ROLES[target_user_id]["name"]
         
         await call.message.edit_text(
@@ -721,7 +695,7 @@ async def save_new_role_callback(call: types.CallbackQuery, state: FSMContext):
                 chat_id=target_user_id,
                 text=f"🔔 <b>Diqqat!</b> Administrator tomonidan sizning lavozimingiz <b>{new_role}</b> etib belgilandi.",
                 parse_mode="HTML",
-                reply_markup=get_main_menu(new_role)
+                reply_markup=main_menu_keyboard
             )
         except Exception as e:
             print(f"Xodimni rolda ogohlantirishda xatolik: {e}")
@@ -742,7 +716,6 @@ async def fire_staff_callback(call: types.CallbackQuery, state: FSMContext):
         
         # Rolni 'rejected' holatiga o'tkazish orqali kirish imkoniyatini yopamiz
         USERS_ROLES[target_user_id]["role"] = "rejected"
-        save_users()
         
         await call.message.edit_text(
             text=f"❌ <b>Xodim botdan chetlashtirildi!</b>\n\n"
@@ -880,7 +853,7 @@ async def save_archive_role_callback(call: types.CallbackQuery, state: FSMContex
                     text=f"🎉 <b>Xushxabar!</b> Administrator sizni arxivdan chiqardi va joriy lavozimingizni <b>{new_role}</b> etib belgiladi.\n"
                          f"Bot imkoniyatlaridan toʻliq foydalanishingiz mumkin!",
                     parse_mode="HTML",
-                    reply_markup=get_main_menu(new_role)
+                    reply_markup=main_menu_keyboard
                 )
             else:
                 # Ismi yo'q bo'lsa oldingi mantiq asosida ism so'raymiz
