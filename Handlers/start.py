@@ -217,7 +217,12 @@ async def admin_approve_callback(call: types.CallbackQuery):
 async def admin_reject_callback(call: types.CallbackQuery):
     try:
         target_user_id = int(call.data.split("_")[1])
-        USERS_ROLES[target_user_id] = {"role": "rejected", "name": None}
+        USERS_ROLES[str(target_user_id)] = {
+            "role":"rejected",
+            "name":None
+        }
+
+        save_users()
         
         await call.message.edit_text(
             text=f"{call.message.text}\n\n❌ <b>Soʻrov rad etildi!</b> Foydalanuvchi bloklandi.",
