@@ -21,16 +21,28 @@ except ValueError:
 
 # ==================== 📊 JONLI GOOGLE SHEETS ULASH TIZIMI ====================
 try:
-    client = gspread.service_account(
-        filename="google_creds.json"
-    )
+    # Railway Variables ichidagi GOOGLE_CREDS ni olish
+    creds_json = os.getenv("GOOGLE_CREDS")
 
+    if not creds_json:
+        raise Exception("GOOGLE_CREDS topilmadi!")
+
+    creds = json.loads(creds_json)
+
+    # Service account yaratish
+    client = gspread.service_account_from_dict(creds)
+
+    # Jadval va sahifa
     sheet = client.open("EduControl").worksheet("Ustozlar")
 
-    print("Google Sheets muvaffaqiyatli ulandi")
+    print("✅ Google Sheets muvaffaqiyatli ulandi!")
+
+    # Test uchun bir marta o‘qib ko‘ramiz
+    test_data = sheet.get_all_values()
+    print(f"📊 Topilgan qatorlar soni: {len(test_data)}")
 
 except Exception as e:
-    print(f"Google ulanish xatosi: {e}")
+    print(f"❌ Google ulanish xatosi: {e}")
     sheet = None
 # ==============================================================================
 
