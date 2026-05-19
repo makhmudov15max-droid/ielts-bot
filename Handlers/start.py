@@ -820,7 +820,7 @@ async def fire_staff_callback(call: types.CallbackQuery, state: FSMContext):
     target_user_id = int(call.data.split("_")[1])
     
     if target_user_id in USERS_ROLES:
-        staff_name = USERS_ROLES[target_user_id]["name"]
+        staff_name = USERS_ROLES[str(target_user_id)]["name"]
         
         # Rolni 'rejected' holatiga o'tkazish orqali kirish imkoniyatini yopamiz
         USERS_ROLES[str(target_user_id)]["role"]="rejected"
@@ -945,8 +945,8 @@ async def save_archive_role_callback(call: types.CallbackQuery, state: FSMContex
         save_users()
         
         # Agar foydalanuvchining ismi avval kiritilmagan bo'lsa, ism so'rash bosqichiga tayyorlaymiz
-        has_name = USERS_ROLES[target_user_id].get("name") is not None
-        display_name = USERS_ROLES[target_user_id]["name"] if has_name else "Xodim"
+        has_name = USERS_ROLES[str(target_user_id)].get("name") is not None
+        display_name = USERS_ROLES[str(target_user_id)]["name"] if has_name else "Xodim"
         
         await call.message.edit_text(
             text=f"✅ <b>Muvaffaqiyatli tiklandi!</b>\n\n"
