@@ -31,9 +31,45 @@ except ValueError:
     ADMIN_ID = 6500594896  
 
 # Vaqtincha xotira bazasi (Rollar va Ismlarni saqlaydi)
-USERS_ROLES = {
-    ADMIN_ID: {"role": "Admin", "name": "Asosiy Administrator"}
-}
+USERS_FILE = "users.json"
+
+def load_users():
+
+    if os.path.exists(USERS_FILE):
+
+        with open(
+            USERS_FILE,
+            "r",
+            encoding="utf-8"
+        ) as f:
+
+            return json.load(f)
+
+    return {
+        str(ADMIN_ID):{
+            "role":"Admin",
+            "name":"Asosiy Administrator"
+        }
+    }
+
+
+def save_users():
+
+    with open(
+        USERS_FILE,
+        "w",
+        encoding="utf-8"
+    ) as f:
+
+        json.dump(
+            USERS_ROLES,
+            f,
+            ensure_ascii=False,
+            indent=4
+        )
+
+
+USERS_ROLES=load_users()
 
 # Vazifalarni saqlash bazasi
 TASKS_DATABASE = []
@@ -103,6 +139,7 @@ async def admin_approve_callback(call: types.CallbackQuery):
         target_user_id = int(data_parts[2])
         
         USERS_ROLES[target_user_id] = {"role": role, "name": None}
+        save_users()
         
         await call.message.edit_text(
             text=f"{call.message.text}\n\n✅ <b>Tasdiqlandi!</b> Foydalanuvchiga <b>{role}</b> unvoni muvaffaqiyatli berildi.",
@@ -146,6 +183,7 @@ async def get_user_real_name_handler(message: types.Message):
     first_name = input_text.split()[0]
     
     USERS_ROLES[user_id]["name"] = input_text
+    save_users()
     await message.answer(
         text=f"Hurmatli {first_name}, siz muvaffaqiyatli roʻyxatdan oʻtdingiz. Endi bot imkoniyatlaridan foydalanishingiz mumkin.",
         reply_markup=main_menu_keyboard
@@ -682,6 +720,7 @@ async def save_new_role_callback(call: types.CallbackQuery, state: FSMContext):
     
     if target_user_id in USERS_ROLES:
         USERS_ROLES[target_user_id]["role"] = new_role
+        save_users()
         staff_name = USERS_ROLES[target_user_id]["name"]
         
         await call.message.edit_text(
@@ -718,6 +757,7 @@ async def fire_staff_callback(call: types.CallbackQuery, state: FSMContext):
         
         # Rolni 'rejected' holatiga o'tkazish orqali kirish imkoniyatini yopamiz
         USERS_ROLES[target_user_id]["role"] = "rejected"
+        save_users()
         
         await call.message.edit_text(
             text=f"❌ <b>Xodim botdan chetlashtirildi!</b>\n\n"
