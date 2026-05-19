@@ -164,7 +164,7 @@ async def get_user_real_name_handler(message: types.Message):
     input_text = message.text.strip()
     first_name = input_text.split()[0]
     
-    USERS_ROLES[user_id]["name"] = input_text
+    USERS_ROLES[str(user_id)]["name"]=input_text
     save_users()
     await message.answer(
     text=f"Hurmatli {first_name}, siz muvaffaqiyatli roʻyxatdan oʻtdingiz. Endi bot imkoniyatlaridan foydalanishingiz mumkin.",
@@ -178,7 +178,22 @@ async def get_user_real_name_handler(message: types.Message):
 # ================= VAZIFA YARATISH LOGIKASI =================
 
 def check_user_access(user_id: int) -> bool:
-    user_info = USERS_ROLES.get(user_id)
+
+    user_info = USERS_ROLES.get(str(user_id))
+
+    if not user_info:
+        return False
+
+    if not isinstance(user_info, dict):
+        return False
+
+    if user_info.get("role") in [None, "rejected"]:
+        return False
+
+    if user_info.get("name") is None:
+        return False
+
+    return True
     if not user_info or not isinstance(user_info, dict): return False
     if user_info.get("role") in [None, "rejected"] or user_info.get("name") is None: return False
     return True
@@ -647,7 +662,7 @@ async def view_employees_handler(message: types.Message):
 @start_router.callback_query(F.data.startswith("editstaff_"))
 async def process_edit_staff_callback(call: types.CallbackQuery, state: FSMContext):
     target_user_id = int(call.data.split("_")[1])
-    staff_info = USERS_ROLES.get(target_user_id)
+    staff_info = USERS_ROLES.get(str(target_user_id))
     
     if not staff_info:
         await call.answer(text="⚠️ Bu xodim tizimdan topilmadi!", show_alert=True)
@@ -703,8 +718,8 @@ async def save_new_role_callback(call: types.CallbackQuery, state: FSMContext):
     new_role = data_parts[1]
     target_user_id = int(data_parts[2])
     
-    if target_user_id in USERS_ROLES:
-        USERS_ROLES[target_user_id]["role"] = new_role
+    if str(target_user_id) in USERS_ROLES:
+        USERS_ROLES[str(target_user_id)]["role"] = new_role
         save_users()
         staff_name = USERS_ROLES[target_user_id]["name"]
         
@@ -737,11 +752,13 @@ async def save_new_role_callback(call: types.CallbackQuery, state: FSMContext):
 async def fire_staff_callback(call: types.CallbackQuery, state: FSMContext):
     target_user_id = int(call.data.split("_")[1])
     
-    if target_user_id in USERS_ROLES:
-        staff_name = USERS_ROLES[target_user_id]["name"]
-        
-        # Rolni 'rejected' holatiga o'tkazish orqali kirish imkoniyatini yopamiz
-        USERS_ROLES[target_user_id]["role"] = "rejected"
+    if str(target_user_id) in USERS_ROLES:
+
+        staff_name = USERS_ROLES[str(target_user_id)]["name"]
+
+        # Rolni rejected qilamiz
+        USERS_ROLES[str(target_user_id)]["role"] = "rejected"
+
         save_users()
         
         await call.message.edit_text(
@@ -855,9 +872,8 @@ async def save_archive_role_callback(call: types.CallbackQuery, state: FSMContex
     new_role = data_parts[1]
     target_user_id = int(data_parts[2])
     
-    if target_user_id in USERS_ROLES:
-        # Rolni yangilaymiz (Arxivdan avtomatik chiqadi)
-        USERS_ROLES[target_user_id]["role"] = new_role
+    if str(target_user_id) in USERS_ROLES:
+        USERS_ROLES[str(target_user_id)]["role"] = new_role
         
         # Agar foydalanuvchining ismi avval kiritilmagan bo'lsa, ism so'rash bosqichiga tayyorlaymiz
         has_name = USERS_ROLES[target_user_id].get("name") is not None
