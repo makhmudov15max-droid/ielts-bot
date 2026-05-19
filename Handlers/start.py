@@ -515,7 +515,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             # Kunlik bir martalik vazifa bajarilgach ro'yxatdan o'chadi
             if task.get("task_type") == "Kunlik (Bir martalik)":
                 TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
-        await state.clear()
+            await state.clear()
         
     elif proof_required == "Video message" and message.video_note:
         await message.answer(text="Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.", reply_markup=get_main_menu(role)
@@ -533,7 +533,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             
             if task.get("task_type") == "Kunlik (Bir martalik)":
                 TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
-        await state.clear()
+            await state.clear()
         
     else:
         if proof_required == "Photo":
