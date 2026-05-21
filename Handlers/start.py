@@ -183,7 +183,7 @@ async def command_start_handler(message: types.Message):
 # ================= CALLBACK HANDLERS (ADMIN APPROVAL) =================
 
 @start_router.callback_query(F.data.startswith("approve_"))
-async def admin_approve_callback(call: types.CallbackQuery):
+async def admin_approve_callback(call: types.CallbackQuery, state: FSMContext):  # <-- state qo'shildi
     try:
         data_parts = call.data.split("_")
         role = data_parts[1]
@@ -191,15 +191,17 @@ async def admin_approve_callback(call: types.CallbackQuery):
         
         USERS_ROLES[str(target_user_id)] = {
             "role": role,
-            "name": None
+            "name": None  # ism hali yo'q
         }
-
         save_users()
         
         await call.message.edit_text(
             text=f"{call.message.text}\n\n✅ <b>Tasdiqlandi!</b> Foydalanuvchiga <b>{role}</b> unvoni muvaffaqiyatli berildi.",
             parse_mode="HTML"
         )
+        
+        # 🌟 YANGI: State ni ism kutish holatiga o'tkazamiz
+        await state.set_state(TaskStates.waiting_for_user_name)
         
         user_text = f"Sizga administrator tomonidan \"{role}\" unvoni berildi. Iltimos, tizimda foydalanish uchun ism va familiyangizni kiriting:"
         await call.bot.send_message(
@@ -211,7 +213,6 @@ async def admin_approve_callback(call: types.CallbackQuery):
     except Exception as e:
         print(f"❌ Tasdiqlash jarayonida xatolik: {e}")
     await call.answer()
-
 
 @start_router.callback_query(F.data.startswith("reject_"))
 async def admin_reject_callback(call: types.CallbackQuery):
