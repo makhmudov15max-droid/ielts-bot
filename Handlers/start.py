@@ -40,8 +40,15 @@ def load_users():
     try:
         if os.path.exists(USERS_FILE):
             with open(USERS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-
+                data = json.load(f)
+                # Owner ni tekshirish va qo'shish
+                if str(ADMIN_ID) not in data:
+                    data[str(ADMIN_ID)] = {
+                        "role": "Owner",
+                        "name": "Baxtiyorjon"
+                    }
+                    save_users(data)
+                return data
     except Exception as e:
         print(f"Users yuklash xatosi: {e}")
 
@@ -53,21 +60,12 @@ def load_users():
     }
 
 
-def save_users():
+def save_users(data=None):
     try:
-        with open(
-            USERS_FILE,
-            "w",
-            encoding="utf-8"
-        ) as f:
-
-            json.dump(
-                USERS_ROLES,
-                f,
-                ensure_ascii=False,
-                indent=4
-            )
-
+        if data is None:
+            data = USERS_ROLES
+        with open(USERS_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
     except Exception as e:
         print(f"Users saqlash xatosi: {e}")
 
@@ -76,45 +74,22 @@ USERS_ROLES = load_users()
 
 
 def get_role(user_id):
-
-    user = USERS_ROLES.get(
-        str(user_id),
-        {}
-    )
-
+    user = USERS_ROLES.get(str(user_id), {})
     return user.get("role")
 
 
 # ================= ACCESS TEKSHIRUV =================
 
 def check_user_access(user_id: int) -> bool:
-
-    user_info = USERS_ROLES.get(
-        str(user_id)
-    )
-
+    user_info = USERS_ROLES.get(str(user_id))
     if not user_info:
         return False
-
-    if not isinstance(
-        user_info,
-        dict
-    ):
+    if not isinstance(user_info, dict):
         return False
-
-    if user_info.get(
-        "role"
-    ) in [
-        None,
-        "rejected"
-    ]:
+    if user_info.get("role") in [None, "rejected"]:
         return False
-
-    if user_info.get(
-        "name"
-    ) is None:
+    if user_info.get("name") is None:
         return False
-
     return True
 
 # ================= TASKS JSON TIZIMI =================
@@ -144,8 +119,8 @@ TASKS_DATABASE = load_tasks()
 
 @start_router.message(CommandStart())
 async def command_start_handler(message: types.Message):
-    user_id = message.from_user.id
-    user_info = USERS_ROLES.get(str(user_id))
+    user_id = str(message.from_user.id)  # <-- string ga o'tkazish
+    user_info = USERS_ROLES.get(user_id)
     
     if isinstance(user_info, dict) and user_info.get("role") == "rejected":
         await message.answer("Assalomu alaykum. Afsuski, tizimdan foydalanish soʻrovingiz administrator tomonidan rad etilgan.")
@@ -179,17 +154,13 @@ async def command_start_handler(message: types.Message):
                 text=admin_text,
                 parse_mode="HTML",
                 disable_web_page_preview=True,
-                reply_markup=get_admin_approval_keyboard(user_id)
+                reply_markup=get_admin_approval_keyboard(int(user_id))
             )
         except Exception as e:
             print(f"❌ Administratorga xabar yuborishda muammo: {e}")
         return
 
-    saved_name = user_info.get(
-        "name",
-        message.from_user.full_name
-    )
-
+    saved_name = user_info.get("name", message.from_user.full_name)
     role = user_info.get("role")
 
     await message.answer(
@@ -204,7 +175,7 @@ async def command_start_handler(message: types.Message):
 # ================= CALLBACK HANDLERS (ADMIN APPROVAL) =================
 
 @start_router.callback_query(F.data.startswith("approve_"))
-async def admin_approve_callback(call: types.CallbackQuery, state: FSMContext):  # <-- state qo'shildi
+async def admin_approve_callback(call: types.CallbackQuery, state: FSMContext):
     try:
         data_parts = call.data.split("_")
         role = data_parts[1]
@@ -212,7 +183,7 @@ async def admin_approve_callback(call: types.CallbackQuery, state: FSMContext): 
         
         USERS_ROLES[str(target_user_id)] = {
             "role": role,
-            "name": None  # ism hali yo'q
+            "name": None
         }
         save_users()
         
@@ -221,7 +192,6 @@ async def admin_approve_callback(call: types.CallbackQuery, state: FSMContext): 
             parse_mode="HTML"
         )
         
-        # 🌟 YANGI: State ni ism kutish holatiga o'tkazamiz
         await state.set_state(TaskStates.waiting_for_user_name)
         
         user_text = f"Sizga administrator tomonidan \"{role}\" unvoni berildi. Iltimos, tizimda foydalanish uchun ism va familiyangizni kiriting:"
@@ -269,11 +239,11 @@ async def admin_reject_callback(call: types.CallbackQuery):
     ).get("name") is None
 )
 async def get_user_real_name_handler(message: types.Message):
-    user_id = message.from_user.id
+    user_id = str(message.from_user.id)
     input_text = message.text.strip()
     first_name = input_text.split()[0]
     
-    USERS_ROLES[str(user_id)]["name"] = input_text
+    USERS_ROLES[user_id]["name"] = input_text
 
     save_users()
 
@@ -282,7 +252,7 @@ async def get_user_real_name_handler(message: types.Message):
              f"Endi bot imkoniyatlaridan foydalanishingiz mumkin.",
 
         reply_markup=get_main_menu(
-            USERS_ROLES[str(user_id)]["role"]
+            USERS_ROLES[user_id]["role"]
         )
     )
 
@@ -336,10 +306,10 @@ async def get_target_role_handler(message: types.Message, state: FSMContext):
 # 4-QADAM: Vazifa nomi soʻraladi
 @start_router.callback_query(TaskStates.waiting_for_target_user, F.data.startswith("assignuser_"))
 async def process_target_user_callback(call: types.CallbackQuery, state: FSMContext):
-    target_user_id = int(call.data.split("_")[1])
+    target_user_id = call.data.split("_")[1]
     employee_name = USERS_ROLES.get(target_user_id, {}).get("name", "Noma'lum xodim")
     
-    await state.update_data(assigned_to_id=target_user_id, assigned_to_name=employee_name)
+    await state.update_data(assigned_to_id=int(target_user_id), assigned_to_name=employee_name)
     
     await call.message.delete()
     await call.message.answer(text="Iltimos, vazifa nomini kiriting:", reply_markup=types.ReplyKeyboardRemove())
@@ -359,7 +329,6 @@ async def get_task_name_handler(message: types.Message, state: FSMContext):
         await message.answer(text="Vazifa haftaning qaysi kunlari foydalanuvchiga koʻrinsin?", reply_markup=days_keyboard)
         await state.set_state(TaskStates.waiting_for_days)
 
-# 🌟 YANGI QADAM: Kunlik vazifaning izohini qabul qilish va isbot turiga oʻtkazish
 @start_router.message(TaskStates.waiting_for_description)
 async def get_task_description_handler(message: types.Message, state: FSMContext):
     await state.update_data(task_description=message.text.strip())
@@ -369,7 +338,6 @@ async def get_task_description_handler(message: types.Message, state: FSMContext
 
 # ================= DOIMIY (MUNTAZAM) VAZIFA KUN / VAQT LOGIKALARI =================
 
-# 6-QADAM (A-variant): Standart kunlar tanlanganda
 @start_router.message(TaskStates.waiting_for_days, F.text.in_(["Toq kunlar", "Juft kunlar", "Haftada 6 kun"]))
 async def get_task_days_handler(message: types.Message, state: FSMContext):
     day_mapping = {"Toq kunlar": "ODD", "Juft kunlar": "EVEN", "Haftada 6 kun": "6 days a week"}
@@ -377,7 +345,6 @@ async def get_task_days_handler(message: types.Message, state: FSMContext):
     await message.answer(text="Vazifa kuniga necha marta koʻrinishi kerak?", reply_markup=frequency_keyboard)
     await state.set_state(TaskStates.waiting_for_frequency)
 
-# 6-QADAM (B-variant): Maxsus kunlar (Inline)
 @start_router.message(TaskStates.waiting_for_days, F.text == "Boshqa kunlar")
 async def other_days_handler(message: types.Message, state: FSMContext):
     await state.update_data(selected_days=[])
@@ -407,7 +374,6 @@ async def days_done_callback(call: types.CallbackQuery, state: FSMContext):
     await state.set_state(TaskStates.waiting_for_frequency)
     await call.answer()
 
-# 7-QADAM (1-variant): Kuniga 1 marta
 @start_router.message(TaskStates.waiting_for_frequency, F.text == "Kuniga 1 marta")
 async def once_frequency_handler(message: types.Message, state: FSMContext):
     await state.update_data(task_frequency="Once")
@@ -424,7 +390,6 @@ async def get_once_time_handler(message: types.Message, state: FSMContext):
     await message.answer(text="Ushbu vazifani yakunlash uchun qanday turdagi isbot talab etiladi?", reply_markup=proof_type_keyboard)
     await state.set_state(TaskStates.waiting_for_proof_type)
 
-# 7-QADAM (2-variant): Bir necha marta
 @start_router.message(TaskStates.waiting_for_frequency, F.text == "Bir necha marta")
 async def multiple_frequency_handler(message: types.Message, state: FSMContext):
     await state.update_data(task_frequency="Multiple times")
@@ -459,7 +424,7 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
         "id": task_id,
         "task_type": user_data.get("task_type"),
         "task_name": user_data.get("task_name"),
-        "task_description": user_data.get("task_description", "Mavjud emas"), # Faqat kunlikda bo'ladi
+        "task_description": user_data.get("task_description", "Mavjud emas"),
         "task_days": user_data.get("task_days", "Kunlik vazifa"), 
         "task_frequency": user_data.get("task_frequency", "Bir martalik"),
         "task_times": times_list,
@@ -470,9 +435,8 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
     }
     
     TASKS_DATABASE.append(new_task)
-    save_tasks()  # <-- JSON ga saqlash
+    save_tasks()
     
-    # Administrator hisoboti
     report_text = (
         f"🎉 <b>Yangi vazifa muvaffaqiyatli yaratildi!</b>\n\n"
         f"📋 <b>Turi:</b> {new_task['task_type']}\n"
@@ -491,19 +455,12 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
         f"👤 <b>Masʻul xodim:</b> {new_task['assigned_to_name']}"
     )
     
-    await message.answer(
-        text=report_text,
-        parse_mode="HTML"
-    )
+    await message.answer(text=report_text, parse_mode="HTML")
 
     role = USERS_ROLES[str(message.from_user.id)]["role"]
 
-    await message.answer(
-        text="Asosiy menyuga qaytdingiz.",
-        reply_markup=get_main_menu(role)
-    )
+    await message.answer(text="Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
     
-    # Xodimga xabar yuborish qismi (Kunlik bo'lsa darhol inline tugma bilan boradi)
     try:
         if is_daily:
             employee_text = (
@@ -595,9 +552,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     GROUP_CHAT_ID = -5226036627  
     
     if proof_required == "Photo" and message.photo:
-
         role = USERS_ROLES[str(message.from_user.id)]["role"]
-
         await message.answer(
             text="Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
             reply_markup=get_main_menu(role)
@@ -614,16 +569,13 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             await message.bot.send_message(chat_id=GROUP_CHAT_ID, text=group_text, parse_mode="HTML")
             await message.bot.send_photo(chat_id=GROUP_CHAT_ID, photo=message.photo[-1].file_id)
             
-            # Kunlik bir martalik vazifa bajarilgach ro'yxatdan o'chadi
             if task.get("task_type") == "Kunlik (Bir martalik)":
                 TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
-                save_tasks()  # <-- JSON dan o'chirish
+                save_tasks()
         await state.clear()
         
     elif proof_required == "Video message" and message.video_note:
-
         role = USERS_ROLES[str(message.from_user.id)]["role"]
-
         await message.answer(
             text="Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
             reply_markup=get_main_menu(role)
@@ -642,7 +594,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             
             if task.get("task_type") == "Kunlik (Bir martalik)":
                 TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
-                save_tasks()  # <-- JSON dan o'chirish
+                save_tasks()
         await state.clear()
         
     else:
@@ -668,11 +620,10 @@ async def auto_task_scheduler(bot):
             if current_time_str == "00:00":
                 for task in TASKS_DATABASE:
                     task["sent_today_times"] = []
-                save_tasks()  # <-- JSON ga saqlash
+                save_tasks()
             
             if current_time_str != last_checked_minute:
                 for task in TASKS_DATABASE:
-                    # Kunlik vazifalar avtomatik taymer orqali qayta yuborilmaydi (ular bir martalik)
                     if task.get("task_type") == "Kunlik (Bir martalik)":
                         continue
                         
@@ -700,7 +651,7 @@ async def auto_task_scheduler(bot):
                                 reply_markup=get_task_complete_keyboard(task["id"])
                             )
                             task["sent_today_times"].append(current_time_str)
-                            save_tasks()  # <-- JSON ga saqlash
+                            save_tasks()
                 last_checked_minute = current_time_str
         except Exception as e:
             print(f"Taymer tizimida xato: {e}")
@@ -730,7 +681,7 @@ async def process_remove_task_callback(call: types.CallbackQuery):
     
     if task_to_remove:
         TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
-        save_tasks()  # <-- JSON dan o'chirish
+        save_tasks()
         await call.message.edit_text(
             text=f"🗑 <b>Vazifa muvaffaqiyatli oʻchirildi!</b>\n\n📌 <b>Nomi:</b> {task_to_remove['task_name']}\n👤 <b>Masʻul boʻlgan xodim:</b> {task_to_remove['assigned_to_name']}",
             parse_mode="HTML"
@@ -741,31 +692,21 @@ async def process_remove_task_callback(call: types.CallbackQuery):
 
 @start_router.callback_query(F.data == "remove_cancel")
 async def cancel_remove_callback(call: types.CallbackQuery):
-
     await call.message.delete()
-
     role = USERS_ROLES[str(call.from_user.id)]["role"]
-
-    await call.message.answer(
-        text="O‘chirish jarayoni bekor qilindi.",
-        reply_markup=get_main_menu(role)
-    )
-
+    await call.message.answer(text="O‘chirish jarayoni bekor qilindi.", reply_markup=get_main_menu(role))
     await call.answer()
 
-# ==============================================================================
-# 🌟 YANGI INTEGRATSIYA: XODIMLAR PANELINI MATN SIFATIDA CHIQARISH VA TAHRIRLASH
-# ==============================================================================
 
-# 1. "Xodimlar" tugmasi bosilganda ro'yxatni CHATga matn ko'rinishida chiqarish
+# ================= XODIMLAR PANELI =================
+
 @start_router.message(F.text == "👥 Xodimlar")
 async def view_employees_handler(message: types.Message):
     if not check_user_access(message.from_user.id): return
     
-    # Faqat ismi kiritilgan va tizimda rad etilmagan faol xodimlarni saralash (Asosiy Admin ro'yxatda chiqmaydi)
     active_staff = {
         u_id: u_info for u_id, u_info in USERS_ROLES.items() 
-        if isinstance(u_info, dict) and u_info.get("name") and u_info.get("role") != "rejected" and u_id != ADMIN_ID
+        if isinstance(u_info, dict) and u_info.get("name") and u_info.get("role") != "rejected" and u_id != str(ADMIN_ID)
     }
     
     if not active_staff:
@@ -776,9 +717,7 @@ async def view_employees_handler(message: types.Message):
     inline_kb = []
     
     for idx, (u_id, u_info) in enumerate(active_staff.items(), 1):
-        # Matn ko'rinishida ism-familiya va lavozimi chatga chiqadi
         response_text += f"{idx}. 👤 <b>{u_info['name']}</b> — 🎖 <i>{u_info['role']}</i>\n"
-        # Tahrirlash tugmasini pastdan chiroyli inline ko'rinishda taqdim etamiz
         inline_kb.append([types.InlineKeyboardButton(text=f"⚙️ {u_info['name']}", callback_data=f"editstaff_{u_id}")])
         
     response_text += "\n<i>Tahrirlash yoki botdan chetlashtirish uchun quyidagi tugmalardan kerakli xodimni tanlang:</i>"
@@ -790,11 +729,10 @@ async def view_employees_handler(message: types.Message):
     )
 
 
-# 2. Ro'yxatdagi xodim ustiga bosilganda variantlarni ko'rsatish (Lavozim yoki Chetlashtirish)
 @start_router.callback_query(F.data.startswith("editstaff_"))
 async def process_edit_staff_callback(call: types.CallbackQuery, state: FSMContext):
-    target_user_id = int(call.data.split("_")[1])
-    staff_info = USERS_ROLES.get(str(target_user_id))
+    target_user_id = call.data.split("_")[1]
+    staff_info = USERS_ROLES.get(target_user_id)
     
     if not staff_info:
         await call.answer(text="⚠️ Bu xodim tizimdan topilmadi!", show_alert=True)
@@ -817,12 +755,10 @@ async def process_edit_staff_callback(call: types.CallbackQuery, state: FSMConte
     await call.answer()
 
 
-# 3. Lavozimni o'zgartirish tugmasi bosilganda tizimdagi barcha rollarni ko'rsatish
 @start_router.callback_query(F.data.startswith("rolechange_"))
 async def process_role_change_menu(call: types.CallbackQuery):
-    target_user_id = int(call.data.split("_")[1])
+    target_user_id = call.data.split("_")[1]
     
-    # Tizimingizdagi joriy rollar ro'yxati
     roles = ["Admin", "Kassir", "Sanitar", "Manager"]
     inline_kb = []
     row = []
@@ -843,18 +779,16 @@ async def process_role_change_menu(call: types.CallbackQuery):
     await call.answer()
 
 
-# 4. Yangi lavozim tanlanganda bazada saqlash va xodimga bildirishnoma yuborish
 @start_router.callback_query(F.data.startswith("setnewrole_"))
 async def save_new_role_callback(call: types.CallbackQuery, state: FSMContext):
     data_parts = call.data.split("_")
     new_role = data_parts[1]
-    target_user_id = int(data_parts[2])
+    target_user_id = data_parts[2]
     
-    if str(target_user_id) in USERS_ROLES:
-        USERS_ROLES[str(target_user_id)]["role"] = new_role
-
+    if target_user_id in USERS_ROLES:
+        USERS_ROLES[target_user_id]["role"] = new_role
         save_users()
-        staff_name = USERS_ROLES[str(target_user_id)]["name"]
+        staff_name = USERS_ROLES[target_user_id]["name"]
         
         await call.message.edit_text(
             text=f"✅ <b>Muvaffaqiyatli oʻzgartirildi!</b>\n\n"
@@ -863,10 +797,9 @@ async def save_new_role_callback(call: types.CallbackQuery, state: FSMContext):
             parse_mode="HTML"
         )
         
-        # Xodimning o'ziga ham unvoni o'zgargani haqida ogohlantirish xabari yuboramiz
         try:
             await call.bot.send_message(
-                chat_id=target_user_id,
+                chat_id=int(target_user_id),
                 text=f"🔔 <b>Diqqat!</b> Administrator tomonidan sizning lavozimingiz <b>{new_role}</b> etib belgilandi.",
                 parse_mode="HTML",
                 reply_markup=get_main_menu(new_role)
@@ -880,17 +813,13 @@ async def save_new_role_callback(call: types.CallbackQuery, state: FSMContext):
     await call.answer()
 
 
-# 5. Xodimni botdan butunlay chetlashtirish (Block qilish)
 @start_router.callback_query(F.data.startswith("firestaff_"))
 async def fire_staff_callback(call: types.CallbackQuery, state: FSMContext):
-    target_user_id = int(call.data.split("_")[1])
+    target_user_id = call.data.split("_")[1]
     
-    if str(target_user_id) in USERS_ROLES:
-        staff_name = USERS_ROLES[str(target_user_id)]["name"]
-        
-        # Rolni 'rejected' holatiga o'tkazish orqali kirish imkoniyatini yopamiz
-        USERS_ROLES[str(target_user_id)]["role"]="rejected"
-
+    if target_user_id in USERS_ROLES:
+        staff_name = USERS_ROLES[target_user_id]["name"]
+        USERS_ROLES[target_user_id]["role"] = "rejected"
         save_users()
         
         await call.message.edit_text(
@@ -899,10 +828,9 @@ async def fire_staff_callback(call: types.CallbackQuery, state: FSMContext):
             parse_mode="HTML"
         )
         
-        # Chetlashtirilgan xodimga darhol bloklangan xabarini yuborib klaviaturasini tozalaymiz
         try:
             await call.bot.send_message(
-                chat_id=target_user_id,
+                chat_id=int(target_user_id),
                 text="❌ <b>Siz administrator tomonidan Edu_Control tizimidan chetlashtirildingiz!</b>",
                 parse_mode="HTML",
                 reply_markup=types.ReplyKeyboardRemove()
@@ -916,32 +844,21 @@ async def fire_staff_callback(call: types.CallbackQuery, state: FSMContext):
     await call.answer()
 
 
-# 6. Tahrirlashni bekor qilish / Orqaga qaytish
 @start_router.callback_query(F.data == "editstaff_cancel")
 async def cancel_edit_staff_callback(call: types.CallbackQuery, state: FSMContext):
-
     await call.message.delete()
-
     role = USERS_ROLES[str(call.from_user.id)]["role"]
-
-    await call.message.answer(
-        text="Xodimlarni boshqarish paneli yopildi.",
-        reply_markup=get_main_menu(role)
-    )
-
+    await call.message.answer(text="Xodimlarni boshqarish paneli yopildi.", reply_markup=get_main_menu(role))
     await state.clear()
     await call.answer()
 
-# ==============================================================================
-# 🌟 YANGI INTEGRATSIYA: ARXIV PANELINI BOSHQARISH VA QAYTA FAOLLASHTIRISH
-# ==============================================================================
 
-# 1. "Arxiv" tugmasi bosilganda chetlashtirilgan/rad etilganlarni chatga chiqarish
+# ================= ARXIV PANELI =================
+
 @start_router.message(F.text == "🗄 Arxiv")
 async def view_archive_handler(message: types.Message):
     if not check_user_access(message.from_user.id): return
     
-    # Faqat 'rejected' (rad etilgan yoki chetlashtirilgan) foydalanuvchilarni saralash
     archived_users = {
         u_id: u_info for u_id, u_info in USERS_ROLES.items()
         if isinstance(u_info, dict) and u_info.get("role") == "rejected"
@@ -955,11 +872,8 @@ async def view_archive_handler(message: types.Message):
     inline_kb = []
     
     for idx, (u_id, u_info) in enumerate(archived_users.items(), 1):
-        # Agar foydalanuvchi ismi hali kiritilmasdan rad etilgan bo'lsa, "Yangi so'rovchi" deb ko'rsatiladi
         display_name = u_info.get("name") if u_info.get("name") else f"Foydalanuvchi [ID: {u_id}]"
-        
         response_text += f"{idx}. ❌ <b>{display_name}</b> — <i>Tizimdan chetlashtirilgan</i>\n"
-        # Qayta faollashtirish tugmasini generatsiya qilamiz
         inline_kb.append([types.InlineKeyboardButton(text=f"🔄 {display_name}", callback_data=f"restorestaff_{u_id}")])
         
     response_text += "\n<i>Ushbu foydalanuvchilarni qayta faollashtirish va lavozim berish uchun mos tugmani bosing:</i>"
@@ -971,11 +885,10 @@ async def view_archive_handler(message: types.Message):
     )
 
 
-# 2. Arxivdagi xodim bosilganda unga yangi lavozim tanlash menyusini ochish
 @start_router.callback_query(F.data.startswith("restorestaff_"))
 async def process_restore_staff_callback(call: types.CallbackQuery):
-    target_user_id = int(call.data.split("_")[1])
-    user_info = USERS_ROLES.get(str(target_user_id))
+    target_user_id = call.data.split("_")[1]
+    user_info = USERS_ROLES.get(target_user_id)
     
     if not user_info:
         await call.answer(text="⚠️ Bu foydalanuvchi ma'lumotlar bazasidan topilmadi!", show_alert=True)
@@ -983,7 +896,6 @@ async def process_restore_staff_callback(call: types.CallbackQuery):
         
     display_name = user_info.get("name") if user_info.get("name") else f"Foydalanuvchi [{target_user_id}]"
     
-    # Tizimdagi mavjud faol rollar ro'yxati
     roles = ["Admin", "Kassir", "Sanitar", "Manager"]
     inline_kb = []
     row = []
@@ -1005,22 +917,18 @@ async def process_restore_staff_callback(call: types.CallbackQuery):
     await call.answer()
 
 
-# 3. Lavozim tanlangach arxivdan chiqarish, saqlash va unga xabarnoma yuborish
 @start_router.callback_query(F.data.startswith("savearchiverole_"))
 async def save_archive_role_callback(call: types.CallbackQuery, state: FSMContext):
     data_parts = call.data.split("_")
     new_role = data_parts[1]
-    target_user_id = int(data_parts[2])
+    target_user_id = data_parts[2]
     
-    if str(target_user_id) in USERS_ROLES:
-        # Rolni yangilaymiz (Arxivdan avtomatik chiqadi)
-        USERS_ROLES[str(target_user_id)]["role"]=new_role
-
+    if target_user_id in USERS_ROLES:
+        USERS_ROLES[target_user_id]["role"] = new_role
         save_users()
         
-        # Agar foydalanuvchining ismi avval kiritilmagan bo'lsa, ism so'rash bosqichiga tayyorlaymiz
-        has_name = USERS_ROLES[str(target_user_id)].get("name") is not None
-        display_name = USERS_ROLES[str(target_user_id)]["name"] if has_name else "Xodim"
+        has_name = USERS_ROLES[target_user_id].get("name") is not None
+        display_name = USERS_ROLES[target_user_id]["name"] if has_name else "Xodim"
         
         await call.message.edit_text(
             text=f"✅ <b>Muvaffaqiyatli tiklandi!</b>\n\n"
@@ -1030,21 +938,18 @@ async def save_archive_role_callback(call: types.CallbackQuery, state: FSMContex
             parse_mode="HTML"
         )
         
-        # Tiklangan xodimning o'ziga xushxabarni va menyuni yuboramiz
         try:
             if has_name:
-                # Ismi bor bo'lsa to'g'ridan to'g'ri asosiy menyu
                 await call.bot.send_message(
-                    chat_id=target_user_id,
+                    chat_id=int(target_user_id),
                     text=f"🎉 <b>Xushxabar!</b> Administrator sizni arxivdan chiqardi va joriy lavozimingizni <b>{new_role}</b> etib belgiladi.\n"
                          f"Bot imkoniyatlaridan to‘liq foydalanishingiz mumkin!",
                     parse_mode="HTML",
                     reply_markup=get_main_menu(new_role)
                 )
             else:
-                # Ismi yo'q bo'lsa oldingi mantiq asosida ism so'raymiz
                 await call.bot.send_message(
-                    chat_id=target_user_id,
+                    chat_id=int(target_user_id),
                     text=f"🎉 <b>Xushxabar!</b> Administrator sizning ruxsat soʻrovingizni tasdiqladi va <b>{new_role}</b> unvonini berdi.\n"
                          f"Iltimos, tizimdan foydalanish uchun ism va familiyangizni kiriting:",
                     parse_mode="HTML",
@@ -1058,16 +963,12 @@ async def save_archive_role_callback(call: types.CallbackQuery, state: FSMContex
     await state.clear()
     await call.answer()
 
+
 from Handlers.states import AdminSalaryStates
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-# ==============================================================================
-# 🌟 ESKI PROYEKTDAN TUZATILGAN ADMIN OYLIK TO'LIQ TUGMALAR ZANJIRI (MUKAMMAL)
-# ==============================================================================
-from Handlers.states import AdminSalaryStates
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+# ================= ADMIN OYLIK =================
 
-# Ichki vaqtinchalik klaviatura funksiyalari (aiogram 3.x)
 def get_status_keyboard():
     return ReplyKeyboardMarkup(keyboard=[
         [KeyboardButton(text="NOVA"), KeyboardButton(text="PRIME")],
@@ -1102,129 +1003,99 @@ def get_manual_keyboard():
     ], resize_keyboard=True)
 
 
-# 1. Asosiy menyudan "Admin oylik" bosilganda boshlanishi
 @start_router.message(F.text == "📊 Admin oylik")
 async def start_admin_salary_calc(message: types.Message, state: FSMContext):
     if not check_user_access(message.from_user.id): return
     await state.set_state(AdminSalaryStates.status)
     await message.answer("🏅 Status tanlang:", reply_markup=get_status_keyboard())
 
-# Global tekshiruv: Har qanday bosqichda "Bosh sahifa" bosilsa bekor qilish
 @start_router.message(AdminSalaryStates(), F.text == "🏠 Bosh sahifa")
 async def back_to_home_salary(message: types.Message, state: FSMContext):
-
     await state.clear()
-
     role = USERS_ROLES[str(message.from_user.id)]["role"]
+    await message.answer("🏠 Bosh sahifaga qaytdingiz.", reply_markup=get_main_menu(role))
 
-    await message.answer(
-        "🏠 Bosh sahifaga qaytdingiz.",
-        reply_markup=get_main_menu(role)
-    )
-
-# 2. Status tanlanganda -> Soat so'rash va statusni saqlash
 @start_router.message(AdminSalaryStates.status)
 async def process_status(message: types.Message, state: FSMContext):
     if message.text not in ["NOVA", "PRIME", "APEX", "LEADER"]:
         return await message.answer("❌ Iltimos, tugmalardan birini tanlang:")
-        
     await state.update_data(status=message.text.lower())
     await state.set_state(AdminSalaryStates.daily_hours)
     await message.answer("⏰ Kunlik ish soatini tanlang:", reply_markup=get_hours_keyboard())
 
-# 3. Kunlik soat tanlanganda -> Kun so'rash
 @start_router.message(AdminSalaryStates.daily_hours)
 async def process_hours(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
         await state.set_state(AdminSalaryStates.status)
         return await message.answer("🏅 Status tanlang:", reply_markup=get_status_keyboard())
-        
     if message.text == "✍️ Boshqa":
         await state.set_state(AdminSalaryStates.custom_daily_hours)
         return await message.answer("⏰ Soatni o'zingiz kiriting:", reply_markup=get_manual_keyboard())
-
     if not message.text.isdigit():
         return await message.answer("❌ Iltimos, to'g'ri soatni tanlang yoki raqam kiriting:")
-
     await state.update_data(daily_hours=int(message.text))
     await state.set_state(AdminSalaryStates.worked_days)
     await message.answer("📅 Ishlagan kunni tanlang:", reply_markup=get_days_keyboard())
 
-# 3a. Custom soat kiritilganda -> Kun so'rash
 @start_router.message(AdminSalaryStates.custom_daily_hours)
 async def process_custom_hours(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
         await state.set_state(AdminSalaryStates.daily_hours)
         return await message.answer("⏰ Kunlik ish soatini tanlang:", reply_markup=get_hours_keyboard())
-
     if not message.text.isdigit():
         return await message.answer("❌ Iltimos, faqat raqam kiriting (Masalan: 8):")
-
     await state.update_data(daily_hours=int(message.text))
     await state.set_state(AdminSalaryStates.worked_days)
     await message.answer("📅 Ishlagan kunni tanlang:", reply_markup=get_days_keyboard())
 
-# 4. Kun tanlanganda -> IELTS so'rash
 @start_router.message(AdminSalaryStates.worked_days)
 async def process_days(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
         await state.set_state(AdminSalaryStates.daily_hours)
         return await message.answer("⏰ Kunlik ish soatini tanlang:", reply_markup=get_hours_keyboard())
-        
     if message.text == "✍️ Boshqa":
         await state.set_state(AdminSalaryStates.custom_worked_days)
         return await message.answer("📅 Ishlagan kunni o'zingiz kiriting:", reply_markup=get_manual_keyboard())
-
     if not message.text.isdigit():
         return await message.answer("❌ Iltimos, to'g'ri kunni tanlang yoki raqam kiriting:")
-
     await state.update_data(worked_days=int(message.text))
     await state.set_state(AdminSalaryStates.has_ielts)
     await message.answer("🎓 IELTS bormi?", reply_markup=get_yes_no_keyboard())
 
-# 4a. Custom kun kiritilganda -> IELTS so'rash
 @start_router.message(AdminSalaryStates.custom_worked_days)
 async def process_custom_days(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
         await state.set_state(AdminSalaryStates.worked_days)
         return await message.answer("📅 Ishlagan kunni tanlang:", reply_markup=get_days_keyboard())
-
     if not message.text.isdigit():
         return await message.answer("❌ Iltimos, faqat raqam kiriting (Masalan: 26):")
-
     await state.update_data(worked_days=int(message.text))
     await state.set_state(AdminSalaryStates.has_ielts)
     await message.answer("🎓 IELTS bormi?", reply_markup=get_yes_no_keyboard())
 
-# 5. IELTS -> Rus tili so'rash
 @start_router.message(AdminSalaryStates.has_ielts)
 async def process_ielts(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
         await state.set_state(AdminSalaryStates.worked_days)
         return await message.answer("📅 Ishlagan kunni tanlang:", reply_markup=get_days_keyboard())
-
     await state.update_data(has_ielts=message.text)
     await state.set_state(AdminSalaryStates.knows_russian)
     await message.answer("🇷🇺 Rus tili bormi?", reply_markup=get_yes_no_keyboard())
 
-# 6. Rus tili -> Ish qoldirganini so'rash
 @start_router.message(AdminSalaryStates.knows_russian)
 async def process_russian(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
         await state.set_state(AdminSalaryStates.has_ielts)
         return await message.answer("🎓 IELTS bormi?", reply_markup=get_yes_no_keyboard())
-
     await state.update_data(knows_russian=message.text)
     await state.set_state(AdminSalaryStates.missed)
     await message.answer("📉 Ish qoldirgan kunlaringiz bo'ldimi?", reply_markup=get_yes_no_keyboard())
 
-# 7. Ish qoldirgan kunlar savoli
 @start_router.message(AdminSalaryStates.missed)
 async def process_missed(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
         await state.set_state(AdminSalaryStates.knows_russian)
         return await message.answer("🇷🇺 Rus tili bormi?", reply_markup=get_yes_no_keyboard())
-
     if message.text == "✅ HA":
         await state.set_state(AdminSalaryStates.missed_hours)
         await message.answer("⏰ Necha soat ish qoldirdingiz? (Javobni kiriting):", reply_markup=get_manual_keyboard())
@@ -1233,27 +1104,22 @@ async def process_missed(message: types.Message, state: FSMContext):
         await state.set_state(AdminSalaryStates.cover)
         await message.answer("🔄 Cover qildingizmi?", reply_markup=get_yes_no_keyboard())
 
-# 7a. Ish qoldirilgan soat kiritilganda -> Cover so'rash
 @start_router.message(AdminSalaryStates.missed_hours)
 async def process_missed_hours(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
         await state.set_state(AdminSalaryStates.missed)
         return await message.answer("📉 Ish qoldirgan kunlaringiz bo'ldimi?", reply_markup=get_yes_no_keyboard())
-
     if not message.text.replace('.', '', 1).isdigit():
         return await message.answer("❌ Iltimos, soatni faqat raqamda kiriting:")
-
     await state.update_data(missed_hours=float(message.text))
     await state.set_state(AdminSalaryStates.cover)
     await message.answer("🔄 Cover qildingizmi?", reply_markup=get_yes_no_keyboard())
 
-# 8. Cover qildingizmi savoli
 @start_router.message(AdminSalaryStates.cover)
 async def process_cover(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
         await state.set_state(AdminSalaryStates.missed)
         return await message.answer("📉 Ish qoldirgan kunlaringiz bo'ldimi?", reply_markup=get_yes_no_keyboard())
-
     if message.text == "✅ HA":
         await state.set_state(AdminSalaryStates.cover_hours)
         await message.answer("⏰ Nechi soat cover qildingiz? (Javobni kiriting):", reply_markup=get_manual_keyboard())
@@ -1262,110 +1128,85 @@ async def process_cover(message: types.Message, state: FSMContext):
         await state.set_state(AdminSalaryStates.individual_plan)
         await message.answer("💰 Individual plan kiriting (Faqat raqam):", reply_markup=get_manual_keyboard())
 
-# 8a. Cover soati kiritilganda -> Individual plan so'rash
 @start_router.message(AdminSalaryStates.cover_hours)
 async def process_cover_hours(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
         await state.set_state(AdminSalaryStates.cover)
         return await message.answer("🔄 Cover qildingizmi?", reply_markup=get_yes_no_keyboard())
-
     if not message.text.replace('.', '', 1).isdigit():
         return await message.answer("❌ Iltimos, soatni faqat raqamda kiriting:")
-
     await state.update_data(cover_hours=float(message.text))
     await state.set_state(AdminSalaryStates.individual_plan)
     await message.answer("💰 Individual plan kiriting (Faqat raqam):", reply_markup=get_manual_keyboard())
 
-# 9. Individual Plan -> Faktik Savdo so'rash
 @start_router.message(AdminSalaryStates.individual_plan)
 async def process_individual_plan(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
         await state.set_state(AdminSalaryStates.cover)
         return await message.answer("🔄 Cover qildingizmi?", reply_markup=get_yes_no_keyboard())
-
     if not message.text.replace('.', '', 1).isdigit():
         return await message.answer("❌ Iltimos, rejani faqat raqamda kiriting:")
-
     await state.update_data(individual_plan=float(message.text))
     await state.set_state(AdminSalaryStates.actual_sales)
     await message.answer("📊 Actual sales (Faktik savdo) kiriting:", reply_markup=get_manual_keyboard())
 
-# 10. Faktik Savdo -> Konversiya rejasi so'rash
 @start_router.message(AdminSalaryStates.actual_sales)
 async def process_actual_sales(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
         await state.set_state(AdminSalaryStates.individual_plan)
         return await message.answer("💰 Individual plan kiriting (Faqat raqam):", reply_markup=get_manual_keyboard())
-
     if not message.text.replace('.', '', 1).isdigit():
         return await message.answer("❌ Iltimos, faktik savdoni faqat raqamda kiriting:")
-
     await state.update_data(actual_sales=float(message.text))
     await state.set_state(AdminSalaryStates.conversion_plan)
     await message.answer("📈 Conversion plan (Konversiya rejasi %) kiriting:", reply_markup=get_manual_keyboard())
 
-# 11. Konversiya rejasi -> Faktik konversiya so'rash
 @start_router.message(AdminSalaryStates.conversion_plan)
 async def process_conversion_plan(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
         await state.set_state(AdminSalaryStates.actual_sales)
         return await message.answer("📊 Actual sales (Faktik savdo) kiriting:", reply_markup=get_manual_keyboard())
-
     if not message.text.replace('.', '', 1).isdigit():
         return await message.answer("❌ Iltimos, konversiya rejasini faqat raqamda kiriting:")
-
     await state.update_data(conversion_plan=float(message.text))
     await state.set_state(AdminSalaryStates.actual_conversion)
     await message.answer("📉 Actual conversion (Faktik konversiya %) kiriting:", reply_markup=get_manual_keyboard())
 
-# 12. Faktik konversiya -> Aktivlar rejasi so'rash
 @start_router.message(AdminSalaryStates.actual_conversion)
 async def process_actual_conversion(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
         await state.set_state(AdminSalaryStates.conversion_plan)
         return await message.answer("📈 Conversion plan (Konversiya rejasi %) kiriting:", reply_markup=get_manual_keyboard())
-
     if not message.text.replace('.', '', 1).isdigit():
         return await message.answer("❌ Iltimos, faktik konversiyani faqat raqamda kiriting:")
-
     await state.update_data(actual_conversion=float(message.text))
     await state.set_state(AdminSalaryStates.active_plan)
     await message.answer("👥 Active plan (Aktivlar rejasi) kiriting:", reply_markup=get_manual_keyboard())
 
-# 13. Aktivlar rejasi -> Faktik aktivlar so'rash
 @start_router.message(AdminSalaryStates.active_plan)
 async def process_active_plan(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
         await state.set_state(AdminSalaryStates.actual_conversion)
         return await message.answer("📉 Actual conversion (Faktik konversiya %) kiriting:", reply_markup=get_manual_keyboard())
-
     if not message.text.replace('.', '', 1).isdigit():
         return await message.answer("❌ Iltimos, aktivlar rejasini faqat raqamda kiriting:")
-
     await state.update_data(active_plan=float(message.text))
     await state.set_state(AdminSalaryStates.actual_active)
     await message.answer("👤 Actual active (Faktik aktivlar) kiriting:", reply_markup=get_manual_keyboard())
 
-# 14. Faktik aktivlar -> REAL JAVOBNI HISOBLASH VA CHIQARISH
 @start_router.message(AdminSalaryStates.actual_active)
 async def process_actual_active_final(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
         await state.set_state(AdminSalaryStates.active_plan)
         return await message.answer("👥 Active plan (Aktivlar rejasi) kiriting:", reply_markup=get_manual_keyboard())
-
     if not message.text.replace('.', '', 1).isdigit():
         return await message.answer("❌ Iltimos, faktik aktivlarni faqat raqamda kiriting:")
-
     await state.update_data(actual_active=float(message.text))
     
-    # Barcha ma'lumotlarni yig'ib olamiz
     data = await state.get_data()
     await state.clear()
-
-    # 🧮 Real hisob-kitobni ishga tushiramiz
     result = calculate_admin_salary(data)
     
-    # 📝 Chiroyli yakuniy xabar formati
     report_text = (
         f"💰 <b>OYLIK HISOB-KITOB PANELI</b>\n\n"
         f"🧑‍💼 <b>Status:</b> {str(data.get('status')).upper()}\n"
@@ -1383,18 +1224,11 @@ async def process_actual_active_final(message: types.Message, state: FSMContext)
     )
     
     role = USERS_ROLES[str(message.from_user.id)]["role"]
+    await message.answer(text=report_text, parse_mode="HTML", reply_markup=get_main_menu(role))
 
-    await message.answer(
-        text=report_text,
-        parse_mode="HTML",
-        reply_markup=get_main_menu(role)
-    )
 
-# ==============================================================================
-# 💰 KASSIR OYLIK TIZIMI (CASHIER SALARY PROCESS)
-# ==============================================================================
+# ================= KASSIR OYLIK =================
 
-# Yordamchi klaviaturalar (Kassir savollari uchun)
 def get_cashier_hours_keyboard():
     return types.ReplyKeyboardMarkup(
         keyboard=[
@@ -1421,36 +1255,28 @@ def get_cashier_yes_no_keyboard():
         ], resize_keyboard=True
     )
 
-# 1. Kassir oylik tugmasi bosilganda (Tugmadagi matn bilan 100% bir xil qilindi)
+
 @start_router.message(F.text == "💰 Kassir oylik")
 async def start_cashier_salary(message: types.Message, state: FSMContext):
+    if not check_user_access(message.from_user.id): return
     await state.set_state(CashierSalaryStates.hours)
     await message.answer("⏰ Kunlik ish soatini tanlang:", reply_markup=get_cashier_hours_keyboard())
 
-# 2. Ish soati tanlanganda
 @start_router.message(CashierSalaryStates.hours)
 async def process_cashier_hours(message: types.Message, state: FSMContext):
     if message.text == "🏠 Bosh sahifa":
-
         await state.clear()
-
         role = USERS_ROLES[str(message.from_user.id)]["role"]
-
-        return await message.answer(
-            "Asosiy menyudasiz:",
-            reply_markup=get_main_menu(role)
-        )
+        return await message.answer("Asosiy menyudasiz:", reply_markup=get_main_menu(role))
     if message.text == "✍️ Boshqa":
         await state.set_state(CashierSalaryStates.custom_hours)
         return await message.answer("⏰ Soatni o'zingiz kiriting:", reply_markup=get_manual_keyboard())
     if not message.text.isdigit():
         return await message.answer("❌ Iltimos, tugmalardan foydalaning yoki raqam kiriting:")
-
     await state.update_data(hours=int(message.text))
     await state.set_state(CashierSalaryStates.days)
     await message.answer("📅 Ishlagan kunni tanlang:", reply_markup=get_cashier_days_keyboard())
 
-# 3. Custom soat kiritilganda
 @start_router.message(CashierSalaryStates.custom_hours)
 async def process_cashier_custom_hours(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
@@ -1458,12 +1284,10 @@ async def process_cashier_custom_hours(message: types.Message, state: FSMContext
         return await message.answer("⏰ Kunlik ish soatini tanlang:", reply_markup=get_cashier_hours_keyboard())
     if not message.text.isdigit():
         return await message.answer("❌ Faqat raqam kiriting:")
-
     await state.update_data(hours=int(message.text))
     await state.set_state(CashierSalaryStates.days)
     await message.answer("📅 Ishlagan kunni tanlang:", reply_markup=get_cashier_days_keyboard())
 
-# 4. Ish kunlari tanlanganda
 @start_router.message(CashierSalaryStates.days)
 async def process_cashier_days(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
@@ -1474,12 +1298,10 @@ async def process_cashier_days(message: types.Message, state: FSMContext):
         return await message.answer("📅 Ishlagan kunni o'zingiz kiriting:", reply_markup=get_manual_keyboard())
     if not message.text.isdigit():
         return await message.answer("❌ To'g'ri kun kiriting:")
-
     await state.update_data(days=int(message.text))
     await state.set_state(CashierSalaryStates.cover)
     await message.answer("🔄 Cover qildingizmi?", reply_markup=get_cashier_yes_no_keyboard())
 
-# 5. Custom kun kiritilganda
 @start_router.message(CashierSalaryStates.custom_days)
 async def process_cashier_custom_days(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
@@ -1487,12 +1309,10 @@ async def process_cashier_custom_days(message: types.Message, state: FSMContext)
         return await message.answer("📅 Ishlagan kunni tanlang:", reply_markup=get_cashier_days_keyboard())
     if not message.text.isdigit():
         return await message.answer("❌ Faqat raqam kiriting:")
-
     await state.update_data(days=int(message.text))
     await state.set_state(CashierSalaryStates.cover)
     await message.answer("🔄 Cover qildingizmi?", reply_markup=get_cashier_yes_no_keyboard())
 
-# 6. Cover savoli
 @start_router.message(CashierSalaryStates.cover)
 async def process_cashier_cover(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
@@ -1506,7 +1326,6 @@ async def process_cashier_cover(message: types.Message, state: FSMContext):
         await state.set_state(CashierSalaryStates.missed)
         await message.answer("📉 Ish qoldirgan kunlaringiz bo'ldimi?", reply_markup=get_cashier_yes_no_keyboard())
 
-# 7. Cover soat kiritilganda
 @start_router.message(CashierSalaryStates.cover_hours)
 async def process_cashier_cover_hours(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
@@ -1514,12 +1333,10 @@ async def process_cashier_cover_hours(message: types.Message, state: FSMContext)
         return await message.answer("🔄 Cover qildingizmi?", reply_markup=get_cashier_yes_no_keyboard())
     if not message.text.replace('.', '', 1).isdigit():
         return await message.answer("❌ Soatni raqamda kiriting:")
-
     await state.update_data(cover_hours=float(message.text))
     await state.set_state(CashierSalaryStates.missed)
     await message.answer("📉 Ish qoldirgan kunlaringiz bo'ldimi?", reply_markup=get_cashier_yes_no_keyboard())
 
-# 8. Ish qoldirish savoli
 @start_router.message(CashierSalaryStates.missed)
 async def process_cashier_missed(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
@@ -1533,7 +1350,6 @@ async def process_cashier_missed(message: types.Message, state: FSMContext):
         await state.set_state(CashierSalaryStates.active_students)
         await message.answer("👥 Active students (Aktiv talabalar) sonini kiriting:", reply_markup=get_manual_keyboard())
 
-# 9. Ish qoldirilgan soat kiritilganda
 @start_router.message(CashierSalaryStates.missed_hours)
 async def process_cashier_missed_hours(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
@@ -1541,12 +1357,10 @@ async def process_cashier_missed_hours(message: types.Message, state: FSMContext
         return await message.answer("📉 Ish qoldirgan kunlaringiz bo'ldimi?", reply_markup=get_cashier_yes_no_keyboard())
     if not message.text.replace('.', '', 1).isdigit():
         return await message.answer("❌ Soatni raqamda kiriting:")
-
     await state.update_data(missed_hours=float(message.text))
     await state.set_state(CashierSalaryStates.active_students)
     await message.answer("👥 Active students (Aktiv talabalar) sonini kiriting:", reply_markup=get_manual_keyboard())
 
-# 10. Aktiv talabalar kiritilganda
 @start_router.message(CashierSalaryStates.active_students)
 async def process_active_students(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
@@ -1554,12 +1368,10 @@ async def process_active_students(message: types.Message, state: FSMContext):
         return await message.answer("📉 Ish qoldirgan kunlaringiz bo'ldimi?", reply_markup=get_cashier_yes_no_keyboard())
     if not message.text.isdigit():
         return await message.answer("❌ Iltimos, faqat butun raqam kiriting:")
-
     await state.update_data(active_students=int(message.text))
     await state.set_state(CashierSalaryStates.active_debtors)
     await message.answer("💸 Active debtors (Aktiv qarzdorlar) sonini kiriting:", reply_markup=get_manual_keyboard())
 
-# 11. Aktiv qarzdorlar kiritilganda
 @start_router.message(CashierSalaryStates.active_debtors)
 async def process_active_debtors(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
@@ -1567,12 +1379,10 @@ async def process_active_debtors(message: types.Message, state: FSMContext):
         return await message.answer("👥 Active students (Aktiv talabalar) sonini kiriting:", reply_markup=get_manual_keyboard())
     if not message.text.isdigit():
         return await message.answer("❌ Iltimos, faqat butun raqam kiriting:")
-
     await state.update_data(active_debtors=int(message.text))
     await state.set_state(CashierSalaryStates.archive_students)
     await message.answer("🗄 Archive students (Arxiv talabalar) sonini kiriting:", reply_markup=get_manual_keyboard())
 
-# 12. Arxiv talabalar kiritilganda
 @start_router.message(CashierSalaryStates.archive_students)
 async def process_archive_students(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
@@ -1580,12 +1390,10 @@ async def process_archive_students(message: types.Message, state: FSMContext):
         return await message.answer("💸 Active debtors (Aktiv qarzdorlar) sonini kiriting:", reply_markup=get_manual_keyboard())
     if not message.text.isdigit():
         return await message.answer("❌ Iltimos, faqat butun raqam kiriting:")
-
     await state.update_data(archive_students=int(message.text))
     await state.set_state(CashierSalaryStates.archive_debtors)
     await message.answer("📉 Archive debtors (Arxiv qarzdorlar) sonini kiriting:", reply_markup=get_manual_keyboard())
 
-# 13. Yakuniy bosqich: Arxiv qarzdorlar kiritilganda REAL HISOB-KITOB NATIJASI
 @start_router.message(CashierSalaryStates.archive_debtors)
 async def process_cashier_final(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Ortga":
@@ -1593,15 +1401,11 @@ async def process_cashier_final(message: types.Message, state: FSMContext):
         return await message.answer("🗄 Archive students (Arxiv talabalar) sonini kiriting:", reply_markup=get_manual_keyboard())
     if not message.text.isdigit():
         return await message.answer("❌ Iltimos, faqat raqam kiriting:")
-
     await state.update_data(archive_debtors=int(message.text))
     data = await state.get_data()
     await state.clear()
-
-    # 🧮 Hisob-kitobni chaqiramiz
     result = calculate_cashier_salary(data)
-
-    # Natija ko'rsatish shabloni (Chiroyli HTML formatda)
+    
     report_text = (
         f"💰 <b>KASSIR OYLIK HISOB-KITOB PANELI</b>\n\n"
         f"⏰ <b>Ish tartibi:</b> {data.get('hours')} soat / {data.get('days')} kun\n"
@@ -1616,11 +1420,6 @@ async def process_cashier_final(message: types.Message, state: FSMContext):
         f"-----------------------------------------\n"
         f"🏁 <b>JAMI OYLIK MAOSH:</b> <u>{result['total_salary']:,} so'm</u>"
     )
-
+    
     role = USERS_ROLES[str(message.from_user.id)]["role"]
-
-    await message.answer(
-        text=report_text,
-        parse_mode="HTML",
-        reply_markup=get_main_menu(role)
-    )
+    await message.answer(text=report_text, parse_mode="HTML", reply_markup=get_main_menu(role))
