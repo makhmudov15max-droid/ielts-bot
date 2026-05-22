@@ -15,7 +15,7 @@ from utils.tasks_json import save_tasks
 
 callback_router = Router()
 
-# Global o'zgaruvchilar (start.py dan import qilinadi)
+# Global o'zgaruvchilar
 USERS_ROLES = None
 TASKS_DATABASE = None
 ADMIN_ID = None
@@ -104,19 +104,23 @@ async def employee_complete_task_callback(call: types.CallbackQuery, state: FSMC
     await call.answer()
 
 
-# ================= VAZIFA O'CHIRISH CALLBACKS =================
+# ================= VAZIFA O'CHIRISH CALLBACKS (TUZATILGAN) =================
 
 @callback_router.callback_query(F.data.startswith("removetask_"))
 async def process_remove_task_callback(call: types.CallbackQuery):
     task_id = int(call.data.split("_")[1])
     global TASKS_DATABASE
+    
     task_to_remove = next((t for t in TASKS_DATABASE if t["id"] == task_id), None)
     
     if task_to_remove:
         TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
         save_tasks(TASKS_DATABASE)
+        
         await call.message.edit_text(
-            text=f"🗑 <b>Vazifa muvaffaqiyatli oʻchirildi!</b>\n\n📌 <b>Nomi:</b> {task_to_remove['task_name']}\n👤 <b>Masʻul boʻlgan xodim:</b> {task_to_remove['assigned_to_name']}",
+            text=f"🗑 <b>Vazifa muvaffaqiyatli oʻchirildi!</b>\n\n"
+                 f"📌 <b>Nomi:</b> {task_to_remove['task_name']}\n"
+                 f"👤 <b>Masʻul boʻlgan xodim:</b> {task_to_remove['assigned_to_name']}",
             parse_mode="HTML"
         )
     else:
