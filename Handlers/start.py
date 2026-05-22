@@ -25,7 +25,8 @@ TASKS_DATABASE = None
 ADMIN_ID = None
 
 # Yuborilgan videolarni saqlash (cheating oldini olish uchun)
-SENT_VIDEO_IDS = set()
+# Format: {user_id: [file_unique_id1, file_unique_id2, ...]}
+SENT_VIDEOS = {}
 
 
 def init_all_handlers(users_roles, tasks_database, admin_id):
@@ -124,7 +125,7 @@ async def get_user_real_name_handler(message: types.Message):
     )
 
 
-# ================= ISBOT QABUL QILISH (100% CHEATING PROTECTION) =================
+# ================= ISBOT QABUL QILISH (MAKSIMAL HIMOYA) =================
 
 @start_router.message(TaskStates.waiting_for_task_proof)
 async def receive_task_proof_handler(message: types.Message, state: FSMContext):
@@ -132,13 +133,15 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     proof_required = state_data.get("proof_required")
     task_id = state_data.get("active_task_id")
     
-    global TASKS_DATABASE, SENT_VIDEO_IDS
+    global TASKS_DATABASE, SENT_VIDEOS
     task = next((t for t in TASKS_DATABASE if t["id"] == task_id), None)
     GROUP_CHAT_ID = -5226036627  
+    user_id = str(message.from_user.id)
+    current_time = int(time.time())
     
     # ========== RASM TEKSHIRUVI ==========
     if proof_required == "Photo" and message.photo:
-        role = USERS_ROLES[str(message.from_user.id)]["role"]
+        role = USERS_ROLES[user_id]["role"]
         await message.answer(
             text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
             reply_markup=get_main_menu(role)
@@ -160,100 +163,142 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
                 save_tasks(TASKS_DATABASE)
         await state.clear()
     
-    # ========== DUMALOQ VIDEO TEKSHIRUVI (MAXIMUM CHEATING PROTECTION) ==========
+    # ========== DUMALOQ VIDEO TEKSHIRUVI (MAKSIMAL HIMOYA) ==========
     elif proof_required == "Video message":
-        if message.video_note:
-            # 1. Forward qilinganligini tekshirish (barcha usullar)
-            is_forwarded = False
-            
-            # Usul 1: forward_from
-            if hasattr(message, 'forward_from') and message.forward_from:
-                is_forwarded = True
-            # Usul 2: forward_from_chat
-            elif hasattr(message, 'forward_from_chat') and message.forward_from_chat:
-                is_forwarded = True
-            # Usul 3: forward_date
-            elif hasattr(message, 'forward_date') and message.forward_date:
-                is_forwarded = True
-            # Usul 4: message_id va chat_id asosida (agar ID boshqa bo'lsa)
-            elif hasattr(message, 'forward_origin') and message.forward_origin:
-                is_forwarded = True
-            
-            # 2. Video yoshini tekshirish
-            current_time = int(time.time())
-            message_time = message.date.timestamp() if hasattr(message, 'date') else current_time
-            video_age = current_time - message_time
-            
-            # 3. Video unique ID ni tekshirish (bir xil video qayta ishlatilmasligi uchun)
-            video_unique_id = message.video_note.file_unique_id
-            if video_unique_id in SENT_VIDEO_IDS:
-                await message.answer(
-                    text="❌ <b>Kechirasiz!</b> Bu video avval yuborilgan.\n"
-                         "Iltimos, <b>yangi, real vaqtda</b> video yozib yuboring.",
-                    parse_mode="HTML"
-                )
-                return
-            
-            if is_forwarded:
-                await message.answer(
-                    text="❌ <b>Kechirasiz!</b> Forward qilingan video qabul qilinmaydi.\n"
-                         "Iltimos, <b>hozir, real vaqtda</b> dumaloq videoni yozib yuboring.\n\n"
-                         "📹 <b>Qanday yuborish kerak:</b>\n"
-                         "1. Chatda mikrofon tugmasini bosing va ushlab turing\n"
-                         "2. <b>Video</b> tugmasiga o'ting\n"
-                         "3. Yozish tugmasini bosing va video yozing\n"
-                         "4. Yozib bo'lgach, jo'natish tugmasini bosing",
-                    parse_mode="HTML"
-                )
-                return
-            
-            if video_age > 300:  # 5 minut = 300 sekund
-                await message.answer(
-                    text=f"❌ <b>Kechirasiz!</b> Juda eski video ({int(video_age/60)} daqiqa).\n"
-                         "Iltimos, <b>hozir</b> yangi video yozib yuboring.\n\n"
-                         "📹 <b>Qanday yuborish kerak:</b>\n"
-                         "1. Chatda mikrofon tugmasini bosing va ushlab turing\n"
-                         "2. <b>Video</b> tugmasiga o'ting\n"
-                         "3. Yozish tugmasini bosing va video yozing\n"
-                         "4. Yozib bo'lgach, jo'natish tugmasini bosing",
-                    parse_mode="HTML"
-                )
-                return
-            
-            # Real time video qabul qilindi
-            SENT_VIDEO_IDS.add(video_unique_id)  # Unique ID ni saqlash
-            
-            role = USERS_ROLES[str(message.from_user.id)]["role"]
+        
+        # 1. VIDEO FORMATNI TEKSHIRISH
+        if not message.video_note:
             await message.answer(
-                text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
-                reply_markup=get_main_menu(role)
-            )
-            if task:
-                group_text = (
-                    f"✅ <b>VAZIFA BAJARILDI!</b>\n\n"
-                    f"📋 <b>Turi:</b> {task['task_type']}\n"
-                    f"📌 <b>Vazifa nomi:</b> {task['task_name']}\n"
-                    f"👤 <b>Masʻul xodim:</b> {task['assigned_to_name']}\n"
-                    f"📸 <b>Isbot turi:</b> Dumaloq video (Video message)\n"
-                    f"⏰ <b>Topshirilgan vaqt:</b> {datetime.now(timezone(timedelta(hours=5))).strftime('%H:%M')}"
-                )
-                await message.bot.send_message(chat_id=GROUP_CHAT_ID, text=group_text, parse_mode="HTML")
-                await message.bot.send_video_note(chat_id=GROUP_CHAT_ID, video_note=message.video_note.file_id)
-                
-                if task.get("task_type") == "Kunlik (Bir martalik)":
-                    TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
-                    save_tasks(TASKS_DATABASE)
-            await state.clear()
-        else:
-            await message.answer(
-                text="❌ <b>Notoʻgʻri format!</b> Iltimos, ushbu vazifa uchun faqat <b>dumaloq video (video message)</b> yuboring.\n\n"
+                text="❌ <b>Notoʻgʻri format!</b> Iltimos, dumaloq video (video message) yuboring.\n\n"
                      "📹 <b>Qanday yuborish kerak:</b>\n"
-                     "1. Chatda mikrofon tugmasini bosing va ushlab turing\n"
+                     "1. Mikrofon tugmasini bosing va ushlab turing\n"
                      "2. <b>Video</b> tugmasiga o'ting\n"
-                     "3. Yozish tugmasini bosing va video yozing\n"
+                     "3. Yozish tugmasini bosing\n"
                      "4. Yozib bo'lgach, jo'natish tugmasini bosing",
                 parse_mode="HTML"
             )
+            return
+        
+        # 2. FORWARD TEKSHIRUVI (barcha usullar)
+        is_forwarded = False
+        forward_from_text = ""
+        
+        if hasattr(message, 'forward_from') and message.forward_from:
+            is_forwarded = True
+            forward_from_text = f"user: {message.forward_from.id}"
+        elif hasattr(message, 'forward_from_chat') and message.forward_from_chat:
+            is_forwarded = True
+            forward_from_text = f"chat: {message.forward_from_chat.id}"
+        elif hasattr(message, 'forward_date') and message.forward_date:
+            is_forwarded = True
+            forward_from_text = f"date: {message.forward_date}"
+        elif hasattr(message, 'forward_origin') and message.forward_origin:
+            is_forwarded = True
+            forward_from_text = "origin mavjud"
+        
+        if is_forwarded:
+            await message.answer(
+                text="❌ <b>Kechirasiz!</b> Forward qilingan video qabul qilinmaydi.\n\n"
+                     f"📋 Aniqlangan: {forward_from_text}\n\n"
+                     "Iltimos, <b>hozir, real vaqtda</b> yangi video yozib yuboring.\n\n"
+                     "📹 <b>Qanday yuborish kerak:</b>\n"
+                     "1. Mikrofon tugmasini bosing va ushlab turing\n"
+                     "2. <b>Video</b> tugmasiga o'ting\n"
+                     "3. Yozish tugmasini bosing\n"
+                     "4. Yozib bo'lgach, jo'natish tugmasini bosing",
+                parse_mode="HTML"
+            )
+            return
+        
+        # 3. FAQAT SHAXSIY CHAT TEKSHIRUVI
+        if message.chat.type != "private":
+            await message.answer(
+                text="❌ <b>Kechirasiz!</b> Video faqat bot bilan shaxsiy chatda yozilishi kerak.\n\n"
+                     "Iltimos, bot bilan shaxsiy chatda yangi video yozib yuboring.",
+                parse_mode="HTML"
+            )
+            return
+        
+        # 4. VIDEO YOSHI TEKSHIRUVI (real vaqtda yozilgan bo'lishi kerak)
+        message_time = message.date.timestamp() if hasattr(message, 'date') else current_time
+        video_age = current_time - message_time
+        
+        # Maksimal ruxsat etilgan vaqt: 10 sekund
+        if video_age > 10:
+            await message.answer(
+                text=f"❌ <b>Kechirasiz!</b> Video {int(video_age)} sekund oldin yozilgan.\n"
+                     "Bu saved message dan olingan bo'lishi mumkin.\n\n"
+                     "Iltimos, <b>hozir, real vaqtda</b> yangi video yozib yuboring.\n"
+                     f"(Video {video_age:.0f} sekund eski, maksimal 10 sekund ruxsat)",
+                parse_mode="HTML"
+            )
+            return
+        
+        # 5. UNIQUE ID TEKSHIRUVI (bir xil video qayta ishlatilmasligi uchun)
+        video_unique_id = message.video_note.file_unique_id
+        
+        if user_id not in SENT_VIDEOS:
+            SENT_VIDEOS[user_id] = []
+        
+        if video_unique_id in SENT_VIDEOS[user_id]:
+            await message.answer(
+                text="❌ <b>Kechirasiz!</b> Bu video avval yuborilgan.\n\n"
+                     "Iltimos, <b>yangi, real vaqtda</b> video yozib yuboring.\n\n"
+                     "📹 <b>Qanday yuborish kerak:</b>\n"
+                     "1. Mikrofon tugmasini bosing va ushlab turing\n"
+                     "2. <b>Video</b> tugmasiga o'ting\n"
+                     "3. Yozish tugmasini bosing\n"
+                     "4. Yozib bo'lgach, jo'natish tugmasini bosing",
+                parse_mode="HTML"
+            )
+            return
+        
+        # 6. MESSAGE_ID TEKSHIRUVI (juda eski xabarni qayta yuborishni aniqlash)
+        # Agar message_id juda kichik bo'lsa, bu bot ishga tushgandan beri juda kam xabar yuborilgan
+        # Bu holatda vaqt tekshiruvi yetarli
+        if message.message_id < 50 and video_age > 5:
+            await message.answer(
+                text="❌ <b>Kechirasiz!</b> Eski xabarni qayta yuborish mumkin emas.\n\n"
+                     "Iltimos, <b>hozir</b> yangi video yozib yuboring.",
+                parse_mode="HTML"
+            )
+            return
+        
+        # ========== BAJARILDI ==========
+        # Real time video qabul qilindi
+        SENT_VIDEOS[user_id].append(video_unique_id)
+        
+        # Xotirani tozalash (har bir user uchun oxirgi 10 ta video saqlanadi)
+        if len(SENT_VIDEOS[user_id]) > 10:
+            SENT_VIDEOS[user_id] = SENT_VIDEOS[user_id][-10:]
+        
+        role = USERS_ROLES[user_id]["role"]
+        await message.answer(
+            text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.\n\n"
+                 f"📹 Video qabul qilindi (yozilgan vaqt: {video_age:.0f} sekund oldin)",
+            reply_markup=get_main_menu(role),
+            parse_mode="HTML"
+        )
+        
+        if task:
+            group_text = (
+                f"✅ <b>VAZIFA BAJARILDI!</b>\n\n"
+                f"📋 <b>Turi:</b> {task['task_type']}\n"
+                f"📌 <b>Vazifa nomi:</b> {task['task_name']}\n"
+                f"👤 <b>Masʻul xodim:</b> {task['assigned_to_name']}\n"
+                f"📸 <b>Isbot turi:</b> Dumaloq video (Video message)\n"
+                f"⏰ <b>Topshirilgan vaqt:</b> {datetime.now(timezone(timedelta(hours=5))).strftime('%H:%M')}\n"
+                f"🆔 <b>Video ID:</b> {video_unique_id[:8]}..."
+            )
+            await message.bot.send_message(chat_id=GROUP_CHAT_ID, text=group_text, parse_mode="HTML")
+            await message.bot.send_video_note(chat_id=GROUP_CHAT_ID, video_note=message.video_note.file_id)
+            
+            if task.get("task_type") == "Kunlik (Bir martalik)":
+                TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
+                save_tasks(TASKS_DATABASE)
+        
+        await state.clear()
+    
     else:
         if proof_required == "Photo":
             await message.answer(
@@ -264,15 +309,15 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             await message.answer(
                 text="⚠️ Notoʻgʻri format! Iltimos, ushbu vazifa uchun faqat <b>Dumaloq video (Video message)</b> yuboring.\n\n"
                      "📹 <b>Qanday yuborish kerak:</b>\n"
-                     "1. Chatda mikrofon tugmasini bosing va ushlab turing\n"
+                     "1. Mikrofon tugmasini bosing va ushlab turing\n"
                      "2. <b>Video</b> tugmasiga o'ting\n"
-                     "3. Yozish tugmasini bosing va video yozing\n"
+                     "3. Yozish tugmasini bosing\n"
                      "4. Yozib bo'lgach, jo'natish tugmasini bosing",
                 parse_mode="HTML"
             )
 
 
-# ================= TAYMER =================
+# ================= TAYMER (VAZIFALARNI AVTOMATIK YUBORISH) =================
 
 async def auto_task_scheduler(bot):
     last_checked_minute = ""
@@ -289,9 +334,9 @@ async def auto_task_scheduler(bot):
                 for task in TASKS_DATABASE:
                     task["sent_today_times"] = []
                 save_tasks(TASKS_DATABASE)
-                global SENT_VIDEO_IDS
-                SENT_VIDEO_IDS.clear()  # Har kuni tozalash
-                print("🗑 SENT_VIDEO_IDS tozalandi")
+                global SENT_VIDEOS
+                SENT_VIDEOS.clear()
+                print("🗑 SENT_VIDEOS tozalandi (00:00)")
             
             if current_time_str != last_checked_minute:
                 for task in TASKS_DATABASE:
