@@ -5,7 +5,7 @@ from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 
 from Handlers.states import TaskStates
-from Keyboards.main_menu import get_main_menu, get_admin_approval_keyboard
+from Keyboards.main_menu import get_main_menu, get_admin_approval_keyboard, get_task_complete_keyboard
 from utils.users_json import save_users
 from utils.tasks_json import save_tasks
 from utils.access import check_user_access
@@ -18,7 +18,7 @@ from Handlers.group_report import report_router
 
 start_router = Router()
 
-# Global o'zgaruvchilar (barcha handlerlar uchun)
+# Global o'zgaruvchilar
 USERS_ROLES = None
 TASKS_DATABASE = None
 ADMIN_ID = None
@@ -31,7 +31,6 @@ def init_all_handlers(users_roles, tasks_database, admin_id):
     TASKS_DATABASE = tasks_database
     ADMIN_ID = admin_id
     
-    # Har bir handlerga o'z o'zgaruvchilarini o'tkazish
     init_tasks_handler(USERS_ROLES, TASKS_DATABASE)
     init_employees_handler(USERS_ROLES, ADMIN_ID)
     init_salaries_handler(USERS_ROLES)
@@ -93,8 +92,6 @@ async def command_start_handler(message: types.Message):
     )
 
 
-# ================= FOYDALANUVCHI ISMINI QABUL QILISH =================
-
 @start_router.message(
     lambda msg:
     isinstance(
@@ -123,7 +120,7 @@ async def get_user_real_name_handler(message: types.Message):
     )
 
 
-# ================= ISBOT QABUL QILISH (VAZIFA BAJARISH) =================
+# ================= ISBOT QABUL QILISH (REAL TIME VIDEO TEKSHIRUVLI) =================
 
 @start_router.message(TaskStates.waiting_for_task_proof)
 async def receive_task_proof_handler(message: types.Message, state: FSMContext):
@@ -135,6 +132,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     task = next((t for t in TASKS_DATABASE if t["id"] == task_id), None)
     GROUP_CHAT_ID = -5226036627  
     
+    # ========== RASM TEKSHIRUVI ==========
     if proof_required == "Photo" and message.photo:
         role = USERS_ROLES[str(message.from_user.id)]["role"]
         await message.answer(
@@ -157,30 +155,53 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
                 TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
                 save_tasks(TASKS_DATABASE)
         await state.clear()
-        
-    elif proof_required == "Video message" and message.video_note:
-        role = USERS_ROLES[str(message.from_user.id)]["role"]
-        await message.answer(
-            text="Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
-            reply_markup=get_main_menu(role)
-        )
-        if task:
-            group_text = (
-                f"✅ <b>VAZIFA BAJARILDI!</b>\n\n"
-                f"📋 <b>Turi:</b> {task['task_type']}\n"
-                f"📌 <b>Vazifa nomi:</b> {task['task_name']}\n"
-                f"👤 <b>Masʻul xodim:</b> {task['assigned_to_name']}\n"
-                f"📸 <b>Isbot turi:</b> Dumaloq video (Video message)\n"
-                f"⏰ <b>Topshirilgan vaqt:</b> {datetime.now(timezone(timedelta(hours=5))).strftime('%H:%M')}"
-            )
-            await message.bot.send_message(chat_id=GROUP_CHAT_ID, text=group_text, parse_mode="HTML")
-            await message.bot.send_video_note(chat_id=GROUP_CHAT_ID, video_note=message.video_note.file_id)
+    
+    # ========== DUMALOQ VIDEO TEKSHIRUVI (REAL TIME + FORWARD CHEKING) ==========
+    elif proof_required == "Video message":
+        # Video note (dumaloq video) tekshiruvi
+        if message.video_note:
+            # Forward qilingan video yoki original ekanligini tekshirish
+            is_forwarded = hasattr(message, 'forward_from') or hasattr(message, 'forward_from_chat')
             
-            if task.get("task_type") == "Kunlik (Bir martalik)":
-                TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
-                save_tasks(TASKS_DATABASE)
-        await state.clear()
-        
+            if is_forwarded:
+                await message.answer(
+                    text="❌ <b>Kechirasiz!</b> Eski videoni forward qilish mumkin emas.\n"
+                         "Iltimos, <b>hozir, real vaqtda</b> dumaloq videoni yozib yuboring.\n\n"
+                         "📹 Dumaloq video yozish uchun: Mikrofon tugmasini bosib ushlab turing, "
+                         "so‘ng video tugmasini tanlang va yozib yuboring.",
+                    parse_mode="HTML"
+                )
+                return
+            
+            # Real time video qabul qilindi
+            role = USERS_ROLES[str(message.from_user.id)]["role"]
+            await message.answer(
+                text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
+                reply_markup=get_main_menu(role)
+            )
+            if task:
+                group_text = (
+                    f"✅ <b>VAZIFA BAJARILDI!</b>\n\n"
+                    f"📋 <b>Turi:</b> {task['task_type']}\n"
+                    f"📌 <b>Vazifa nomi:</b> {task['task_name']}\n"
+                    f"👤 <b>Masʻul xodim:</b> {task['assigned_to_name']}\n"
+                    f"📸 <b>Isbot turi:</b> Dumaloq video (Video message)\n"
+                    f"⏰ <b>Topshirilgan vaqt:</b> {datetime.now(timezone(timedelta(hours=5))).strftime('%H:%M')}"
+                )
+                await message.bot.send_message(chat_id=GROUP_CHAT_ID, text=group_text, parse_mode="HTML")
+                await message.bot.send_video_note(chat_id=GROUP_CHAT_ID, video_note=message.video_note.file_id)
+                
+                if task.get("task_type") == "Kunlik (Bir martalik)":
+                    TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
+                    save_tasks(TASKS_DATABASE)
+            await state.clear()
+        else:
+            await message.answer(
+                text="❌ <b>Notoʻgʻri format!</b> Iltimos, ushbu vazifa uchun faqat <b>dumaloq video (video message)</b> yuboring.\n\n"
+                     "📹 Dumaloq video yozish uchun: Mikrofon tugmasini bosib ushlab turing, "
+                     "so‘ng video tugmasini tanlang va yozib yuboring.",
+                parse_mode="HTML"
+            )
     else:
         if proof_required == "Photo":
             await message.answer(text="⚠️ Notoʻgʻri format! Iltimos, ushbu vazifa uchun faqat <b>Rasm (Photo)</b> yuboring.", parse_mode="HTML")
@@ -188,7 +209,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             await message.answer(text="⚠️ Notoʻgʻri format! Iltimos, ushbu vazifa uchun faqat <b>Dumaloq video (Video message)</b> yuboring.", parse_mode="HTML")
 
 
-# ================= TAYMER (VAZIFALARNI AVTOMATIK YUBORISH) =================
+# ================= TAYMER =================
 
 async def auto_task_scheduler(bot):
     last_checked_minute = ""
@@ -227,7 +248,6 @@ async def auto_task_scheduler(bot):
                                 day_match = True
                         
                         if day_match:
-                            from Keyboards.main_menu import get_task_complete_keyboard
                             text_to_employee = f"📌 <b>{task['task_name']}</b>"
                             await bot.send_message(
                                 chat_id=task["assigned_to_id"],
