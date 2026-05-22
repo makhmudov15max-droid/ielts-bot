@@ -26,8 +26,8 @@ TASKS_DATABASE = None
 ADMIN_ID = None
 
 # Yuborilgan videolarni saqlash (cheating oldini olish uchun)
-# Format: {user_id: [file_unique_id1, file_unique_id2, ...]}
-SENT_VIDEOS = {}
+# Format: {file_unique_id: {"user_id": xxx, "chat_id": xxx, "timestamp": xxx}}
+GLOBAL_VIDEO_TRACKING = {}
 
 
 def init_all_handlers(users_roles, tasks_database, admin_id):
@@ -126,7 +126,7 @@ async def get_user_real_name_handler(message: types.Message):
     )
 
 
-# ================= ISBOT QABUL QILISH (LOG BILAN) =================
+# ================= ISBOT QABUL QILISH (GLOBAL VIDEO TRACKING BILAN) =================
 
 @start_router.message(TaskStates.waiting_for_task_proof)
 async def receive_task_proof_handler(message: types.Message, state: FSMContext):
@@ -134,13 +134,13 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     proof_required = state_data.get("proof_required")
     task_id = state_data.get("active_task_id")
     
-    global TASKS_DATABASE, SENT_VIDEOS
+    global TASKS_DATABASE, GLOBAL_VIDEO_TRACKING
     task = next((t for t in TASKS_DATABASE if t["id"] == task_id), None)
     GROUP_CHAT_ID = -5226036627  
     user_id = str(message.from_user.id)
     current_time = int(time.time())
     
-    # ========== VIDEO KELGANDA LOGGA CHIQARISH (VAQTINCHALIK) ==========
+    # ========== VIDEO KELGANDA LOGGA CHIQARISH ==========
     if message.video_note:
         logging.info("=" * 60)
         logging.info("📹 VIDEO NOTE QABUL QILINDI")
@@ -149,26 +149,18 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
         logging.info(f"🆔 Message ID: {message.message_id}")
         logging.info(f"💬 Chat ID: {message.chat.id}")
         logging.info(f"📊 Chat Type: {message.chat.type}")
-        logging.info(f"📅 Message Date: {message.date}")
-        logging.info(f"⏰ Current Time: {datetime.fromtimestamp(current_time)}")
         
-        # Forward atributlarini tekshirish
         forward_from = getattr(message, 'forward_from', None)
         forward_from_chat = getattr(message, 'forward_from_chat', None)
         forward_date = getattr(message, 'forward_date', None)
-        forward_origin = getattr(message, 'forward_origin', None)
         
         logging.info(f"🔄 forward_from: {forward_from}")
         logging.info(f"🔄 forward_from_chat: {forward_from_chat}")
         logging.info(f"🔄 forward_date: {forward_date}")
-        logging.info(f"🔄 forward_origin: {forward_origin}")
         
-        # Video ma'lumotlari
         if message.video_note:
             logging.info(f"🎬 Video file_unique_id: {message.video_note.file_unique_id}")
-            logging.info(f"🎬 Video file_id: {message.video_note.file_id[:50]}...")
             logging.info(f"🎬 Video duration: {message.video_note.duration} sekund")
-        
         logging.info("=" * 60)
     
     # ========== RASM TEKSHIRUVI ==========
@@ -195,7 +187,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
                 save_tasks(TASKS_DATABASE)
         await state.clear()
     
-    # ========== DUMALOQ VIDEO TEKSHIRUVI ==========
+    # ========== DUMALOQ VIDEO TEKSHIRUVI (GLOBAL TRACKING BILAN) ==========
     elif proof_required == "Video message":
         
         # 1. VIDEO FORMATNI TEKSHIRISH
@@ -211,7 +203,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             )
             return
         
-        # 2. FORWARD TEKSHIRUVI (barcha usullar)
+        # 2. FORWARD TEKSHIRUVI
         is_forwarded = False
         forward_from_text = ""
         
@@ -224,21 +216,12 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
         elif hasattr(message, 'forward_date') and message.forward_date:
             is_forwarded = True
             forward_from_text = f"date: {message.forward_date}"
-        elif hasattr(message, 'forward_origin') and message.forward_origin:
-            is_forwarded = True
-            forward_from_text = "origin mavjud"
         
         if is_forwarded:
             logging.info(f"❌ FORWARD ANIQLANDI: {forward_from_text}")
             await message.answer(
                 text="❌ <b>Kechirasiz!</b> Forward qilingan video qabul qilinmaydi.\n\n"
-                     f"📋 Aniqlangan: {forward_from_text}\n\n"
-                     "Iltimos, <b>hozir, real vaqtda</b> yangi video yozib yuboring.\n\n"
-                     "📹 <b>Qanday yuborish kerak:</b>\n"
-                     "1. Mikrofon tugmasini bosing va ushlab turing\n"
-                     "2. <b>Video</b> tugmasiga o'ting\n"
-                     "3. Yozish tugmasini bosing\n"
-                     "4. Yozib bo'lgach, jo'natish tugmasini bosing",
+                     "Iltimos, <b>hozir, real vaqtda</b> yangi video yozib yuboring.",
                 parse_mode="HTML"
             )
             return
@@ -253,53 +236,55 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             )
             return
         
-        # 4. VIDEO YOSHI TEKSHIRUVI (real vaqtda yozilgan bo'lishi kerak)
+        # 4. VIDEO YOSHI TEKSHIRUVI
         message_time = message.date.timestamp() if hasattr(message, 'date') else current_time
         video_age = current_time - message_time
         
         if video_age > 10:
             logging.info(f"❌ VIDEO ESKI: {video_age:.0f} sekund")
             await message.answer(
-                text=f"❌ <b>Kechirasiz!</b> Video {int(video_age)} sekund oldin yozilgan.\n"
-                     "Bu saved message dan olingan bo'lishi mumkin.\n\n"
+                text=f"❌ <b>Kechirasiz!</b> Video {int(video_age)} sekund oldin yozilgan.\n\n"
                      "Iltimos, <b>hozir, real vaqtda</b> yangi video yozib yuboring.\n"
-                     f"(Video {video_age:.0f} sekund eski, maksimal 10 sekund ruxsat)",
+                     f"(Maksimal ruxsat: 10 sekund)",
                 parse_mode="HTML"
             )
             return
         
-        # 5. UNIQUE ID TEKSHIRUVI
+        # 5. GLOBAL VIDEO TRACKING (boshqa chatdan forward qilingan videoni aniqlash)
         video_unique_id = message.video_note.file_unique_id
         
-        if user_id not in SENT_VIDEOS:
-            SENT_VIDEOS[user_id] = []
+        if video_unique_id in GLOBAL_VIDEO_TRACKING:
+            old_record = GLOBAL_VIDEO_TRACKING[video_unique_id]
+            # Agar video boshqa user yoki boshqa chatdan kelgan bo'lsa
+            if old_record["user_id"] != user_id or old_record["chat_id"] != str(message.chat.id):
+                logging.info(f"❌ VIDEO BOSHQA CHATDAN/Foydalanuvchidan KELGAN: old_user={old_record['user_id']}, new_user={user_id}")
+                await message.answer(
+                    text="❌ <b>Kechirasiz!</b> Bu video boshqa chatda yoki boshqa foydalanuvchi tomonidan avval yuborilgan.\n\n"
+                         "Iltimos, <b>hozir, real vaqtda</b> yangi video yozib yuboring.\n\n"
+                         "📹 <b>Eslatma:</b> Har bir video faqat bir marta ishlatilishi mumkin.",
+                    parse_mode="HTML"
+                )
+                return
+        else:
+            # Birinchi marta kelgan video - tracking ga qo'shamiz
+            GLOBAL_VIDEO_TRACKING[video_unique_id] = {
+                "user_id": user_id,
+                "chat_id": str(message.chat.id),
+                "timestamp": current_time
+            }
+            logging.info(f"✅ VIDEO TRACKING GA QO'SHILDI: {video_unique_id[:8]}...")
         
-        if video_unique_id in SENT_VIDEOS[user_id]:
-            logging.info(f"❌ VIDEO TAKROR: {video_unique_id}")
-            await message.answer(
-                text="❌ <b>Kechirasiz!</b> Bu video avval yuborilgan.\n\n"
-                     "Iltimos, <b>yangi, real vaqtda</b> video yozib yuboring.",
-                parse_mode="HTML"
-            )
-            return
+        # 6. XOTIRANI TOZALASH (har kuni 00:00 da tozalanadi, qo'shimcha: 1000 dan oshsa)
+        if len(GLOBAL_VIDEO_TRACKING) > 1000:
+            # Eski yozuvlarni tozalash (7 kundan eski)
+            week_ago = current_time - (7 * 24 * 60 * 60)
+            to_delete = [k for k, v in GLOBAL_VIDEO_TRACKING.items() if v["timestamp"] < week_ago]
+            for k in to_delete:
+                del GLOBAL_VIDEO_TRACKING[k]
+            logging.info(f"🗑 GLOBAL_VIDEO_TRACKING tozalandi: {len(to_delete)} ta eski yozuv o'chirildi")
         
-        # 6. MESSAGE_ID TEKSHIRUVI
-        if message.message_id < 50 and video_age > 5:
-            logging.info(f"❌ MESSAGE_ID JUDA KICHIK: {message.message_id}")
-            await message.answer(
-                text="❌ <b>Kechirasiz!</b> Eski xabarni qayta yuborish mumkin emas.\n\n"
-                     "Iltimos, <b>hozir</b> yangi video yozib yuboring.",
-                parse_mode="HTML"
-            )
-            return
-        
-        # ========== BAJARILDI ==========
+        # ========== VIDEO QABUL QILINDI ==========
         logging.info(f"✅ VIDEO QABUL QILINDI: {video_unique_id[:8]}... (yoshi: {video_age:.0f} sekund)")
-        
-        SENT_VIDEOS[user_id].append(video_unique_id)
-        
-        if len(SENT_VIDEOS[user_id]) > 10:
-            SENT_VIDEOS[user_id] = SENT_VIDEOS[user_id][-10:]
         
         role = USERS_ROLES[user_id]["role"]
         await message.answer(
@@ -363,9 +348,9 @@ async def auto_task_scheduler(bot):
                 for task in TASKS_DATABASE:
                     task["sent_today_times"] = []
                 save_tasks(TASKS_DATABASE)
-                global SENT_VIDEOS
-                SENT_VIDEOS.clear()
-                logging.info("🗑 SENT_VIDEOS tozalandi (00:00)")
+                global GLOBAL_VIDEO_TRACKING
+                GLOBAL_VIDEO_TRACKING.clear()
+                logging.info("🗑 GLOBAL_VIDEO_TRACKING tozalandi (00:00)")
             
             if current_time_str != last_checked_minute:
                 for task in TASKS_DATABASE:
@@ -388,7 +373,6 @@ async def auto_task_scheduler(bot):
                                 day_match = True
                         
                         if day_match:
-                            from Keyboards.main_menu import get_task_complete_keyboard
                             text_to_employee = f"📌 <b>{task['task_name']}</b>"
                             await bot.send_message(
                                 chat_id=task["assigned_to_id"],
