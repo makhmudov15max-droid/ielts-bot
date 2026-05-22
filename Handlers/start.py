@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
+import time
 from aiogram import Router, types, F
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
@@ -92,6 +93,8 @@ async def command_start_handler(message: types.Message):
     )
 
 
+# ================= FOYDALANUVCHI ISMINI QABUL QILISH =================
+
 @start_router.message(
     lambda msg:
     isinstance(
@@ -136,7 +139,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     if proof_required == "Photo" and message.photo:
         role = USERS_ROLES[str(message.from_user.id)]["role"]
         await message.answer(
-            text="Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
+            text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
             reply_markup=get_main_menu(role)
         )
         if task:
@@ -156,19 +159,46 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
                 save_tasks(TASKS_DATABASE)
         await state.clear()
     
-    # ========== DUMALOQ VIDEO TEKSHIRUVI (REAL TIME + FORWARD CHEKING) ==========
+    # ========== DUMALOQ VIDEO TEKSHIRUVI (REAL TIME + FORWARD + VAQT CHEKING) ==========
     elif proof_required == "Video message":
-        # Video note (dumaloq video) tekshiruvi
         if message.video_note:
-            # Forward qilingan video yoki original ekanligini tekshirish
-            is_forwarded = hasattr(message, 'forward_from') or hasattr(message, 'forward_from_chat')
+            # Forward qilingan videoni tekshirish
+            is_forwarded = False
+            
+            if hasattr(message, 'forward_from') and message.forward_from:
+                is_forwarded = True
+            elif hasattr(message, 'forward_from_chat') and message.forward_from_chat:
+                is_forwarded = True
+            elif hasattr(message, 'forward_date') and message.forward_date:
+                is_forwarded = True
+            
+            # Video yozilgan vaqtni tekshirish (5 daqiqadan eski bo'lmasligi kerak)
+            current_time = int(time.time())
+            message_time = message.date.timestamp() if hasattr(message, 'date') else current_time
+            video_age = current_time - message_time
             
             if is_forwarded:
                 await message.answer(
                     text="❌ <b>Kechirasiz!</b> Eski videoni forward qilish mumkin emas.\n"
                          "Iltimos, <b>hozir, real vaqtda</b> dumaloq videoni yozib yuboring.\n\n"
-                         "📹 Dumaloq video yozish uchun: Mikrofon tugmasini bosib ushlab turing, "
-                         "so‘ng video tugmasini tanlang va yozib yuboring.",
+                         "📹 <b>Qanday yuborish kerak:</b>\n"
+                         "1. Chatda mikrofon tugmasini bosing va ushlab turing\n"
+                         "2. <b>Video</b> tugmasiga o'ting\n"
+                         "3. Yozish tugmasini bosing va video yozing\n"
+                         "4. Yozib bo'lgach, jo'natish tugmasini bosing",
+                    parse_mode="HTML"
+                )
+                return
+            
+            if video_age > 300:  # 5 minut = 300 sekund
+                await message.answer(
+                    text=f"❌ <b>Kechirasiz!</b> Juda eski video ({int(video_age/60)} daqiqa).\n"
+                         "Iltimos, <b>hozir</b> yangi video yozib yuboring.\n\n"
+                         "📹 <b>Qanday yuborish kerak:</b>\n"
+                         "1. Chatda mikrofon tugmasini bosing va ushlab turing\n"
+                         "2. <b>Video</b> tugmasiga o'ting\n"
+                         "3. Yozish tugmasini bosing va video yozing\n"
+                         "4. Yozib bo'lgach, jo'natish tugmasini bosing",
                     parse_mode="HTML"
                 )
                 return
@@ -198,18 +228,32 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
         else:
             await message.answer(
                 text="❌ <b>Notoʻgʻri format!</b> Iltimos, ushbu vazifa uchun faqat <b>dumaloq video (video message)</b> yuboring.\n\n"
-                     "📹 Dumaloq video yozish uchun: Mikrofon tugmasini bosib ushlab turing, "
-                     "so‘ng video tugmasini tanlang va yozib yuboring.",
+                     "📹 <b>Qanday yuborish kerak:</b>\n"
+                     "1. Chatda mikrofon tugmasini bosing va ushlab turing\n"
+                     "2. <b>Video</b> tugmasiga o'ting\n"
+                     "3. Yozish tugmasini bosing va video yozing\n"
+                     "4. Yozib bo'lgach, jo'natish tugmasini bosing",
                 parse_mode="HTML"
             )
     else:
         if proof_required == "Photo":
-            await message.answer(text="⚠️ Notoʻgʻri format! Iltimos, ushbu vazifa uchun faqat <b>Rasm (Photo)</b> yuboring.", parse_mode="HTML")
+            await message.answer(
+                text="⚠️ Notoʻgʻri format! Iltimos, ushbu vazifa uchun faqat <b>Rasm (Photo)</b> yuboring.", 
+                parse_mode="HTML"
+            )
         else:
-            await message.answer(text="⚠️ Notoʻgʻri format! Iltimos, ushbu vazifa uchun faqat <b>Dumaloq video (Video message)</b> yuboring.", parse_mode="HTML")
+            await message.answer(
+                text="⚠️ Notoʻgʻri format! Iltimos, ushbu vazifa uchun faqat <b>Dumaloq video (Video message)</b> yuboring.\n\n"
+                     "📹 <b>Qanday yuborish kerak:</b>\n"
+                     "1. Chatda mikrofon tugmasini bosing va ushlab turing\n"
+                     "2. <b>Video</b> tugmasiga o'ting\n"
+                     "3. Yozish tugmasini bosing va video yozing\n"
+                     "4. Yozib bo'lgach, jo'natish tugmasini bosing",
+                parse_mode="HTML"
+            )
 
 
-# ================= TAYMER =================
+# ================= TAYMER (VAZIFALARNI AVTOMATIK YUBORISH) =================
 
 async def auto_task_scheduler(bot):
     last_checked_minute = ""
