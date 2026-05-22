@@ -41,7 +41,6 @@ def load_users():
         if os.path.exists(USERS_FILE):
             with open(USERS_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                # Owner ni tekshirish va qo'shish
                 if str(ADMIN_ID) not in data:
                     data[str(ADMIN_ID)] = {
                         "role": "Owner",
@@ -82,10 +81,14 @@ def get_role(user_id):
 
 def check_user_access(user_id: int) -> bool:
     user_info = USERS_ROLES.get(str(user_id))
-    if not user_info or not isinstance(user_info, dict): return False
-    if user_info.get("role") in [None, "rejected"]: return False
-    if user_info.get("name") is None: return False
-    # Owner, Manager, Admin lar uchun True
+    if not user_info:
+        return False
+    if not isinstance(user_info, dict):
+        return False
+    if user_info.get("role") in [None, "rejected"]:
+        return False
+    if user_info.get("name") is None:
+        return False
     return True
 
 # ================= TASKS JSON TIZIMI =================
@@ -115,7 +118,7 @@ TASKS_DATABASE = load_tasks()
 
 @start_router.message(CommandStart())
 async def command_start_handler(message: types.Message):
-    user_id = str(message.from_user.id)  # <-- string ga o'tkazish
+    user_id = str(message.from_user.id)
     user_info = USERS_ROLES.get(user_id)
     
     if isinstance(user_info, dict) and user_info.get("role") == "rejected":
@@ -261,13 +264,11 @@ def check_user_access(user_id: int) -> bool:
     if user_info.get("role") in [None, "rejected"] or user_info.get("name") is None: return False
     return True
 
-# 1-QADAM: Vazifa turi soʻraladi
 @start_router.message(F.text == "➕ Vazifa qoʻshish")
 async def add_task_handler(message: types.Message, state: FSMContext):
     if not check_user_access(message.from_user.id): return
     await message.answer(text="Qanday turdagi vazifa yaratmoqchisiz?", reply_markup=task_type_keyboard)
 
-# 2-QADAM: Unvon (Boʻlim) soʻraladi
 @start_router.message(F.text.in_(["Muntazam (Doimiy)", "Kunlik (Bir martalik)"]))
 async def task_type_selected_handler(message: types.Message, state: FSMContext):
     if not check_user_access(message.from_user.id): return
@@ -275,7 +276,6 @@ async def task_type_selected_handler(message: types.Message, state: FSMContext):
     await message.answer(text="Ushbu vazifa qaysi boʻlim/unvon xodimiga tegishli?", reply_markup=assign_role_keyboard)
     await state.set_state(TaskStates.waiting_for_target_role)
 
-# 3-QADAM: Aniq mas'ul xodim tanlanadi
 @start_router.message(TaskStates.waiting_for_target_role, F.text.in_(["Admin", "Kassir", "Sanitar", "Manager"]))
 async def get_target_role_handler(message: types.Message, state: FSMContext):
     selected_role = message.text
@@ -299,7 +299,6 @@ async def get_target_role_handler(message: types.Message, state: FSMContext):
     )
     await state.set_state(TaskStates.waiting_for_target_user)
 
-# 4-QADAM: Vazifa nomi soʻraladi
 @start_router.callback_query(TaskStates.waiting_for_target_user, F.data.startswith("assignuser_"))
 async def process_target_user_callback(call: types.CallbackQuery, state: FSMContext):
     target_user_id = call.data.split("_")[1]
@@ -312,7 +311,6 @@ async def process_target_user_callback(call: types.CallbackQuery, state: FSMCont
     await state.set_state(TaskStates.waiting_for_name)
     await call.answer()
 
-# 5-QADAM: TARMOQLANISH (Kunlik boʻlsa izohga, Muntazam boʻlsa kunlarga oʻtadi)
 @start_router.message(TaskStates.waiting_for_name)
 async def get_task_name_handler(message: types.Message, state: FSMContext):
     await state.update_data(task_name=message.text.strip())
@@ -331,8 +329,6 @@ async def get_task_description_handler(message: types.Message, state: FSMContext
     await message.answer(text="Ushbu vazifani yakunlash uchun qanday turdagi isbot talab etiladi?", reply_markup=proof_type_keyboard)
     await state.set_state(TaskStates.waiting_for_proof_type)
 
-
-# ================= DOIMIY (MUNTAZAM) VAZIFA KUN / VAQT LOGIKALARI =================
 
 @start_router.message(TaskStates.waiting_for_days, F.text.in_(["Toq kunlar", "Juft kunlar", "Haftada 6 kun"]))
 async def get_task_days_handler(message: types.Message, state: FSMContext):
@@ -402,8 +398,6 @@ async def get_multiple_times_handler(message: types.Message, state: FSMContext):
     await message.answer(text="Ushbu vazifani yakunlash uchun qanday turdagi isbot talab etiladi?", reply_markup=proof_type_keyboard)
     await state.set_state(TaskStates.waiting_for_proof_type)
 
-
-# ================= FINAL: VAZIFANI YARATISH VA MAS'ULGA YUBORISH =================
 
 @start_router.message(TaskStates.waiting_for_proof_type, F.text.in_(["Dumaloq video", "Rasm yuborish"]))
 async def finalize_task_creation_handler(message: types.Message, state: FSMContext):
@@ -485,8 +479,6 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
     await state.clear()
 
 
-# ================= VAZIFALAR ROʻYXATINI KOʻRISH =================
-
 @start_router.message(F.text == "📋 Vazifalar roʻyxati")
 async def list_tasks_handler(message: types.Message):
     if not check_user_access(message.from_user.id): return
@@ -514,8 +506,6 @@ async def list_tasks_handler(message: types.Message):
     await message.answer(text=response_text, parse_mode="HTML")
 
 
-# ================= XODIM VAZIFANI BAJARISH BOSQICHI =================
-
 @start_router.callback_query(F.data.startswith("completetask_"))
 async def employee_complete_task_callback(call: types.CallbackQuery, state: FSMContext):
     task_id = int(call.data.split("_")[1])
@@ -534,8 +524,6 @@ async def employee_complete_task_callback(call: types.CallbackQuery, state: FSMC
     await state.set_state(TaskStates.waiting_for_task_proof)
     await call.answer()
 
-
-# ================= XODIM ISBOTINI GURUHGA YUBORISH =================
 
 @start_router.message(TaskStates.waiting_for_task_proof)
 async def receive_task_proof_handler(message: types.Message, state: FSMContext):
@@ -600,8 +588,6 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             await message.answer(text="⚠️ Notoʻgʻri format! Iltimos, ushbu vazifa uchun faqat <b>Dumaloq video (Video message)</b> yuboring.", parse_mode="HTML")
 
 
-# ================= TAYMER (FAQAT MUNTAZAM VAZIFALAR UCHUN) =================
-
 async def auto_task_scheduler(bot):
     last_checked_minute = ""
     tashkent_tz = timezone(timedelta(hours=5))
@@ -654,8 +640,6 @@ async def auto_task_scheduler(bot):
         await asyncio.sleep(5)
 
 
-# ================= VAZIFANI O'CHIRISH LOGIKASI =================
-
 @start_router.message(F.text == "🗑 Vazifani oʻchirish")
 async def remove_task_menu_handler(message: types.Message):
     if not check_user_access(message.from_user.id): return
@@ -693,8 +677,6 @@ async def cancel_remove_callback(call: types.CallbackQuery):
     await call.message.answer(text="O‘chirish jarayoni bekor qilindi.", reply_markup=get_main_menu(role))
     await call.answer()
 
-
-# ================= XODIMLAR PANELI =================
 
 @start_router.message(F.text == "👥 Xodimlar")
 async def view_employees_handler(message: types.Message):
@@ -735,14 +717,14 @@ async def process_edit_staff_callback(call: types.CallbackQuery, state: FSMConte
         return
         
     options_kb = [
-    [
-        types.InlineKeyboardButton(text="✏️ Ism o'zgartirish", callback_data=f"rename_{target_user_id}"),
-        types.InlineKeyboardButton(text="🎖 Lavozimni o'zgartirish", callback_data=f"rolechange_{target_user_id}")
-    ],
-    [
-        types.InlineKeyboardButton(text="❌ Botdan chetlashtirish", callback_data=f"firestaff_{target_user_id}")
-    ],
-    [types.InlineKeyboardButton(text="⬅️ Orqaga", callback_data="editstaff_cancel")]
+        [
+            types.InlineKeyboardButton(text="✏️ Ism o'zgartirish", callback_data=f"rename_{target_user_id}"),
+            types.InlineKeyboardButton(text="🎖 Lavozimni o'zgartirish", callback_data=f"rolechange_{target_user_id}")
+        ],
+        [
+            types.InlineKeyboardButton(text="❌ Botdan chetlashtirish", callback_data=f"firestaff_{target_user_id}")
+        ],
+        [types.InlineKeyboardButton(text="⬅️ Orqaga", callback_data="editstaff_cancel")]
     ]
     
     await call.message.edit_text(
@@ -752,6 +734,63 @@ async def process_edit_staff_callback(call: types.CallbackQuery, state: FSMConte
         reply_markup=types.InlineKeyboardMarkup(inline_keyboard=options_kb)
     )
     await call.answer()
+
+
+# ========== ISM O'ZGARTIRISH CALLBACK HANDLER ==========
+@start_router.callback_query(F.data.startswith("rename_"))
+async def rename_staff_callback(call: types.CallbackQuery, state: FSMContext):
+    target_user_id = call.data.split("_")[1]
+    staff_info = USERS_ROLES.get(target_user_id)
+    
+    if not staff_info:
+        await call.answer(text="⚠️ Xodim topilmadi!", show_alert=True)
+        return
+    
+    await state.update_data(rename_user_id=target_user_id)
+    await state.set_state(TaskStates.waiting_for_new_name)
+    
+    await call.message.answer(
+        text=f"✏️ <b>{staff_info['name']}</b> uchun yangi ism va familiyani kiriting:",
+        parse_mode="HTML",
+        reply_markup=types.ReplyKeyboardRemove()
+    )
+    await call.answer()
+
+
+@start_router.message(TaskStates.waiting_for_new_name)
+async def process_new_name_handler(message: types.Message, state: FSMContext):
+    user_data = await state.get_data()
+    target_user_id = user_data.get("rename_user_id")
+    new_name = message.text.strip()
+    
+    if target_user_id and target_user_id in USERS_ROLES:
+        old_name = USERS_ROLES[target_user_id]["name"]
+        USERS_ROLES[target_user_id]["name"] = new_name
+        save_users()
+        
+        await message.answer(
+            text=f"✅ <b>Ism muvaffaqiyatli o‘zgartirildi!</b>\n\n"
+                 f"📝 Eski ism: {old_name}\n"
+                 f"📝 Yangi ism: {new_name}",
+            parse_mode="HTML"
+        )
+        
+        try:
+            await message.bot.send_message(
+                chat_id=int(target_user_id),
+                text=f"🔔 Administrator tomonidan sizning ismingiz <b>{new_name}</b> ga o‘zgartirildi.",
+                parse_mode="HTML"
+            )
+        except:
+            pass
+        
+        role = USERS_ROLES[str(message.from_user.id)]["role"]
+        await message.answer(
+            text="Xodimlar paneliga qaytdingiz.",
+            reply_markup=get_main_menu(role)
+        )
+    
+    await state.clear()
 
 
 @start_router.callback_query(F.data.startswith("rolechange_"))
@@ -851,8 +890,6 @@ async def cancel_edit_staff_callback(call: types.CallbackQuery, state: FSMContex
     await state.clear()
     await call.answer()
 
-
-# ================= ARXIV PANELI =================
 
 @start_router.message(F.text == "🗄 Arxiv")
 async def view_archive_handler(message: types.Message):
@@ -966,7 +1003,6 @@ async def save_archive_role_callback(call: types.CallbackQuery, state: FSMContex
 from Handlers.states import AdminSalaryStates
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-# ================= ADMIN OYLIK =================
 
 def get_status_keyboard():
     return ReplyKeyboardMarkup(keyboard=[
@@ -1225,8 +1261,6 @@ async def process_actual_active_final(message: types.Message, state: FSMContext)
     role = USERS_ROLES[str(message.from_user.id)]["role"]
     await message.answer(text=report_text, parse_mode="HTML", reply_markup=get_main_menu(role))
 
-
-# ================= KASSIR OYLIK =================
 
 def get_cashier_hours_keyboard():
     return types.ReplyKeyboardMarkup(
