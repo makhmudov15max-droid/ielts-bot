@@ -24,7 +24,7 @@ def is_admin(user_id: int) -> bool:
                 user_info = users.get(str(user_id))
                 if user_info:
                     role = user_info.get("role")
-                    return role in ["Admin", "Owner"]
+                    return role in ["Admin", "Owner", "Manager"]
     except Exception as e:
         print(f"is_admin() xatosi: {e}")
     return False
