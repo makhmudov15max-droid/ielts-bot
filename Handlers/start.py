@@ -25,10 +25,6 @@ USERS_ROLES = None
 TASKS_DATABASE = None
 ADMIN_ID = None
 
-# Yuborilgan videolarni saqlash (cheating oldini olish uchun)
-# Format: {file_unique_id: {"user_id": xxx, "chat_id": xxx, "timestamp": xxx}}
-GLOBAL_VIDEO_TRACKING = {}
-
 
 def init_all_handlers(users_roles, tasks_database, admin_id):
     """Barcha handlerlar uchun global o'zgaruvchilarni o'rnatish"""
@@ -126,7 +122,7 @@ async def get_user_real_name_handler(message: types.Message):
     )
 
 
-# ================= ISBOT QABUL QILISH (TO'LIQ HIMOYA BILAN) =================
+# ================= ISBOT QABUL QILISH (Aiogram 3.x UCHUN TUZATILGAN) =================
 
 @start_router.message(TaskStates.waiting_for_task_proof)
 async def receive_task_proof_handler(message: types.Message, state: FSMContext):
@@ -134,15 +130,13 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     proof_required = state_data.get("proof_required")
     task_id = state_data.get("active_task_id")
     
-    global TASKS_DATABASE, GLOBAL_VIDEO_TRACKING
+    global TASKS_DATABASE
     task = next((t for t in TASKS_DATABASE if t["id"] == task_id), None)
     GROUP_CHAT_ID = -5226036627  
-    user_id = str(message.from_user.id)
-    current_time = int(time.time())
     
     # ========== RASM TEKSHIRUVI ==========
     if proof_required == "Photo" and message.photo:
-        role = USERS_ROLES[user_id]["role"]
+        role = USERS_ROLES[str(message.from_user.id)]["role"]
         await message.answer(
             text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
             reply_markup=get_main_menu(role)
@@ -164,7 +158,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
                 save_tasks(TASKS_DATABASE)
         await state.clear()
     
-    # ========== DUMALOQ VIDEO TEKSHIRUVI (YAKUNIY VERSIYA) ==========
+    # ========== DUMALOQ VIDEO TEKSHIRUVI (Aiogram 3.x) ==========
     elif proof_required == "Video message":
         
         # 1. VIDEO FORMATNI TEKSHIRISH
@@ -180,34 +174,23 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             )
             return
         
-        # 2. FORWARD ANIQLASH (BARCHA USULLAR KOMBINATSIYASI)
+        # 2. FORWARD ANIQLASH (Aiogram 3.x uchun)
         is_forwarded = False
-        forward_reason = ""
         
-        # Usul A: Yangi API (forward_origin) – Telegram Bot API 6.x+
+        # Usul 1: forward_origin (yangi API)
         if hasattr(message, 'forward_origin') and message.forward_origin is not None:
             is_forwarded = True
-            forward_reason = f"forward_origin={message.forward_origin}"
-            logging.info(f"❌ Forward aniqlangan: {forward_reason}")
+            logging.info(f"❌ Forward aniqlangan: forward_origin={message.forward_origin}")
         
-        # Usul B: Eski API atributlari
-        elif (getattr(message, 'forward_from', None) or 
-              getattr(message, 'forward_from_chat', None) or
-              getattr(message, 'forward_date', None)):
-            is_forwarded = True
-            forward_reason = "eski API atributlari (forward_from/chat/date)"
-            logging.info(f"❌ Forward aniqlangan: {forward_reason}")
-        
-        # Usul C: Chat ID != User ID (shaxsiy chatdan yuborilmagan)
+        # Usul 2: chat.id vs user.id (boshqa chatdan kelganligini aniqlash)
         elif str(message.chat.id) != str(message.from_user.id):
             is_forwarded = True
-            forward_reason = f"chat.id={message.chat.id} != user.id={message.from_user.id}"
-            logging.info(f"❌ Forward aniqlangan: {forward_reason}")
+            logging.info(f"❌ Forward aniqlangan: chat.id={message.chat.id} != user.id={message.from_user.id}")
         
         if is_forwarded:
             await message.answer(
                 text="❌ <b>Kechirasiz!</b> Forward qilingan video qabul qilinmaydi.\n\n"
-                     "Iltimos, <b>hozir, real vaqtda</b> bot bilan shaxsiy chatda yangi video yozib yuboring.\n\n"
+                     "Iltimos, <b>hozir, real vaqtda</b> bot bilan shaxsiy chatda dumaloq videoni yozib yuboring.\n\n"
                      "📹 <b>Qanday yuborish kerak:</b>\n"
                      "1. Shu chatda mikrofon tugmasini bosing va ushlab turing\n"
                      "2. <b>Video</b> tugmasiga o'ting\n"
@@ -217,57 +200,11 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             )
             return
         
-        # 3. VIDEO YOSHI TEKSHIRUVI (real vaqtda yozilgan bo'lishi kerak)
-        message_time = message.date.timestamp() if hasattr(message, 'date') else current_time
-        video_age = current_time - message_time
-        
-        # 15 sekund – tarmoq kechikishini hisobga olgan holda
-        if video_age > 15:
-            logging.info(f"❌ VIDEO ESKI: {video_age:.0f} sekund")
-            await message.answer(
-                text=f"❌ <b>Kechirasiz!</b> Video {int(video_age)} sekund oldin yozilgan.\n\n"
-                     "Iltimos, <b>hozir, real vaqtda</b> yangi video yozib yuboring.\n"
-                     f"(Maksimal ruxsat: 15 sekund)",
-                parse_mode="HTML"
-            )
-            return
-        
-        # 4. UNIQUE ID TEKSHIRUVI (bir xil video qayta ishlatilmasligi uchun)
-        video_unique_id = message.video_note.file_unique_id
-        
-        if video_unique_id in GLOBAL_VIDEO_TRACKING:
-            old_record = GLOBAL_VIDEO_TRACKING[video_unique_id]
-            logging.info(f"❌ VIDEO TAKROR: {video_unique_id[:8]}..., old_user={old_record['user_id']}")
-            await message.answer(
-                text="❌ <b>Kechirasiz!</b> Bu video avval yuborilgan.\n\n"
-                     "Iltimos, <b>yangi, real vaqtda</b> video yozib yuboring.",
-                parse_mode="HTML"
-            )
-            return
-        
-        # 5. VIDEO QABUL QILINDI
-        GLOBAL_VIDEO_TRACKING[video_unique_id] = {
-            "user_id": user_id,
-            "chat_id": str(message.chat.id),
-            "timestamp": current_time
-        }
-        
-        # Xotirani tozalash (1000 dan oshsa eski yozuvlarni o'chirish)
-        if len(GLOBAL_VIDEO_TRACKING) > 1000:
-            week_ago = current_time - (7 * 24 * 60 * 60)
-            to_delete = [k for k, v in GLOBAL_VIDEO_TRACKING.items() if v["timestamp"] < week_ago]
-            for k in to_delete:
-                del GLOBAL_VIDEO_TRACKING[k]
-            logging.info(f"🗑 GLOBAL_VIDEO_TRACKING tozalandi: {len(to_delete)} ta eski yozuv o'chirildi")
-        
-        logging.info(f"✅ VIDEO QABUL QILINDI: {video_unique_id[:8]}... (yoshi: {video_age:.0f} sekund)")
-        
-        role = USERS_ROLES[user_id]["role"]
+        # 3. QABUL QILISH
+        role = USERS_ROLES[str(message.from_user.id)]["role"]
         await message.answer(
-            text=f"✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.\n\n"
-                 f"📹 Video qabul qilindi (yozilgan vaqt: {video_age:.0f} sekund oldin)",
-            reply_markup=get_main_menu(role),
-            parse_mode="HTML"
+            text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
+            reply_markup=get_main_menu(role)
         )
         
         if task:
@@ -277,8 +214,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
                 f"📌 <b>Vazifa nomi:</b> {task['task_name']}\n"
                 f"👤 <b>Masʻul xodim:</b> {task['assigned_to_name']}\n"
                 f"📸 <b>Isbot turi:</b> Dumaloq video (Video message)\n"
-                f"⏰ <b>Topshirilgan vaqt:</b> {datetime.now(timezone(timedelta(hours=5))).strftime('%H:%M')}\n"
-                f"🆔 <b>Video ID:</b> {video_unique_id[:8]}..."
+                f"⏰ <b>Topshirilgan vaqt:</b> {datetime.now(timezone(timedelta(hours=5))).strftime('%H:%M')}"
             )
             await message.bot.send_message(chat_id=GROUP_CHAT_ID, text=group_text, parse_mode="HTML")
             await message.bot.send_video_note(chat_id=GROUP_CHAT_ID, video_note=message.video_note.file_id)
@@ -324,9 +260,6 @@ async def auto_task_scheduler(bot):
                 for task in TASKS_DATABASE:
                     task["sent_today_times"] = []
                 save_tasks(TASKS_DATABASE)
-                global GLOBAL_VIDEO_TRACKING
-                GLOBAL_VIDEO_TRACKING.clear()
-                logging.info("🗑 GLOBAL_VIDEO_TRACKING tozalandi (00:00)")
             
             if current_time_str != last_checked_minute:
                 for task in TASKS_DATABASE:
@@ -360,5 +293,5 @@ async def auto_task_scheduler(bot):
                             save_tasks(TASKS_DATABASE)
                 last_checked_minute = current_time_str
         except Exception as e:
-            logging.error(f"Taymer tizimida xato: {e}")
+            print(f"Taymer tizimida xato: {e}")
         await asyncio.sleep(5)
