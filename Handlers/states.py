@@ -9,22 +9,23 @@ class TaskStates(StatesGroup):
     waiting_for_once_time = State()       # Bitta aniq vaqtni matn ko'rinishida kutish
     waiting_for_multiple_times = State()  # Bir nechta vaqtni vergul bilan kutish
     
-    # --- YANGI QO'SHILGAN FEATURE BOSQICHLARI ---
+    # YANGI QO'SHILGAN FEATURE BOSQICHLARI
     waiting_for_proof_type = State()      # Isbot turini kutish (Photo/Video)
     waiting_for_target_role = State()     # Qaysi unvonga biriktirishni kutish
     waiting_for_target_user = State()     # Aniq qaysi xodimga biriktirishni kutish
     waiting_for_task_proof = State()      # Xodim tomonidan rasm yoki videoni kutish
     
-    # YANGI: Kunlik (bir martalik) vazifa uchun izoh kutish holati
+    # Kunlik (bir martalik) vazifa uchun izoh kutish holati
     waiting_for_description = State()     # Admin tomonidan izoh kiritilishini kutish
 
-    # YANGI FEATURE: Xodimlarni tahrirlash bosqichi
-    waiting_for_edit_staff = State()       
+    # Xodimlarni tahrirlash bosqichlari
+    waiting_for_edit_staff = State()      # Xodim tahrirlash menyusi
+    waiting_for_new_name = State()        # Ism o'zgartirish uchun yangi ismni kutish
     
-    # YANGI FEATURE: Arxivni boshqarish bosqichi
-    waiting_for_archive_staff = State()    
+    # Arxivni boshqarish bosqichi
+    waiting_for_archive_staff = State()   # Arxivdan tiklash
     
-    # YANGI FEATURE: Oyliklarni boshqarish bosqichi
+    # Oyliklarni boshqarish bosqichi
     waiting_for_salary_management = State()
 
 # ADMIN OYLIK HISOBLASH BOSQICHLARI
