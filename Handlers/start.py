@@ -82,14 +82,10 @@ def get_role(user_id):
 
 def check_user_access(user_id: int) -> bool:
     user_info = USERS_ROLES.get(str(user_id))
-    if not user_info:
-        return False
-    if not isinstance(user_info, dict):
-        return False
-    if user_info.get("role") in [None, "rejected"]:
-        return False
-    if user_info.get("name") is None:
-        return False
+    if not user_info or not isinstance(user_info, dict): return False
+    if user_info.get("role") in [None, "rejected"]: return False
+    if user_info.get("name") is None: return False
+    # Owner, Manager, Admin lar uchun True
     return True
 
 # ================= TASKS JSON TIZIMI =================
