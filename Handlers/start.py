@@ -24,6 +24,9 @@ USERS_ROLES = None
 TASKS_DATABASE = None
 ADMIN_ID = None
 
+# Yuborilgan videolarni saqlash (cheating oldini olish uchun)
+SENT_VIDEO_IDS = set()
+
 
 def init_all_handlers(users_roles, tasks_database, admin_id):
     """Barcha handlerlar uchun global o'zgaruvchilarni o'rnatish"""
@@ -93,8 +96,6 @@ async def command_start_handler(message: types.Message):
     )
 
 
-# ================= FOYDALANUVCHI ISMINI QABUL QILISH =================
-
 @start_router.message(
     lambda msg:
     isinstance(
@@ -123,7 +124,7 @@ async def get_user_real_name_handler(message: types.Message):
     )
 
 
-# ================= ISBOT QABUL QILISH (REAL TIME VIDEO TEKSHIRUVLI) =================
+# ================= ISBOT QABUL QILISH (100% CHEATING PROTECTION) =================
 
 @start_router.message(TaskStates.waiting_for_task_proof)
 async def receive_task_proof_handler(message: types.Message, state: FSMContext):
@@ -131,7 +132,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     proof_required = state_data.get("proof_required")
     task_id = state_data.get("active_task_id")
     
-    global TASKS_DATABASE
+    global TASKS_DATABASE, SENT_VIDEO_IDS
     task = next((t for t in TASKS_DATABASE if t["id"] == task_id), None)
     GROUP_CHAT_ID = -5226036627  
     
@@ -159,27 +160,43 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
                 save_tasks(TASKS_DATABASE)
         await state.clear()
     
-    # ========== DUMALOQ VIDEO TEKSHIRUVI (REAL TIME + FORWARD + VAQT CHEKING) ==========
+    # ========== DUMALOQ VIDEO TEKSHIRUVI (MAXIMUM CHEATING PROTECTION) ==========
     elif proof_required == "Video message":
         if message.video_note:
-            # Forward qilingan videoni tekshirish
+            # 1. Forward qilinganligini tekshirish (barcha usullar)
             is_forwarded = False
             
+            # Usul 1: forward_from
             if hasattr(message, 'forward_from') and message.forward_from:
                 is_forwarded = True
+            # Usul 2: forward_from_chat
             elif hasattr(message, 'forward_from_chat') and message.forward_from_chat:
                 is_forwarded = True
+            # Usul 3: forward_date
             elif hasattr(message, 'forward_date') and message.forward_date:
                 is_forwarded = True
+            # Usul 4: message_id va chat_id asosida (agar ID boshqa bo'lsa)
+            elif hasattr(message, 'forward_origin') and message.forward_origin:
+                is_forwarded = True
             
-            # Video yozilgan vaqtni tekshirish (5 daqiqadan eski bo'lmasligi kerak)
+            # 2. Video yoshini tekshirish
             current_time = int(time.time())
             message_time = message.date.timestamp() if hasattr(message, 'date') else current_time
             video_age = current_time - message_time
             
+            # 3. Video unique ID ni tekshirish (bir xil video qayta ishlatilmasligi uchun)
+            video_unique_id = message.video_note.file_unique_id
+            if video_unique_id in SENT_VIDEO_IDS:
+                await message.answer(
+                    text="❌ <b>Kechirasiz!</b> Bu video avval yuborilgan.\n"
+                         "Iltimos, <b>yangi, real vaqtda</b> video yozib yuboring.",
+                    parse_mode="HTML"
+                )
+                return
+            
             if is_forwarded:
                 await message.answer(
-                    text="❌ <b>Kechirasiz!</b> Eski videoni forward qilish mumkin emas.\n"
+                    text="❌ <b>Kechirasiz!</b> Forward qilingan video qabul qilinmaydi.\n"
                          "Iltimos, <b>hozir, real vaqtda</b> dumaloq videoni yozib yuboring.\n\n"
                          "📹 <b>Qanday yuborish kerak:</b>\n"
                          "1. Chatda mikrofon tugmasini bosing va ushlab turing\n"
@@ -204,6 +221,8 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
                 return
             
             # Real time video qabul qilindi
+            SENT_VIDEO_IDS.add(video_unique_id)  # Unique ID ni saqlash
+            
             role = USERS_ROLES[str(message.from_user.id)]["role"]
             await message.answer(
                 text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
@@ -253,7 +272,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             )
 
 
-# ================= TAYMER (VAZIFALARNI AVTOMATIK YUBORISH) =================
+# ================= TAYMER =================
 
 async def auto_task_scheduler(bot):
     last_checked_minute = ""
@@ -270,6 +289,9 @@ async def auto_task_scheduler(bot):
                 for task in TASKS_DATABASE:
                     task["sent_today_times"] = []
                 save_tasks(TASKS_DATABASE)
+                global SENT_VIDEO_IDS
+                SENT_VIDEO_IDS.clear()  # Har kuni tozalash
+                print("🗑 SENT_VIDEO_IDS tozalandi")
             
             if current_time_str != last_checked_minute:
                 for task in TASKS_DATABASE:
