@@ -13,6 +13,24 @@ except ValueError:
     ADMIN_ID = 6500594896
 
 
+# ================= ADMIN ROLINI TEKSHIRUVCHI FUNKSIYA (JSON fayldan o'qiydi) =================
+
+def is_admin(user_id: int) -> bool:
+    """Foydalanuvchi Admin yoki Owner rolida ekanligini tekshiradi"""
+    USERS_FILE = "users.json"
+    try:
+        if os.path.exists(USERS_FILE):
+            with open(USERS_FILE, "r", encoding="utf-8") as f:
+                users = json.load(f)
+                user_info = users.get(str(user_id))
+                if user_info:
+                    role = user_info.get("role")
+                    return role in ["Admin", "Owner"]
+    except Exception as e:
+        print(f"is_admin() xatosi: {e}")
+    return False
+
+
 # ==================== SHEETS KEYBOARDS ====================
 
 def get_sheets_teachers_keyboard(teachers):
@@ -110,9 +128,8 @@ def get_teachers_from_google_sheets():
 
 @sheets_router.message(F.text == "👨🏻‍🏫 Ustoz/Ball")
 async def process_sheets_teachers_menu(message: types.Message):
-    # Tuzatilgan tekshiruv
-    if str(message.from_user.id) != str(ADMIN_ID):
-        await message.answer("⚠️ Bu buyruq faqat administrator uchun!")
+    if not is_admin(message.from_user.id):
+        await message.answer("⚠️ Bu buyruq faqat administrator va owner uchun!")
         return
 
     await message.answer("🔄 Google Sheets jadvalidan o'qituvchilar ro'yxati yuklanmoqda. Iltimos, kuting...")
