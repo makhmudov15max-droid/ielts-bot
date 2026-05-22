@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
 import time
+import logging
 from aiogram import Router, types, F
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
@@ -125,7 +126,7 @@ async def get_user_real_name_handler(message: types.Message):
     )
 
 
-# ================= ISBOT QABUL QILISH (MAKSIMAL HIMOYA) =================
+# ================= ISBOT QABUL QILISH (LOG BILAN) =================
 
 @start_router.message(TaskStates.waiting_for_task_proof)
 async def receive_task_proof_handler(message: types.Message, state: FSMContext):
@@ -138,6 +139,37 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     GROUP_CHAT_ID = -5226036627  
     user_id = str(message.from_user.id)
     current_time = int(time.time())
+    
+    # ========== VIDEO KELGANDA LOGGA CHIQARISH (VAQTINCHALIK) ==========
+    if message.video_note:
+        logging.info("=" * 60)
+        logging.info("📹 VIDEO NOTE QABUL QILINDI")
+        logging.info(f"👤 User ID: {message.from_user.id}")
+        logging.info(f"👤 Username: @{message.from_user.username}" if message.from_user.username else "👤 Username: None")
+        logging.info(f"🆔 Message ID: {message.message_id}")
+        logging.info(f"💬 Chat ID: {message.chat.id}")
+        logging.info(f"📊 Chat Type: {message.chat.type}")
+        logging.info(f"📅 Message Date: {message.date}")
+        logging.info(f"⏰ Current Time: {datetime.fromtimestamp(current_time)}")
+        
+        # Forward atributlarini tekshirish
+        forward_from = getattr(message, 'forward_from', None)
+        forward_from_chat = getattr(message, 'forward_from_chat', None)
+        forward_date = getattr(message, 'forward_date', None)
+        forward_origin = getattr(message, 'forward_origin', None)
+        
+        logging.info(f"🔄 forward_from: {forward_from}")
+        logging.info(f"🔄 forward_from_chat: {forward_from_chat}")
+        logging.info(f"🔄 forward_date: {forward_date}")
+        logging.info(f"🔄 forward_origin: {forward_origin}")
+        
+        # Video ma'lumotlari
+        if message.video_note:
+            logging.info(f"🎬 Video file_unique_id: {message.video_note.file_unique_id}")
+            logging.info(f"🎬 Video file_id: {message.video_note.file_id[:50]}...")
+            logging.info(f"🎬 Video duration: {message.video_note.duration} sekund")
+        
+        logging.info("=" * 60)
     
     # ========== RASM TEKSHIRUVI ==========
     if proof_required == "Photo" and message.photo:
@@ -163,7 +195,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
                 save_tasks(TASKS_DATABASE)
         await state.clear()
     
-    # ========== DUMALOQ VIDEO TEKSHIRUVI (MAKSIMAL HIMOYA) ==========
+    # ========== DUMALOQ VIDEO TEKSHIRUVI ==========
     elif proof_required == "Video message":
         
         # 1. VIDEO FORMATNI TEKSHIRISH
@@ -197,6 +229,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             forward_from_text = "origin mavjud"
         
         if is_forwarded:
+            logging.info(f"❌ FORWARD ANIQLANDI: {forward_from_text}")
             await message.answer(
                 text="❌ <b>Kechirasiz!</b> Forward qilingan video qabul qilinmaydi.\n\n"
                      f"📋 Aniqlangan: {forward_from_text}\n\n"
@@ -212,6 +245,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
         
         # 3. FAQAT SHAXSIY CHAT TEKSHIRUVI
         if message.chat.type != "private":
+            logging.info(f"❌ CHAT TYPE PRIVATE EMAS: {message.chat.type}")
             await message.answer(
                 text="❌ <b>Kechirasiz!</b> Video faqat bot bilan shaxsiy chatda yozilishi kerak.\n\n"
                      "Iltimos, bot bilan shaxsiy chatda yangi video yozib yuboring.",
@@ -223,8 +257,8 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
         message_time = message.date.timestamp() if hasattr(message, 'date') else current_time
         video_age = current_time - message_time
         
-        # Maksimal ruxsat etilgan vaqt: 10 sekund
         if video_age > 10:
+            logging.info(f"❌ VIDEO ESKI: {video_age:.0f} sekund")
             await message.answer(
                 text=f"❌ <b>Kechirasiz!</b> Video {int(video_age)} sekund oldin yozilgan.\n"
                      "Bu saved message dan olingan bo'lishi mumkin.\n\n"
@@ -234,29 +268,24 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             )
             return
         
-        # 5. UNIQUE ID TEKSHIRUVI (bir xil video qayta ishlatilmasligi uchun)
+        # 5. UNIQUE ID TEKSHIRUVI
         video_unique_id = message.video_note.file_unique_id
         
         if user_id not in SENT_VIDEOS:
             SENT_VIDEOS[user_id] = []
         
         if video_unique_id in SENT_VIDEOS[user_id]:
+            logging.info(f"❌ VIDEO TAKROR: {video_unique_id}")
             await message.answer(
                 text="❌ <b>Kechirasiz!</b> Bu video avval yuborilgan.\n\n"
-                     "Iltimos, <b>yangi, real vaqtda</b> video yozib yuboring.\n\n"
-                     "📹 <b>Qanday yuborish kerak:</b>\n"
-                     "1. Mikrofon tugmasini bosing va ushlab turing\n"
-                     "2. <b>Video</b> tugmasiga o'ting\n"
-                     "3. Yozish tugmasini bosing\n"
-                     "4. Yozib bo'lgach, jo'natish tugmasini bosing",
+                     "Iltimos, <b>yangi, real vaqtda</b> video yozib yuboring.",
                 parse_mode="HTML"
             )
             return
         
-        # 6. MESSAGE_ID TEKSHIRUVI (juda eski xabarni qayta yuborishni aniqlash)
-        # Agar message_id juda kichik bo'lsa, bu bot ishga tushgandan beri juda kam xabar yuborilgan
-        # Bu holatda vaqt tekshiruvi yetarli
+        # 6. MESSAGE_ID TEKSHIRUVI
         if message.message_id < 50 and video_age > 5:
+            logging.info(f"❌ MESSAGE_ID JUDA KICHIK: {message.message_id}")
             await message.answer(
                 text="❌ <b>Kechirasiz!</b> Eski xabarni qayta yuborish mumkin emas.\n\n"
                      "Iltimos, <b>hozir</b> yangi video yozib yuboring.",
@@ -265,16 +294,16 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             return
         
         # ========== BAJARILDI ==========
-        # Real time video qabul qilindi
+        logging.info(f"✅ VIDEO QABUL QILINDI: {video_unique_id[:8]}... (yoshi: {video_age:.0f} sekund)")
+        
         SENT_VIDEOS[user_id].append(video_unique_id)
         
-        # Xotirani tozalash (har bir user uchun oxirgi 10 ta video saqlanadi)
         if len(SENT_VIDEOS[user_id]) > 10:
             SENT_VIDEOS[user_id] = SENT_VIDEOS[user_id][-10:]
         
         role = USERS_ROLES[user_id]["role"]
         await message.answer(
-            text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.\n\n"
+            text=f"✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.\n\n"
                  f"📹 Video qabul qilindi (yozilgan vaqt: {video_age:.0f} sekund oldin)",
             reply_markup=get_main_menu(role),
             parse_mode="HTML"
@@ -336,7 +365,7 @@ async def auto_task_scheduler(bot):
                 save_tasks(TASKS_DATABASE)
                 global SENT_VIDEOS
                 SENT_VIDEOS.clear()
-                print("🗑 SENT_VIDEOS tozalandi (00:00)")
+                logging.info("🗑 SENT_VIDEOS tozalandi (00:00)")
             
             if current_time_str != last_checked_minute:
                 for task in TASKS_DATABASE:
@@ -359,6 +388,7 @@ async def auto_task_scheduler(bot):
                                 day_match = True
                         
                         if day_match:
+                            from Keyboards.main_menu import get_task_complete_keyboard
                             text_to_employee = f"📌 <b>{task['task_name']}</b>"
                             await bot.send_message(
                                 chat_id=task["assigned_to_id"],
@@ -370,21 +400,5 @@ async def auto_task_scheduler(bot):
                             save_tasks(TASKS_DATABASE)
                 last_checked_minute = current_time_str
         except Exception as e:
-            print(f"Taymer tizimida xato: {e}")
+            logging.error(f"Taymer tizimida xato: {e}")
         await asyncio.sleep(5)
-
-
-# Video kelganda logga chiqarish (vaqtinchalik)
-if message.video_note:
-    import logging
-    logging.info("=" * 50)
-    logging.info(f"User ID: {message.from_user.id}")
-    logging.info(f"Video note mavjud")
-    logging.info(f"forward_from: {getattr(message, 'forward_from', None)}")
-    logging.info(f"forward_from_chat: {getattr(message, 'forward_from_chat', None)}")
-    logging.info(f"forward_date: {getattr(message, 'forward_date', None)}")
-    logging.info(f"forward_origin: {getattr(message, 'forward_origin', None)}")
-    logging.info(f"message_id: {message.message_id}")
-    logging.info(f"chat_id: {message.chat.id}")
-    logging.info(f"chat_type: {message.chat.type}")
-    logging.info("=" * 50)
