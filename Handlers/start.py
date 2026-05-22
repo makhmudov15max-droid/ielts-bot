@@ -735,11 +735,14 @@ async def process_edit_staff_callback(call: types.CallbackQuery, state: FSMConte
         return
         
     options_kb = [
-        [
-            types.InlineKeyboardButton(text="🎖 Lavozimni o'zgartirish", callback_data=f"rolechange_{target_user_id}"),
-            types.InlineKeyboardButton(text="❌ Botdan chetlashtirish", callback_data=f"firestaff_{target_user_id}")
-        ],
-        [types.InlineKeyboardButton(text="⬅️ Orqaga", callback_data="editstaff_cancel")]
+    [
+        types.InlineKeyboardButton(text="✏️ Ism o'zgartirish", callback_data=f"rename_{target_user_id}"),
+        types.InlineKeyboardButton(text="🎖 Lavozimni o'zgartirish", callback_data=f"rolechange_{target_user_id}")
+    ],
+    [
+        types.InlineKeyboardButton(text="❌ Botdan chetlashtirish", callback_data=f"firestaff_{target_user_id}")
+    ],
+    [types.InlineKeyboardButton(text="⬅️ Orqaga", callback_data="editstaff_cancel")]
     ]
     
     await call.message.edit_text(
