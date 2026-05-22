@@ -122,7 +122,7 @@ async def get_user_real_name_handler(message: types.Message):
     )
 
 
-# ================= ISBOT QABUL QILISH (Aiogram 3.x UCHUN TUZATILGAN) =================
+# ================= ISBOT QABUL QILISH =================
 
 @start_router.message(TaskStates.waiting_for_task_proof)
 async def receive_task_proof_handler(message: types.Message, state: FSMContext):
@@ -158,7 +158,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
                 save_tasks(TASKS_DATABASE)
         await state.clear()
     
-    # ========== DUMALOQ VIDEO TEKSHIRUVI (Aiogram 3.x) ==========
+    # ========== DUMALOQ VIDEO TEKSHIRUVI ==========
     elif proof_required == "Video message":
         
         # 1. VIDEO FORMATNI TEKSHIRISH
@@ -182,7 +182,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             is_forwarded = True
             logging.info(f"❌ Forward aniqlangan: forward_origin={message.forward_origin}")
         
-        # Usul 2: chat.id vs user.id (boshqa chatdan kelganligini aniqlash)
+        # Usul 2: chat.id vs user.id (boshqa chatdan kelganligi)
         elif str(message.chat.id) != str(message.from_user.id):
             is_forwarded = True
             logging.info(f"❌ Forward aniqlangan: chat.id={message.chat.id} != user.id={message.from_user.id}")
@@ -243,7 +243,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             )
 
 
-# ================= TAYMER (VAZIFALARNI AVTOMATIK YUBORISH) =================
+# ================= TAYMER =================
 
 async def auto_task_scheduler(bot):
     last_checked_minute = ""
