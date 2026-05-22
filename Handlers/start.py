@@ -117,8 +117,30 @@ def check_user_access(user_id: int) -> bool:
 
     return True
 
-# Vazifalarni saqlash bazasi
-TASKS_DATABASE = []
+# ================= TASKS JSON TIZIMI =================
+
+TASKS_FILE = "tasks.json"
+
+
+def load_tasks():
+    try:
+        if os.path.exists(TASKS_FILE):
+            with open(TASKS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"❌ Tasks yuklash xatosi: {e}")
+    return []
+
+
+def save_tasks():
+    try:
+        with open(TASKS_FILE, "w", encoding="utf-8") as f:
+            json.dump(TASKS_DATABASE, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        print(f"❌ Tasks saqlash xatosi: {e}")
+
+
+TASKS_DATABASE = load_tasks()
 
 @start_router.message(CommandStart())
 async def command_start_handler(message: types.Message):
@@ -448,6 +470,7 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
     }
     
     TASKS_DATABASE.append(new_task)
+    save_tasks()  # <-- JSON ga saqlash
     
     # Administrator hisoboti
     report_text = (
@@ -594,6 +617,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             # Kunlik bir martalik vazifa bajarilgach ro'yxatdan o'chadi
             if task.get("task_type") == "Kunlik (Bir martalik)":
                 TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
+                save_tasks()  # <-- JSON dan o'chirish
         await state.clear()
         
     elif proof_required == "Video message" and message.video_note:
@@ -618,6 +642,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             
             if task.get("task_type") == "Kunlik (Bir martalik)":
                 TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
+                save_tasks()  # <-- JSON dan o'chirish
         await state.clear()
         
     else:
@@ -643,6 +668,7 @@ async def auto_task_scheduler(bot):
             if current_time_str == "00:00":
                 for task in TASKS_DATABASE:
                     task["sent_today_times"] = []
+                save_tasks()  # <-- JSON ga saqlash
             
             if current_time_str != last_checked_minute:
                 for task in TASKS_DATABASE:
@@ -674,6 +700,7 @@ async def auto_task_scheduler(bot):
                                 reply_markup=get_task_complete_keyboard(task["id"])
                             )
                             task["sent_today_times"].append(current_time_str)
+                            save_tasks()  # <-- JSON ga saqlash
                 last_checked_minute = current_time_str
         except Exception as e:
             print(f"Taymer tizimida xato: {e}")
@@ -703,6 +730,7 @@ async def process_remove_task_callback(call: types.CallbackQuery):
     
     if task_to_remove:
         TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
+        save_tasks()  # <-- JSON dan o'chirish
         await call.message.edit_text(
             text=f"🗑 <b>Vazifa muvaffaqiyatli oʻchirildi!</b>\n\n📌 <b>Nomi:</b> {task_to_remove['task_name']}\n👤 <b>Masʻul boʻlgan xodim:</b> {task_to_remove['assigned_to_name']}",
             parse_mode="HTML"
