@@ -16,8 +16,8 @@ def get_main_menu(role: str):
         keyboard = [
             [KeyboardButton(text="📋 Vazifalar roʻyxati")],
             [KeyboardButton(text="📊 Admin oylik")],
-            [KeyboardButton(text="📑 Guruh Report")],
-            [KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball")]
+            [KeyboardButton(text="📑 Guruh Report")]
+            # 👨🏻‍🏫 Ustoz/Ball O'CHIRILDI
         ]
     elif role == "Kassir":
         keyboard = [
@@ -36,7 +36,7 @@ def get_main_menu(role: str):
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
-# ================= BOSHQA KLAVIATURALAR =================
+# ================= BOSHQA KLAVIATURALAR (o‘zgarmagan) =================
 task_type_keyboard = ReplyKeyboardMarkup(
     keyboard=[[KeyboardButton(text="Muntazam (Doimiy)"), KeyboardButton(text="Kunlik (Bir martalik)")]],
     resize_keyboard=True
@@ -68,7 +68,6 @@ proof_type_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-# Inline kunlar uchun
 def get_inline_days_keyboard(selected_days: list = None):
     if selected_days is None:
         selected_days = []
