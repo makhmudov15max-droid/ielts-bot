@@ -372,3 +372,19 @@ async def auto_task_scheduler(bot):
         except Exception as e:
             print(f"Taymer tizimida xato: {e}")
         await asyncio.sleep(5)
+
+
+# Video kelganda logga chiqarish (vaqtinchalik)
+if message.video_note:
+    import logging
+    logging.info("=" * 50)
+    logging.info(f"User ID: {message.from_user.id}")
+    logging.info(f"Video note mavjud")
+    logging.info(f"forward_from: {getattr(message, 'forward_from', None)}")
+    logging.info(f"forward_from_chat: {getattr(message, 'forward_from_chat', None)}")
+    logging.info(f"forward_date: {getattr(message, 'forward_date', None)}")
+    logging.info(f"forward_origin: {getattr(message, 'forward_origin', None)}")
+    logging.info(f"message_id: {message.message_id}")
+    logging.info(f"chat_id: {message.chat.id}")
+    logging.info(f"chat_type: {message.chat.type}")
+    logging.info("=" * 50)
