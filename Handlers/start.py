@@ -126,7 +126,7 @@ async def get_user_real_name_handler(message: types.Message):
     )
 
 
-# ================= ISBOT QABUL QILISH (GLOBAL VIDEO TRACKING BILAN) =================
+# ================= ISBOT QABUL QILISH (TO'LIQ HIMOYA BILAN) =================
 
 @start_router.message(TaskStates.waiting_for_task_proof)
 async def receive_task_proof_handler(message: types.Message, state: FSMContext):
@@ -139,29 +139,6 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     GROUP_CHAT_ID = -5226036627  
     user_id = str(message.from_user.id)
     current_time = int(time.time())
-    
-    # ========== VIDEO KELGANDA LOGGA CHIQARISH ==========
-    if message.video_note:
-        logging.info("=" * 60)
-        logging.info("📹 VIDEO NOTE QABUL QILINDI")
-        logging.info(f"👤 User ID: {message.from_user.id}")
-        logging.info(f"👤 Username: @{message.from_user.username}" if message.from_user.username else "👤 Username: None")
-        logging.info(f"🆔 Message ID: {message.message_id}")
-        logging.info(f"💬 Chat ID: {message.chat.id}")
-        logging.info(f"📊 Chat Type: {message.chat.type}")
-        
-        forward_from = getattr(message, 'forward_from', None)
-        forward_from_chat = getattr(message, 'forward_from_chat', None)
-        forward_date = getattr(message, 'forward_date', None)
-        
-        logging.info(f"🔄 forward_from: {forward_from}")
-        logging.info(f"🔄 forward_from_chat: {forward_from_chat}")
-        logging.info(f"🔄 forward_date: {forward_date}")
-        
-        if message.video_note:
-            logging.info(f"🎬 Video file_unique_id: {message.video_note.file_unique_id}")
-            logging.info(f"🎬 Video duration: {message.video_note.duration} sekund")
-        logging.info("=" * 60)
     
     # ========== RASM TEKSHIRUVI ==========
     if proof_required == "Photo" and message.photo:
@@ -187,7 +164,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
                 save_tasks(TASKS_DATABASE)
         await state.clear()
     
-    # ========== DUMALOQ VIDEO TEKSHIRUVI (GLOBAL TRACKING BILAN) ==========
+    # ========== DUMALOQ VIDEO TEKSHIRUVI (YAKUNIY VERSIYA) ==========
     elif proof_required == "Video message":
         
         # 1. VIDEO FORMATNI TEKSHIRISH
@@ -203,87 +180,86 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             )
             return
         
-        # 2. FORWARD TEKSHIRUVI
+        # 2. FORWARD ANIQLASH (BARCHA USULLAR KOMBINATSIYASI)
         is_forwarded = False
-        forward_from_text = ""
+        forward_reason = ""
         
-        if hasattr(message, 'forward_from') and message.forward_from:
+        # Usul A: Yangi API (forward_origin) – Telegram Bot API 6.x+
+        if hasattr(message, 'forward_origin') and message.forward_origin is not None:
             is_forwarded = True
-            forward_from_text = f"user: {message.forward_from.id}"
-        elif hasattr(message, 'forward_from_chat') and message.forward_from_chat:
+            forward_reason = f"forward_origin={message.forward_origin}"
+            logging.info(f"❌ Forward aniqlangan: {forward_reason}")
+        
+        # Usul B: Eski API atributlari
+        elif (getattr(message, 'forward_from', None) or 
+              getattr(message, 'forward_from_chat', None) or
+              getattr(message, 'forward_date', None)):
             is_forwarded = True
-            forward_from_text = f"chat: {message.forward_from_chat.id}"
-        elif hasattr(message, 'forward_date') and message.forward_date:
+            forward_reason = "eski API atributlari (forward_from/chat/date)"
+            logging.info(f"❌ Forward aniqlangan: {forward_reason}")
+        
+        # Usul C: Chat ID != User ID (shaxsiy chatdan yuborilmagan)
+        elif str(message.chat.id) != str(message.from_user.id):
             is_forwarded = True
-            forward_from_text = f"date: {message.forward_date}"
+            forward_reason = f"chat.id={message.chat.id} != user.id={message.from_user.id}"
+            logging.info(f"❌ Forward aniqlangan: {forward_reason}")
         
         if is_forwarded:
-            logging.info(f"❌ FORWARD ANIQLANDI: {forward_from_text}")
             await message.answer(
                 text="❌ <b>Kechirasiz!</b> Forward qilingan video qabul qilinmaydi.\n\n"
-                     "Iltimos, <b>hozir, real vaqtda</b> yangi video yozib yuboring.",
+                     "Iltimos, <b>hozir, real vaqtda</b> bot bilan shaxsiy chatda yangi video yozib yuboring.\n\n"
+                     "📹 <b>Qanday yuborish kerak:</b>\n"
+                     "1. Shu chatda mikrofon tugmasini bosing va ushlab turing\n"
+                     "2. <b>Video</b> tugmasiga o'ting\n"
+                     "3. Yozish tugmasini bosing\n"
+                     "4. Yozib bo'lgach, jo'natish tugmasini bosing",
                 parse_mode="HTML"
             )
             return
         
-        # 3. FAQAT SHAXSIY CHAT TEKSHIRUVI
-        if message.chat.type != "private":
-            logging.info(f"❌ CHAT TYPE PRIVATE EMAS: {message.chat.type}")
-            await message.answer(
-                text="❌ <b>Kechirasiz!</b> Video faqat bot bilan shaxsiy chatda yozilishi kerak.\n\n"
-                     "Iltimos, bot bilan shaxsiy chatda yangi video yozib yuboring.",
-                parse_mode="HTML"
-            )
-            return
-        
-        # 4. VIDEO YOSHI TEKSHIRUVI
+        # 3. VIDEO YOSHI TEKSHIRUVI (real vaqtda yozilgan bo'lishi kerak)
         message_time = message.date.timestamp() if hasattr(message, 'date') else current_time
         video_age = current_time - message_time
         
-        if video_age > 10:
+        # 15 sekund – tarmoq kechikishini hisobga olgan holda
+        if video_age > 15:
             logging.info(f"❌ VIDEO ESKI: {video_age:.0f} sekund")
             await message.answer(
                 text=f"❌ <b>Kechirasiz!</b> Video {int(video_age)} sekund oldin yozilgan.\n\n"
                      "Iltimos, <b>hozir, real vaqtda</b> yangi video yozib yuboring.\n"
-                     f"(Maksimal ruxsat: 10 sekund)",
+                     f"(Maksimal ruxsat: 15 sekund)",
                 parse_mode="HTML"
             )
             return
         
-        # 5. GLOBAL VIDEO TRACKING (boshqa chatdan forward qilingan videoni aniqlash)
+        # 4. UNIQUE ID TEKSHIRUVI (bir xil video qayta ishlatilmasligi uchun)
         video_unique_id = message.video_note.file_unique_id
         
         if video_unique_id in GLOBAL_VIDEO_TRACKING:
             old_record = GLOBAL_VIDEO_TRACKING[video_unique_id]
-            # Agar video boshqa user yoki boshqa chatdan kelgan bo'lsa
-            if old_record["user_id"] != user_id or old_record["chat_id"] != str(message.chat.id):
-                logging.info(f"❌ VIDEO BOSHQA CHATDAN/Foydalanuvchidan KELGAN: old_user={old_record['user_id']}, new_user={user_id}")
-                await message.answer(
-                    text="❌ <b>Kechirasiz!</b> Bu video boshqa chatda yoki boshqa foydalanuvchi tomonidan avval yuborilgan.\n\n"
-                         "Iltimos, <b>hozir, real vaqtda</b> yangi video yozib yuboring.\n\n"
-                         "📹 <b>Eslatma:</b> Har bir video faqat bir marta ishlatilishi mumkin.",
-                    parse_mode="HTML"
-                )
-                return
-        else:
-            # Birinchi marta kelgan video - tracking ga qo'shamiz
-            GLOBAL_VIDEO_TRACKING[video_unique_id] = {
-                "user_id": user_id,
-                "chat_id": str(message.chat.id),
-                "timestamp": current_time
-            }
-            logging.info(f"✅ VIDEO TRACKING GA QO'SHILDI: {video_unique_id[:8]}...")
+            logging.info(f"❌ VIDEO TAKROR: {video_unique_id[:8]}..., old_user={old_record['user_id']}")
+            await message.answer(
+                text="❌ <b>Kechirasiz!</b> Bu video avval yuborilgan.\n\n"
+                     "Iltimos, <b>yangi, real vaqtda</b> video yozib yuboring.",
+                parse_mode="HTML"
+            )
+            return
         
-        # 6. XOTIRANI TOZALASH (har kuni 00:00 da tozalanadi, qo'shimcha: 1000 dan oshsa)
+        # 5. VIDEO QABUL QILINDI
+        GLOBAL_VIDEO_TRACKING[video_unique_id] = {
+            "user_id": user_id,
+            "chat_id": str(message.chat.id),
+            "timestamp": current_time
+        }
+        
+        # Xotirani tozalash (1000 dan oshsa eski yozuvlarni o'chirish)
         if len(GLOBAL_VIDEO_TRACKING) > 1000:
-            # Eski yozuvlarni tozalash (7 kundan eski)
             week_ago = current_time - (7 * 24 * 60 * 60)
             to_delete = [k for k, v in GLOBAL_VIDEO_TRACKING.items() if v["timestamp"] < week_ago]
             for k in to_delete:
                 del GLOBAL_VIDEO_TRACKING[k]
             logging.info(f"🗑 GLOBAL_VIDEO_TRACKING tozalandi: {len(to_delete)} ta eski yozuv o'chirildi")
         
-        # ========== VIDEO QABUL QILINDI ==========
         logging.info(f"✅ VIDEO QABUL QILINDI: {video_unique_id[:8]}... (yoshi: {video_age:.0f} sekund)")
         
         role = USERS_ROLES[user_id]["role"]
