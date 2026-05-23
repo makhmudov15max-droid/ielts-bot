@@ -10,14 +10,15 @@ def get_main_menu(role: str):
             [KeyboardButton(text="👥 Xodimlar"), KeyboardButton(text="🗑 Vazifani oʻchirish")],
             [KeyboardButton(text="📊 Admin oylik"), KeyboardButton(text="💰 Kassir oylik")],
             [KeyboardButton(text="🗄 Arxiv"), KeyboardButton(text="📑 Guruh Report")],
-            [KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball")]
+            [KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball")],
+            [KeyboardButton(text="📸 Isbotlar")]  # <-- YANGI
         ]
     elif role == "Admin":
         keyboard = [
             [KeyboardButton(text="📋 Vazifalar roʻyxati")],
             [KeyboardButton(text="📊 Admin oylik")],
-            [KeyboardButton(text="📑 Guruh Report")]
-            # 👨🏻‍🏫 Ustoz/Ball O'CHIRILDI
+            [KeyboardButton(text="📑 Guruh Report")],
+            [KeyboardButton(text="📸 Isbotlar")]  # <-- YANGI
         ]
     elif role == "Kassir":
         keyboard = [
@@ -36,7 +37,7 @@ def get_main_menu(role: str):
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
-# ================= BOSHQA KLAVIATURALAR (o‘zgarmagan) =================
+# ================= BOSHQA KLAVIATURALAR =================
 task_type_keyboard = ReplyKeyboardMarkup(
     keyboard=[[KeyboardButton(text="Muntazam (Doimiy)"), KeyboardButton(text="Kunlik (Bir martalik)")]],
     resize_keyboard=True
@@ -68,6 +69,7 @@ proof_type_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
+# Inline kunlar uchun
 def get_inline_days_keyboard(selected_days: list = None):
     if selected_days is None:
         selected_days = []
@@ -106,3 +108,27 @@ def get_remove_tasks_keyboard(tasks_list: list):
         inline_keyboard.append([InlineKeyboardButton(text=btn_text, callback_data=f"removetask_{task['id']}")])
     inline_keyboard.append([InlineKeyboardButton(text="❌ Bekor qilish", callback_data="remove_cancel")])
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
+# ================= ISBOTLAR UCHUN KLAVIATURALAR =================
+
+def get_proof_role_keyboard():
+    """Role tanlash tugmalari"""
+    keyboard = [
+        [KeyboardButton(text="Admin"), KeyboardButton(text="Kassir")],
+        [KeyboardButton(text="Sanitar"), KeyboardButton(text="Manager")],
+        [KeyboardButton(text="Barcha xodimlar")],
+        [KeyboardButton(text="🏠 Bosh sahifa")]
+    ]
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+
+
+def get_proof_date_keyboard():
+    """Sana tanlash tugmalari"""
+    keyboard = [
+        [KeyboardButton(text="📅 Bugun"), KeyboardButton(text="📆 Kecha")],
+        [KeyboardButton(text="📅 Shu oy"), KeyboardButton(text="📆 O'tgan oy")],
+        [KeyboardButton(text="✍️ Boshqa sana")],
+        [KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")]
+    ]
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
