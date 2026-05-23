@@ -1,41 +1,43 @@
 from aiogram.fsm.state import StatesGroup, State
 
-class TaskStates(StatesGroup):
-    # Asosiy state lar
-    waiting_for_user_name = State()
-    waiting_for_name = State()
-    waiting_for_days = State()
-    waiting_for_frequency = State()
-    waiting_for_once_time = State()
-    waiting_for_multiple_times = State()
-    
-    # Vazifa yaratish
-    waiting_for_proof_type = State()
-    waiting_for_target_role = State()
-    waiting_for_target_user = State()
-    waiting_for_task_proof = State()
-    waiting_for_description = State()
 
-    # Xodimlarni tahrirlash
-    waiting_for_edit_staff = State()
-    waiting_for_new_name = State()
+class TaskStates(StatesGroup):
+    # ================= ASOSIY STATE LAR =================
+    waiting_for_user_name = State()       # Foydalanuvchi ism-familiyasini kutish
+    waiting_for_name = State()            # Vazifa nomini kutish holati
+    waiting_for_days = State()            # Kunlarni tanlashni kutish holati
+    waiting_for_frequency = State()       # Kunlik takrorlanish sonini kutish holati
+    waiting_for_once_time = State()       # Bitta aniq vaqtni matn ko'rinishida kutish
+    waiting_for_multiple_times = State()  # Bir nechta vaqtni vergul bilan kutish
     
-    # Arxiv
-    waiting_for_archive_staff = State()
+    # ================= VAZIFA YARATISH BOSQICHLARI =================
+    waiting_for_proof_type = State()      # Isbot turini kutish (Photo/Video/Text)
+    waiting_for_target_role = State()     # Qaysi unvonga biriktirishni kutish
+    waiting_for_target_user = State()     # Aniq qaysi xodimga biriktirishni kutish
+    waiting_for_task_proof = State()      # Xodim tomonidan rasm yoki videoni kutish
+    waiting_for_description = State()     # Admin tomonidan izoh kiritilishini kutish
+
+    # ================= XODIMLARNI TAHRIRLASH BOSQICHLARI =================
+    waiting_for_edit_staff = State()      # Xodim tahrirlash menyusi
+    waiting_for_new_name = State()        # Ism o'zgartirish uchun yangi ismni kutish
     
-    # Oylik
+    # ================= ARXIVNI BOSHQARISH BOSQICHI =================
+    waiting_for_archive_staff = State()   # Arxivdan tiklash
+    
+    # ================= OYLIKLARNI BOSHQARISH BOSQICHI =================
     waiting_for_salary_management = State()
     
-    # Isbotlar
-    waiting_for_proof_role = State()
-    waiting_for_proof_user = State()
-    waiting_for_proof_date = State()
+    # ================= ISBOTLAR (PROOFS) UCHUN STATE LAR =================
+    waiting_for_proof_role = State()      # Qaysi role ni tanlash
+    waiting_for_proof_user = State()      # Qaysi xodimni tanlash
+    waiting_for_proof_date = State()      # Qaysi sanani tanlash
     
-    # Vazifalar ro'yxati (YANGI)
-    waiting_for_tasks_list_choice = State()
-    waiting_for_completed_date = State()
+    # ================= VAZIFALAR RO'YXATI UCHUN STATE LAR (YANGI) =================
+    waiting_for_tasks_simple_choice = State()   # Bugun / Sana tanlash
+    waiting_for_custom_date = State()           # Custom sana tanlash
 
 
+# ================= ADMIN OYLIK HISOBLASH BOSQICHLARI =================
 class AdminSalaryStates(StatesGroup):
     status = State()
     daily_hours = State()
@@ -56,6 +58,7 @@ class AdminSalaryStates(StatesGroup):
     actual_active = State()
 
 
+# ================= KASSIR OYLIK BOSQICHLARI =================
 class CashierSalaryStates(StatesGroup):
     hours = State()
     custom_hours = State()
