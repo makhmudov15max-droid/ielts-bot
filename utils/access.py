@@ -11,8 +11,9 @@ def check_user_access(users_roles, user_id: int) -> bool:
         return False
     if user_info.get("role") in [None, "rejected"]:
         return False
-    if user_info.get("name") is None:
-        return False
+    # NAME TEKSHIRUVI O'CHIRILDI - Owner va boshqa foydalanuvchilar uchun
+    # if user_info.get("name") is None:
+    #     return False
     return True
 
 
