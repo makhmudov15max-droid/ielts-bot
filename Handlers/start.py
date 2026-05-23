@@ -180,9 +180,6 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             )
             await message.bot.send_message(chat_id=GROUP_CHAT_ID, text=group_text, parse_mode="HTML")
             
-            if task.get("task_type") == "Kunlik (Bir martalik)":
-                TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
-                save_tasks(TASKS_DATABASE)
         
         await state.clear()
     
@@ -224,9 +221,6 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             await message.bot.send_message(chat_id=GROUP_CHAT_ID, text=group_text, parse_mode="HTML")
             await message.bot.send_photo(chat_id=GROUP_CHAT_ID, photo=message.photo[-1].file_id)
             
-            if task.get("task_type") == "Kunlik (Bir martalik)":
-                TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
-                save_tasks(TASKS_DATABASE)
         await state.clear()
     
     # ========== VIDEO TEKSHIRUVI ==========
@@ -281,9 +275,6 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             await message.bot.send_message(chat_id=GROUP_CHAT_ID, text=group_text, parse_mode="HTML")
             await message.bot.send_video_note(chat_id=GROUP_CHAT_ID, video_note=message.video_note.file_id)
             
-            if task.get("task_type") == "Kunlik (Bir martalik)":
-                TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
-                save_tasks(TASKS_DATABASE)
         
         await state.clear()
     
