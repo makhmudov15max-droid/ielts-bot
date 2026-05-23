@@ -17,8 +17,7 @@ def get_main_menu(role: str):
         keyboard = [
             [KeyboardButton(text="📋 Vazifalar roʻyxati")],
             [KeyboardButton(text="📊 Admin oylik")],
-            [KeyboardButton(text="📑 Guruh Report")],
-            [KeyboardButton(text="📸 Isbotlar")]
+            [KeyboardButton(text="📑 Guruh Report")]
         ]
     elif role == "Kassir":
         keyboard = [
@@ -38,6 +37,15 @@ def get_main_menu(role: str):
 
 
 # ================= BOSHQA KLAVIATURALAR =================
+
+def get_back_home_keyboard():
+    """Ortga va Bosh sahifa tugmalari"""
+    return ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="⬅️ Ortga"), KeyboardButton(text="🏠 Bosh sahifa")]],
+        resize_keyboard=True
+    )
+
+
 task_type_keyboard = ReplyKeyboardMarkup(
     keyboard=[[KeyboardButton(text="Muntazam (Doimiy)"), KeyboardButton(text="Kunlik (Bir martalik)")]],
     resize_keyboard=True
