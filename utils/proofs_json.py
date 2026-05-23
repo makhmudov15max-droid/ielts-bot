@@ -1,108 +1,292 @@
-import json
-import os
-from datetime import datetime
+from aiogram import Router, types, F
+from aiogram.fsm.context import FSMContext
+from datetime import datetime, timedelta, timezone
+import calendar
+import asyncio
+import logging
 
-PROOFS_FILE = "proofs.json"
+from Handlers.states import TaskStates
+from Keyboards.main_menu import get_main_menu, get_proof_role_keyboard, get_proof_date_keyboard
+from utils.access import check_user_access
+from utils.users_json import load_users
+from utils.proofs_json import get_proofs_by_user, get_proofs_by_role, get_proofs_by_date_range
 
+proofs_router = Router()
 
-def load_proofs():
-    """proofs.json faylidan barcha isbotlarni yuklaydi"""
-    try:
-        if os.path.exists(PROOFS_FILE):
-            with open(PROOFS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-    except Exception as e:
-        print(f"❌ Proofs yuklash xatosi: {e}")
-    return []
-
-
-def save_proofs(proofs_database):
-    """proofs.json faylga isbotlarni saqlaydi"""
-    try:
-        with open(PROOFS_FILE, "w", encoding="utf-8") as f:
-            json.dump(proofs_database, f, ensure_ascii=False, indent=4)
-    except Exception as e:
-        print(f"❌ Proofs saqlash xatosi: {e}")
+# Global o'zgaruvchilar
+USERS_ROLES = None
+ADMIN_ID = None
 
 
-def add_proof(user_id, user_name, task_id, task_name, task_description, proof_type, file_id, group_chat_id):
-    """Yangi isbot qo'shish"""
-    proofs = load_proofs()
+def init_proofs_handler(users_roles, admin_id):
+    global USERS_ROLES, ADMIN_ID
+    USERS_ROLES = users_roles
+    ADMIN_ID = admin_id
+
+
+def get_proof_employee_keyboard(role_name):
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
     
+    employees = []
+    for u_id, u_info in USERS_ROLES.items():
+        if isinstance(u_info, dict) and u_info.get("role") == role_name and u_info.get("name"):
+            employees.append((u_id, u_info["name"]))
+    
+    if not employees:
+        return None
+    
+    keyboard = []
+    for u_id, name in employees:
+        keyboard.append([InlineKeyboardButton(text=f"👤 {name}", callback_data=f"proof_user_{u_id}")])
+    keyboard.append([InlineKeyboardButton(text="⬅️ Orqaga", callback_data="proof_back_to_roles")])
+    
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+
+def format_proof_message(proof, index):
+    icon = "📸" if proof["proof_type"] == "Photo" else "📹"
+    
+    return (
+        f"{icon} <b>{index}. {proof['task_name']}</b>\n"
+        f"👤 <b>Xodim:</b> {proof['user_name']}\n"
+        f"📅 <b>Sana:</b> {proof['date']}\n"
+        f"⏰ <b>Vaqt:</b> {proof['time']}\n"
+        f"📝 <b>Izoh:</b> {proof['task_description'] if proof['task_description'] else 'Mavjud emas'}\n"
+    )
+
+
+async def send_proofs(message: types.Message, proofs_list, title):
+    if not proofs_list:
+        await message.answer(
+            text=f"📭 <b>{title}</b>\n\nHech qanday isbot topilmadi.",
+            parse_mode="HTML"
+        )
+        return
+    
+    await message.answer(
+        text=f"📸 <b>{title}</b>\n\n🔍 {len(proofs_list)} ta isbot topildi:\n{'-' * 30}",
+        parse_mode="HTML"
+    )
+    
+    for proof in proofs_list:
+        try:
+            if proof["proof_type"] == "Photo":
+                await message.bot.send_photo(
+                    chat_id=message.chat.id,
+                    photo=proof["file_id"],
+                    caption=f"📸 {proof['task_name']}\n👤 {proof['user_name']}\n📅 {proof['date']} {proof['time']}"
+                )
+            else:
+                await message.bot.send_video_note(
+                    chat_id=message.chat.id,
+                    video_note=proof["file_id"]
+                )
+                await message.answer(
+                    text=f"📹 {proof['task_name']}\n👤 {proof['user_name']}\n📅 {proof['date']} {proof['time']}"
+                )
+        except Exception as e:
+            logging.error(f"Isbot yuborishda xatolik: {e}")
+            await message.answer(f"❌ Isbot yuborishda xatolik: {proof['task_name']}")
+        
+        await asyncio.sleep(0.5)
+
+
+@proofs_router.message(F.text == "📸 Isbotlar")
+async def proofs_start_handler(message: types.Message, state: FSMContext):
+    if not check_user_access(USERS_ROLES, message.from_user.id):
+        return
+    
+    await state.set_state(TaskStates.waiting_for_proof_role)
+    await message.answer(
+        text="📸 <b>Isbotlar arxivi</b>\n\n"
+             "Qaysi role dagi xodimlarning isbotlarini koʻrmoqchisiz?\n\n"
+             "👇 Quyidagilardan birini tanlang:",
+        parse_mode="HTML",
+        reply_markup=get_proof_role_keyboard()
+    )
+
+
+@proofs_router.message(TaskStates.waiting_for_proof_role)
+async def proof_role_selected_handler(message: types.Message, state: FSMContext):
+    role = message.text
+    
+    if role == "🏠 Bosh sahifa":
+        await state.clear()
+        role_user = USERS_ROLES[str(message.from_user.id)]["role"]
+        await message.answer(
+            text="Asosiy menyuga qaytdingiz.",
+            reply_markup=get_main_menu(role_user)
+        )
+        return
+    
+    if role == "Barcha xodimlar":
+        await state.update_data(selected_role="all", selected_user_id=None, selected_user_name=None)
+        await state.set_state(TaskStates.waiting_for_proof_date)
+        await message.answer(
+            text="📅 <b>Sanani tanlang:</b>\n\n"
+                 "👇 Quyidagilardan birini tanlang:",
+            parse_mode="HTML",
+            reply_markup=get_proof_date_keyboard()
+        )
+        return
+    
+    valid_roles = ["Admin", "Kassir", "Sanitar", "Manager"]
+    if role not in valid_roles:
+        await message.answer("❌ Iltimos, tugmalardan birini tanlang!")
+        return
+    
+    await state.update_data(selected_role=role)
+    
+    employees = []
+    for u_id, u_info in USERS_ROLES.items():
+        if isinstance(u_info, dict) and u_info.get("role") == role and u_info.get("name"):
+            employees.append(u_id)
+    
+    if not employees:
+        await message.answer(
+            text=f"⚠️ <b>{role}</b> role dagi hali tasdiqlangan va ismi kiritilgan xodim mavjud emas!",
+            parse_mode="HTML"
+        )
+        return
+    
+    keyboard = get_proof_employee_keyboard(role)
+    if keyboard:
+        await state.set_state(TaskStates.waiting_for_proof_user)
+        await message.answer(
+            text=f"👥 <b>{role}</b> role dagi xodimlardan birini tanlang:",
+            parse_mode="HTML",
+            reply_markup=keyboard
+        )
+    else:
+        await message.answer(
+            text=f"⚠️ <b>{role}</b> role dagi xodimlar ro'yxati topilmadi!",
+            parse_mode="HTML"
+        )
+
+
+@proofs_router.callback_query(TaskStates.waiting_for_proof_user, F.data.startswith("proof_user_"))
+async def proof_user_selected_handler(call: types.CallbackQuery, state: FSMContext):
+    user_id = call.data.split("_")[2]
+    user_info = USERS_ROLES.get(user_id, {})
+    user_name = user_info.get("name", "Noma'lum")
+    
+    await state.update_data(selected_user_id=user_id, selected_user_name=user_name, selected_role=None)
+    await state.set_state(TaskStates.waiting_for_proof_date)
+    
+    await call.message.delete()
+    await call.message.answer(
+        text=f"👤 <b>{user_name}</b> tanlandi.\n\n"
+             f"📅 <b>Sanani tanlang:</b>",
+        parse_mode="HTML",
+        reply_markup=get_proof_date_keyboard()
+    )
+    await call.answer()
+
+
+@proofs_router.callback_query(F.data == "proof_back_to_roles")
+async def proof_back_to_roles_callback(call: types.CallbackQuery, state: FSMContext):
+    await state.set_state(TaskStates.waiting_for_proof_role)
+    await call.message.delete()
+    await call.message.answer(
+        text="📸 <b>Isbotlar arxivi</b>\n\n"
+             "Qaysi role dagi xodimlarning isbotlarini koʻrmoqchisiz?",
+        parse_mode="HTML",
+        reply_markup=get_proof_role_keyboard()
+    )
+    await call.answer()
+
+
+@proofs_router.message(TaskStates.waiting_for_proof_date)
+async def proof_date_selected_handler(message: types.Message, state: FSMContext):
+    date_choice = message.text
     tashkent_tz = timezone(timedelta(hours=5))
     now = datetime.now(tashkent_tz)
     
-    new_proof = {
-        "id": len(proofs) + 1,
-        "user_id": str(user_id),
-        "user_name": user_name,
-        "task_id": task_id,
-        "task_name": task_name,
-        "task_description": task_description,
-        "proof_type": proof_type,  # "Photo" yoki "Video message"
-        "file_id": file_id,
-        "group_chat_id": group_chat_id,
-        "timestamp": now.isoformat(),
-        "date": now.strftime("%Y-%m-%d"),
-        "time": now.strftime("%H:%M:%S")
-    }
+    start_date = None
+    end_date = None
+    date_text = ""
     
-    proofs.append(new_proof)
-    save_proofs(proofs)
-    return new_proof
-
-
-def get_proofs_by_user(user_id, start_date=None, end_date=None):
-    """Foydalanuvchi bo'yicha isbotlarni olish"""
-    proofs = load_proofs()
-    result = []
+    if date_choice == "🏠 Bosh sahifa":
+        await state.clear()
+        role = USERS_ROLES[str(message.from_user.id)]["role"]
+        await message.answer(
+            text="Asosiy menyuga qaytdingiz.",
+            reply_markup=get_main_menu(role)
+        )
+        return
     
-    for proof in proofs:
-        if proof["user_id"] == str(user_id):
-            if start_date and end_date:
-                proof_date = proof["date"]
-                if start_date <= proof_date <= end_date:
-                    result.append(proof)
-            else:
-                result.append(proof)
+    elif date_choice == "⬅️ Ortga":
+        await state.set_state(TaskStates.waiting_for_proof_role)
+        await message.answer(
+            text="📸 <b>Isbotlar arxivi</b>\n\n"
+                 "Qaysi role dagi xodimlarning isbotlarini koʻrmoqchisiz?",
+            parse_mode="HTML",
+            reply_markup=get_proof_role_keyboard()
+        )
+        return
     
-    return result
-
-
-def get_proofs_by_role(role_name, start_date=None, end_date=None):
-    """Role bo'yicha isbotlarni olish"""
-    from utils.users_json import load_users
+    elif date_choice == "📅 Bugun":
+        start_date = now.strftime("%Y-%m-%d")
+        end_date = now.strftime("%Y-%m-%d")
+        date_text = "Bugungi isbotlar"
     
-    users = load_users(ADMIN_ID)
-    result = []
+    elif date_choice == "📆 Kecha":
+        yesterday = now - timedelta(days=1)
+        start_date = yesterday.strftime("%Y-%m-%d")
+        end_date = yesterday.strftime("%Y-%m-%d")
+        date_text = "Kechagi isbotlar"
     
-    # Role dagi barcha user larni topish
-    user_ids = []
-    for u_id, u_info in users.items():
-        if u_info.get("role") == role_name and u_info.get("name"):
-            user_ids.append(u_id)
+    elif date_choice == "📅 Shu oy":
+        start_date = now.replace(day=1).strftime("%Y-%m-%d")
+        end_date = now.strftime("%Y-%m-%d")
+        date_text = f"{now.strftime('%B')} oyidagi isbotlar"
     
-    proofs = load_proofs()
-    for proof in proofs:
-        if proof["user_id"] in user_ids:
-            if start_date and end_date:
-                proof_date = proof["date"]
-                if start_date <= proof_date <= end_date:
-                    result.append(proof)
-            else:
-                result.append(proof)
+    elif date_choice == "📆 O'tgan oy":
+        first_day_current = now.replace(day=1)
+        last_day_prev = first_day_current - timedelta(days=1)
+        first_day_prev = last_day_prev.replace(day=1)
+        start_date = first_day_prev.strftime("%Y-%m-%d")
+        end_date = last_day_prev.strftime("%Y-%m-%d")
+        date_text = f"{first_day_prev.strftime('%B')} oyidagi isbotlar"
     
-    return result
-
-
-def get_proofs_by_date_range(start_date, end_date):
-    """Sana oralig'i bo'yicha isbotlarni olish"""
-    proofs = load_proofs()
-    result = []
+    elif date_choice == "✍️ Boshqa sana":
+        await message.answer(
+            text="📅 <b>Sanani kiriting (YYYY-MM-DD formatida):</b>\n\n"
+                 "Masalan: <code>2026-05-23</code>",
+            parse_mode="HTML",
+            reply_markup=get_proof_date_keyboard()
+        )
+        return
     
-    for proof in proofs:
-        proof_date = proof["date"]
-        if start_date <= proof_date <= end_date:
-            result.append(proof)
+    else:
+        try:
+            custom_date = datetime.strptime(date_choice.strip(), "%Y-%m-%d")
+            start_date = custom_date.strftime("%Y-%m-%d")
+            end_date = custom_date.strftime("%Y-%m-%d")
+            date_text = f"{custom_date.strftime('%Y-%m-%d')} sanadagi isbotlar"
+        except ValueError:
+            await message.answer(
+                text="❌ <b>Notoʻgʻri format!</b> Iltimos, sanani YYYY-MM-DD formatida kiriting.",
+                parse_mode="HTML"
+            )
+            return
     
-    return result
+    user_data = await state.get_data()
+    selected_role = user_data.get("selected_role")
+    selected_user_id = user_data.get("selected_user_id")
+    selected_user_name = user_data.get("selected_user_name")
+    
+    proofs = []
+    
+    if selected_user_id:
+        proofs = get_proofs_by_user(selected_user_id, start_date, end_date)
+        title = f"{selected_user_name} ning {date_text}"
+    elif selected_role == "all":
+        proofs = get_proofs_by_date_range(start_date, end_date)
+        title = f"Barcha xodimlarning {date_text}"
+    else:
+        proofs = get_proofs_by_role(selected_role, start_date, end_date)
+        title = f"{selected_role} role dagi xodimlarning {date_text}"
+    
+    await state.clear()
+    await send_proofs(message, proofs, title)
