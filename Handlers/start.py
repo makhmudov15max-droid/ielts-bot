@@ -158,10 +158,9 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
                 save_tasks(TASKS_DATABASE)
         await state.clear()
     
-    # ========== DUMALOQ VIDEO TEKSHIRUVI ==========
+    # ========== DUMALOQ VIDEO TEKSHIRUVI (FORWARD TEKSHIRUVISIZ) ==========
     elif proof_required == "Video message":
         
-        # 1. VIDEO FORMATNI TEKSHIRISH
         if not message.video_note:
             await message.answer(
                 text="❌ <b>Notoʻgʻri format!</b> Iltimos, dumaloq video (video message) yuboring.\n\n"
@@ -174,33 +173,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             )
             return
         
-        # 2. FORWARD ANIQLASH (Aiogram 3.x uchun)
-        is_forwarded = False
-        
-        # Usul 1: forward_origin (yangi API)
-        if hasattr(message, 'forward_origin') and message.forward_origin is not None:
-            is_forwarded = True
-            logging.info(f"❌ Forward aniqlangan: forward_origin={message.forward_origin}")
-        
-        # Usul 2: chat.id vs user.id (boshqa chatdan kelganligi)
-        elif str(message.chat.id) != str(message.from_user.id):
-            is_forwarded = True
-            logging.info(f"❌ Forward aniqlangan: chat.id={message.chat.id} != user.id={message.from_user.id}")
-        
-        if is_forwarded:
-            await message.answer(
-                text="❌ <b>Kechirasiz!</b> Forward qilingan video qabul qilinmaydi.\n\n"
-                     "Iltimos, <b>hozir, real vaqtda</b> bot bilan shaxsiy chatda dumaloq videoni yozib yuboring.\n\n"
-                     "📹 <b>Qanday yuborish kerak:</b>\n"
-                     "1. Shu chatda mikrofon tugmasini bosing va ushlab turing\n"
-                     "2. <b>Video</b> tugmasiga o'ting\n"
-                     "3. Yozish tugmasini bosing\n"
-                     "4. Yozib bo'lgach, jo'natish tugmasini bosing",
-                parse_mode="HTML"
-            )
-            return
-        
-        # 3. QABUL QILISH
+        # QABUL QILISH
         role = USERS_ROLES[str(message.from_user.id)]["role"]
         await message.answer(
             text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
