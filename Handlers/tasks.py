@@ -436,20 +436,6 @@ async def show_recurring_tasks(message: types.Message, state: FSMContext):
     await message.answer(text=response_text, parse_mode="HTML", reply_markup=get_tasks_list_keyboard())
 
 
-@tasks_router.message(TaskStates.waiting_for_tasks_list_choice, F.text == "✅ Bajarilgan")
-async def show_completed_tasks_menu(message: types.Message, state: FSMContext):
-    if not check_user_access(USERS_ROLES, message.from_user.id):
-        return
-    
-    await state.set_state(TaskStates.waiting_for_completed_date)
-    await message.answer(
-        text="✅ <b>Bajarilgan vazifalar</b>\n\n"
-             "Qaysi sana uchun bajarilgan vazifalarni koʻrmoqchisiz?",
-        parse_mode="HTML",
-        reply_markup=get_completed_date_keyboard()
-    )
-
-
 @tasks_router.message(TaskStates.waiting_for_completed_date, F.text == "📅 Bugun")
 async def show_completed_today(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
@@ -459,11 +445,23 @@ async def show_completed_today(message: types.Message, state: FSMContext):
     today = datetime.now(tashkent_tz).strftime("%Y-%m-%d")
     
     TASKS_DATABASE = load_tasks()
-    completed_tasks = [t for t in TASKS_DATABASE if t.get("status") == "completed" and t.get("completed_at", "").startswith(today)]
+    
+    # completed_at ni tekshirish (ISO formatdan faqat sana qismini olish)
+    completed_tasks = []
+    for t in TASKS_DATABASE:
+        if t.get("status") == "completed":
+            completed_at = t.get("completed_at", "")
+            if completed_at:
+                # 2026-05-23T18:30:00+05:00 dan faqat 2026-05-23 ni olish
+                completed_date = completed_at.split("T")[0]
+                if completed_date == today:
+                    completed_tasks.append(t)
     
     if not completed_tasks:
         await message.answer(
-            text=f"📭 Bugun ({today}) bajarilgan vazifalar topilmadi.",
+            text=f"📭 Bugun ({today}) bajarilgan vazifalar topilmadi.\n\n"
+                 f"💡 Eslatma: Vazifa bajarilgandan keyin '✅ Bajarildi' tugmasi bosilganmi?",
+            parse_mode="HTML",
             reply_markup=get_completed_date_keyboard()
         )
         return
