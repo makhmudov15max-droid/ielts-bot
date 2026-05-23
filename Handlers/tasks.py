@@ -456,6 +456,7 @@ async def show_completed_tasks_menu(message: types.Message, state: FSMContext):
 
 
 # ================= BAJARILGAN - BUGUN =================
+
 @tasks_router.message(TaskStates.waiting_for_completed_date, F.text == "📅 Bugun")
 async def show_completed_today(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
@@ -466,8 +467,13 @@ async def show_completed_today(message: types.Message, state: FSMContext):
     
     TASKS_DATABASE = load_tasks()
     
+    # Debug uchun log
+    print(f"Bugun: {today}")
+    print(f"Barcha tasklar: {TASKS_DATABASE}")
+    
     completed_tasks = []
     for task in TASKS_DATABASE:
+        print(f"Task: {task.get('task_name')}, status: {task.get('status')}, completed_at: {task.get('completed_at')}")
         if task.get("status") == "completed":
             completed_at = task.get("completed_at", "")
             if completed_at:
@@ -477,7 +483,10 @@ async def show_completed_today(message: types.Message, state: FSMContext):
     
     if not completed_tasks:
         await message.answer(
-            text=f"📭 Bugun ({today}) bajarilgan vazifalar topilmadi.",
+            text=f"📭 Bugun ({today}) bajarilgan vazifalar topilmadi.\n\n"
+                 f"💡 Eslatma: Vazifa bajarilgandan keyin '✅ Bajarildi' tugmasi bosilganmi?\n"
+                 f"💡 Yoki tasks.json faylini tekshiring: 'status' va 'completed_at' maydonlari bormi?",
+            parse_mode="HTML",
             reply_markup=get_completed_date_keyboard()
         )
         return
@@ -495,7 +504,8 @@ async def show_completed_today(message: types.Message, state: FSMContext):
             f"   👤 Masʻul: {task['assigned_to_name']}\n"
             f"   👤 Bajargan: {completed_by}\n"
             f"   📸 Isbot: {task['proof_type']}\n"
-            f"   ⏰ Vaqt: {completed_time}\n\n"
+            f"   ⏰ Vaqt: {completed_time}\n"
+            f"   ✅ Holat: Bajarildi\n\n"
         )
     
     await message.answer(text=response_text, parse_mode="HTML", reply_markup=get_completed_date_keyboard())
