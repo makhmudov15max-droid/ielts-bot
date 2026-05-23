@@ -25,8 +25,8 @@ def save_proofs(proofs_database):
         print(f"❌ Proofs saqlash xatosi: {e}")
 
 
-def add_proof(user_id, user_name, task_id, task_name, task_description, proof_type, file_id, group_chat_id):
-    """Yangi isbot qo'shish"""
+def add_proof(user_id, user_name, task_id, task_name, task_description, proof_type, file_id, group_chat_id, text_content=None):
+    """Yangi isbot qo'shish va 60 kundan eskilarni o'chirish"""
     proofs = load_proofs()
     
     tashkent_tz = timezone(timedelta(hours=5))
@@ -39,8 +39,9 @@ def add_proof(user_id, user_name, task_id, task_name, task_description, proof_ty
         "task_id": task_id,
         "task_name": task_name,
         "task_description": task_description,
-        "proof_type": proof_type,
-        "file_id": file_id,
+        "proof_type": proof_type,  # "Photo", "Video message", "Text"
+        "file_id": file_id if file_id else "",
+        "text_content": text_content if text_content else "",
         "group_chat_id": group_chat_id,
         "timestamp": now.isoformat(),
         "date": now.strftime("%Y-%m-%d"),
@@ -48,6 +49,21 @@ def add_proof(user_id, user_name, task_id, task_name, task_description, proof_ty
     }
     
     proofs.append(new_proof)
+    
+    # 60 kundan eski isbotlarni o'chirish
+    cutoff = now - timedelta(days=60)
+    new_proofs = []
+    for p in proofs:
+        p_date = datetime.fromisoformat(p["timestamp"])
+        if p_date > cutoff:
+            new_proofs.append(p)
+    
+    if len(new_proofs) != len(proofs):
+        print(f"🗑 {len(proofs) - len(new_proofs)} ta eski isbot o'chirildi (60 kundan eski)")
+        proofs = new_proofs
+        for idx, p in enumerate(proofs, 1):
+            p["id"] = idx
+    
     save_proofs(proofs)
     return new_proof
 
@@ -107,8 +123,8 @@ def get_proofs_by_date_range(start_date, end_date):
     return result
 
 
-def clean_old_proofs(days=30):
-    """30 kundan eski isbotlarni o'chirish"""
+def clean_old_proofs(days=60):
+    """60 kundan eski isbotlarni o'chirish"""
     proofs = load_proofs()
     tashkent_tz = timezone(timedelta(hours=5))
     now = datetime.now(tashkent_tz)
