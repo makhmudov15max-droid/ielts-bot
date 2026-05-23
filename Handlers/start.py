@@ -9,7 +9,7 @@ from aiogram.fsm.context import FSMContext
 from Handlers.states import TaskStates
 from Keyboards.main_menu import get_main_menu, get_admin_approval_keyboard, get_task_complete_keyboard
 from utils.users_json import save_users, set_user_busy, set_user_free, is_user_busy, get_user_active_task
-from utils.tasks_json import save_tasks, update_task_status, load_tasks
+from utils.tasks_json import save_tasks, update_task_status, load_tasks, get_task_by_id
 from utils.proofs_json import add_proof
 from utils.access import check_user_access
 from Handlers.tasks import tasks_router, init_tasks_handler
@@ -221,7 +221,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     task_id = state_data.get("active_task_id")
     
     global TASKS_DATABASE
-    task = next((t for t in TASKS_DATABASE if t["id"] == task_id), None)
+    task = get_task_by_id(task_id) if task_id else None
     GROUP_CHAT_ID = -5226036627  
     user_id = str(message.from_user.id)
     
