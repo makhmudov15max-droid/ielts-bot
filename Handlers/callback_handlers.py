@@ -10,8 +10,8 @@ from Keyboards.main_menu import (
     get_remove_tasks_keyboard
 )
 from utils.access import is_admin
-from utils.users_json import save_users
-from utils.tasks_json import save_tasks
+from utils.users_json import save_users, set_user_busy
+from utils.tasks_json import save_tasks, load_tasks, update_task_status
 
 callback_router = Router()
 
@@ -40,7 +40,9 @@ async def admin_approve_callback(call: types.CallbackQuery, state: FSMContext):
         
         USERS_ROLES[str(target_user_id)] = {
             "role": role,
-            "name": None
+            "name": None,
+            "active_task": None,
+            "is_waiting_for_proof": False
         }
         save_users(USERS_ROLES)
         
@@ -69,7 +71,9 @@ async def admin_reject_callback(call: types.CallbackQuery):
         target_user_id = int(call.data.split("_")[1])
         USERS_ROLES[str(target_user_id)] = {
             "role": "rejected",
-            "name": None
+            "name": None,
+            "active_task": None,
+            "is_waiting_for_proof": False
         }
         save_users(USERS_ROLES)
         
@@ -88,31 +92,52 @@ async def admin_reject_callback(call: types.CallbackQuery):
 @callback_router.callback_query(F.data.startswith("completetask_"))
 async def employee_complete_task_callback(call: types.CallbackQuery, state: FSMContext):
     task_id = int(call.data.split("_")[1])
+    
+    # Eng so'nggi ma'lumotlarni yuklash
+    global TASKS_DATABASE
+    TASKS_DATABASE = load_tasks()
+    
     task = next((t for t in TASKS_DATABASE if t["id"] == task_id), None)
     if not task:
         await call.answer(text="Kechirasiz, ushbu vazifa tizimdan topilmadi yoki oʻchirilgan!", show_alert=True)
         return
-        
+    
+    # Vazifa allaqachon bajarilganmi?
+    if task.get("status") == "completed":
+        await call.answer(text="⚠️ Bu vazifa allaqachon bajarilgan!", show_alert=True)
+        return
+    
+    # Foydalanuvchini band qilish
+    user_id = str(call.from_user.id)
+    set_user_busy(user_id, task_id)
+    
     await state.update_data(active_task_id=task_id, proof_required=task["proof_type"])
     
     if task["proof_type"] == "Photo":
         await call.message.answer(
-            text="📸 Ushbu vazifani tasdiqlash uchun iltimos, <b>Rasm (Photo)</b> yuboring!",
+            text="📸 Ushbu vazifani tasdiqlash uchun iltimos, <b>Rasm (Photo)</b> yuboring!\n\n"
+                 "⚠️ Isbot yubormaguningizcha boshqa amallarni bajara olmaysiz.\n"
+                 "Bekor qilish uchun /cancel buyrug'ini yuboring.",
             parse_mode="HTML"
         )
     elif task["proof_type"] == "Video message":
         await call.message.answer(
-            text="📹 Ushbu vazifani tasdiqlash uchun iltimos, <b>Dumaloq video (Video message)</b> yuboring!",
+            text="📹 Ushbu vazifani tasdiqlash uchun iltimos, <b>Dumaloq video (Video message)</b> yuboring!\n\n"
+                 "⚠️ Isbot yubormaguningizcha boshqa amallarni bajara olmaysiz.\n"
+                 "Bekor qilish uchun /cancel buyrug'ini yuboring.",
             parse_mode="HTML"
         )
     elif task["proof_type"] == "Text":
         await call.message.answer(
-            text="✍️ Ushbu vazifani tasdiqlash uchun iltimos, <b>Matn (Text)</b> yuboring!",
+            text="✍️ Ushbu vazifani tasdiqlash uchun iltimos, <b>Matn (Text)</b> yuboring!\n\n"
+                 "⚠️ Isbot yubormaguningizcha boshqa amallarni bajara olmaysiz.\n"
+                 "Bekor qilish uchun /cancel buyrug'ini yuboring.",
             parse_mode="HTML"
         )
     else:
         await call.message.answer(
-            text="⚠️ Iltimos, isbot yuboring!",
+            text="⚠️ Iltimos, isbot yuboring!\n\n"
+                 "Bekor qilish uchun /cancel buyrug'ini yuboring.",
             parse_mode="HTML"
         )
         
@@ -127,9 +152,17 @@ async def process_remove_task_callback(call: types.CallbackQuery):
     task_id = int(call.data.split("_")[1])
     global TASKS_DATABASE
     
+    # Eng so'nggi ma'lumotlarni yuklash
+    TASKS_DATABASE = load_tasks()
+    
     task_to_remove = next((t for t in TASKS_DATABASE if t["id"] == task_id), None)
     
     if task_to_remove:
+        # Faqat pending (bajarilmagan) vazifalarni o'chirish
+        if task_to_remove.get("status") == "completed":
+            await call.answer(text="⚠️ Bajarilgan vazifani o'chirib bo'lmaydi!", show_alert=True)
+            return
+        
         TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
         save_tasks(TASKS_DATABASE)
         
