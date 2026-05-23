@@ -12,17 +12,19 @@ from utils.proofs_json import get_proofs_by_user, get_proofs_by_role, get_proofs
 
 proofs_router = Router()
 
-# Global o'zgaruvchilar
+# ================= GLOBAL O'ZGARUVCHILAR =================
 USERS_ROLES = None
 ADMIN_ID = None
 
 
+# ================= INIT FUNKSIYASI =================
 def init_proofs_handler(users_roles, admin_id):
     global USERS_ROLES, ADMIN_ID
     USERS_ROLES = users_roles
     ADMIN_ID = admin_id
 
 
+# ================= HELPERS (KEYBOARDS, FORMAT) =================
 def get_proof_employee_keyboard(role_name):
     """Tanlangan role dagi xodimlar ro'yxati (inline) - Barcha [role]lar tugmasi bilan"""
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -76,6 +78,34 @@ def format_proof_message(proof, index):
     )
 
 
+def get_custom_date_keyboard():
+    """60 kunlik sanalar ro'yxati (har bir qatorda 2 tadan)"""
+    from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+    
+    tashkent_tz = timezone(timedelta(hours=5))
+    now = datetime.now(tashkent_tz)
+    
+    date_buttons = []
+    for i in range(60):
+        d = now - timedelta(days=i)
+        date_buttons.append(KeyboardButton(text=d.strftime("%Y-%m-%d")))
+    
+    keyboard = []
+    row = []
+    for btn in date_buttons:
+        row.append(btn)
+        if len(row) == 2:
+            keyboard.append(row)
+            row = []
+    if row:
+        keyboard.append(row)
+    
+    keyboard.append([KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")])
+    
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+
+
+# ================= SEND PROOFS =================
 async def send_proofs(message: types.Message, proofs_list, title):
     if not proofs_list:
         await message.answer(
@@ -120,33 +150,7 @@ async def send_proofs(message: types.Message, proofs_list, title):
         await asyncio.sleep(0.5)
 
 
-def get_custom_date_keyboard():
-    """60 kunlik sanalar ro'yxati (har bir qatorda 2 tadan)"""
-    from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-    
-    tashkent_tz = timezone(timedelta(hours=5))
-    now = datetime.now(tashkent_tz)
-    
-    date_buttons = []
-    for i in range(60):
-        d = now - timedelta(days=i)
-        date_buttons.append(KeyboardButton(text=d.strftime("%Y-%m-%d")))
-    
-    keyboard = []
-    row = []
-    for btn in date_buttons:
-        row.append(btn)
-        if len(row) == 2:
-            keyboard.append(row)
-            row = []
-    if row:
-        keyboard.append(row)
-    
-    keyboard.append([KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")])
-    
-    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
-
-
+# ================= PROOFS START HANDLER =================
 @proofs_router.message(F.text == "📸 Isbotlar")
 async def proofs_start_handler(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
@@ -162,6 +166,7 @@ async def proofs_start_handler(message: types.Message, state: FSMContext):
     )
 
 
+# ================= ROLE SELECTION =================
 @proofs_router.message(TaskStates.waiting_for_proof_role)
 async def proof_role_selected_handler(message: types.Message, state: FSMContext):
     role = message.text
@@ -223,6 +228,7 @@ async def proof_role_selected_handler(message: types.Message, state: FSMContext)
         )
 
 
+# ================= EMPLOYEE SELECTION (CALLBACKS) =================
 @proofs_router.callback_query(TaskStates.waiting_for_proof_user, F.data.startswith("proof_user_"))
 async def proof_user_selected_handler(call: types.CallbackQuery, state: FSMContext):
     user_id = call.data.split("_")[2]
@@ -276,6 +282,7 @@ async def proof_back_to_roles_callback(call: types.CallbackQuery, state: FSMCont
     await call.answer()
 
 
+# ================= DATE SELECTION =================
 @proofs_router.message(TaskStates.waiting_for_proof_date)
 async def proof_date_selected_handler(message: types.Message, state: FSMContext):
     date_choice = message.text
@@ -286,125 +293,7 @@ async def proof_date_selected_handler(message: types.Message, state: FSMContext)
     end_date = None
     date_text = ""
     
-    # ========== BOSH SAHIFA VA ORTGA TEKSHIRUVI ==========
+    # BOSH SAHIFA VA ORTGA TEKSHIRUVI
     if date_choice == "🏠 Bosh sahifa":
         await state.clear()
-        role = USERS_ROLES[str(message.from_user.id)]["role"]
-        await message.answer(
-            text="Asosiy menyuga qaytdingiz.",
-            reply_markup=get_main_menu(role)
-        )
-        return
-    
-    elif date_choice == "⬅️ Ortga":
-        # Oldingi holatga qaytish
-        user_data = await state.get_data()
-        if user_data.get("selected_user_id"):
-            # Xodim tanlash bosqichiga qaytish
-            selected_role = user_data.get("selected_role")
-            if selected_role:
-                keyboard = get_proof_employee_keyboard(selected_role)
-                if keyboard:
-                    await state.set_state(TaskStates.waiting_for_proof_user)
-                    await message.answer(
-                        text=f"👥 <b>{selected_role}</b> role dagi xodimlardan birini tanlang:",
-                        parse_mode="HTML",
-                        reply_markup=keyboard
-                    )
-                else:
-                    await state.set_state(TaskStates.waiting_for_proof_role)
-                    await message.answer(
-                        text="📸 <b>Isbotlar arxivi</b>\n\n"
-                             "Qaysi role dagi xodimlarning isbotlarini koʻrmoqchisiz?",
-                        parse_mode="HTML",
-                        reply_markup=get_proof_role_keyboard()
-                    )
-            else:
-                await state.set_state(TaskStates.waiting_for_proof_role)
-                await message.answer(
-                    text="📸 <b>Isbotlar arxivi</b>\n\n"
-                         "Qaysi role dagi xodimlarning isbotlarini koʻrmoqchisiz?",
-                    parse_mode="HTML",
-                    reply_markup=get_proof_role_keyboard()
-                )
-        else:
-            await state.set_state(TaskStates.waiting_for_proof_role)
-            await message.answer(
-                text="📸 <b>Isbotlar arxivi</b>\n\n"
-                     "Qaysi role dagi xodimlarning isbotlarini koʻrmoqchisiz?",
-                parse_mode="HTML",
-                reply_markup=get_proof_role_keyboard()
-            )
-        return
-    
-    # ========== SANA TANLASH ==========
-    elif date_choice == "📅 Bugun":
-        start_date = now.strftime("%Y-%m-%d")
-        end_date = now.strftime("%Y-%m-%d")
-        date_text = "Bugungi isbotlar"
-    
-    elif date_choice == "📆 Kecha":
-        yesterday = now - timedelta(days=1)
-        start_date = yesterday.strftime("%Y-%m-%d")
-        end_date = yesterday.strftime("%Y-%m-%d")
-        date_text = "Kechagi isbotlar"
-    
-    elif date_choice == "📅 Shu oy":
-        start_date = now.replace(day=1).strftime("%Y-%m-%d")
-        end_date = now.strftime("%Y-%m-%d")
-        date_text = f"{now.strftime('%B')} oyidagi isbotlar"
-    
-    elif date_choice == "📆 O'tgan oy":
-        first_day_current = now.replace(day=1)
-        last_day_prev = first_day_current - timedelta(days=1)
-        first_day_prev = last_day_prev.replace(day=1)
-        start_date = first_day_prev.strftime("%Y-%m-%d")
-        end_date = last_day_prev.strftime("%Y-%m-%d")
-        date_text = f"{first_day_prev.strftime('%B')} oyidagi isbotlar"
-    
-    elif date_choice == "✍️ Boshqa sana":
-        await message.answer(
-            text="📅 <b>Sanani tanlang (oxirgi 60 kun):</b>\n\n"
-                 "🏠 Bosh sahifa - Asosiy menyuga qaytish\n"
-                 "⬅️ Ortga - Oldingi bosqichga qaytish",
-            parse_mode="HTML",
-            reply_markup=get_custom_date_keyboard()
-        )
-        return
-    
-    else:
-        try:
-            custom_date = datetime.strptime(date_choice.strip(), "%Y-%m-%d")
-            start_date = custom_date.strftime("%Y-%m-%d")
-            end_date = custom_date.strftime("%Y-%m-%d")
-            date_text = f"{custom_date.strftime('%Y-%m-%d')} sanadagi isbotlar"
-        except ValueError:
-            await message.answer(
-                text="❌ <b>Notoʻgʻri format!</b> Iltimos, sanani YYYY-MM-DD formatida kiriting.",
-                parse_mode="HTML"
-            )
-            return
-    
-    user_data = await state.get_data()
-    selected_role = user_data.get("selected_role")
-    selected_user_id = user_data.get("selected_user_id")
-    selected_user_name = user_data.get("selected_user_name")
-    selected_role_name = user_data.get("selected_role_name")
-    
-    proofs = []
-    
-    if selected_user_id:
-        proofs = get_proofs_by_user(selected_user_id, start_date, end_date)
-        title = f"{selected_user_name} ning {date_text}"
-    elif selected_role_name:
-        proofs = get_proofs_by_role(selected_role_name, start_date, end_date)
-        title = f"{selected_role_name} role dagi barcha xodimlarning {date_text}"
-    elif selected_role == "all":
-        proofs = get_proofs_by_date_range(start_date, end_date)
-        title = f"Barcha xodimlarning {date_text}"
-    else:
-        proofs = get_proofs_by_role(selected_role, start_date, end_date)
-        title = f"{selected_role} role dagi xodimlarning {date_text}"
-    
-    await state.clear()
-    await send_proofs(message, proofs, title)
+        role = USERS_ROLES[str
