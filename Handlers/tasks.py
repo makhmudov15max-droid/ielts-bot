@@ -19,7 +19,7 @@ from utils.access import check_user_access
 from utils.users_json import save_users
 from utils.tasks_json import save_tasks
 
-tasks_router = Router()  # <-- BU QATOR MUHIM!
+tasks_router = Router()
 
 # Global o'zgaruvchilar
 USERS_ROLES = None
@@ -388,7 +388,7 @@ async def list_tasks_handler(message: types.Message):
     await message.answer(text=response_text, parse_mode="HTML")
 
 
-# ================= VAZIFA O'CHIRISH MENYU =================
+# ================= VAZIFA O'CHIRISH MENYU (TUZATILGAN) =================
 
 @tasks_router.message(F.text == "🗑 Vazifani oʻchirish")
 async def remove_task_menu_handler(message: types.Message):
@@ -397,7 +397,8 @@ async def remove_task_menu_handler(message: types.Message):
     if not TASKS_DATABASE:
         await message.answer(text="📭 Hozircha tizimda hech qanday faol vazifalar mavjud emas.")
         return
-        
+    
+    # Eng so'nggi TASKS_DATABASE ni ishlatish
     await message.answer(
         text="🗑 <b>Oʻchirmoqchi boʻlgan vazifangizni tanlang:</b>\n<i>(Tugma bosilishi bilan vazifa bazadan butunlay oʻchadi!)</i>",
         parse_mode="HTML",
