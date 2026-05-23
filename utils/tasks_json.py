@@ -1,5 +1,6 @@
 import json
 import os
+from datetime import datetime, timedelta, timezone
 
 TASKS_FILE = "tasks.json"
 
@@ -31,10 +32,18 @@ def update_task_status(task_id: int, status: str, completed_by: str = None):
         if task["id"] == task_id:
             task["status"] = status
             if status == "completed":
-                from datetime import datetime, timedelta, timezone
                 tashkent_tz = timezone(timedelta(hours=5))
                 task["completed_at"] = datetime.now(tashkent_tz).isoformat()
                 task["completed_by"] = completed_by
             save_tasks(tasks)
             return True
     return False
+
+
+def get_task_by_id(task_id: int):
+    """ID bo'yicha vazifani olish"""
+    tasks = load_tasks()
+    for task in tasks:
+        if task["id"] == task_id:
+            return task
+    return None
