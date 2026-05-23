@@ -83,7 +83,7 @@ async def admin_reject_callback(call: types.CallbackQuery):
     await call.answer()
 
 
-# ================= VAZIFA BAJARISH CALLBACKS =================
+# ================= VAZIFA BAJARISH CALLBACKS (TUZATILGAN) =================
 
 @callback_router.callback_query(F.data.startswith("completetask_"))
 async def employee_complete_task_callback(call: types.CallbackQuery, state: FSMContext):
@@ -95,16 +95,33 @@ async def employee_complete_task_callback(call: types.CallbackQuery, state: FSMC
         
     await state.update_data(active_task_id=task_id, proof_required=task["proof_type"])
     
+    # Isbot turiga qarab xabar chiqarish
     if task["proof_type"] == "Photo":
-        await call.message.answer(text="Ushbu vazifani tasdiqlash uchun iltimos, <b>Rasm (Photo)</b> yuboring!", parse_mode="HTML")
+        await call.message.answer(
+            text="📸 Ushbu vazifani tasdiqlash uchun iltimos, <b>Rasm (Photo)</b> yuboring!",
+            parse_mode="HTML"
+        )
+    elif task["proof_type"] == "Video message":
+        await call.message.answer(
+            text="📹 Ushbu vazifani tasdiqlash uchun iltimos, <b>Dumaloq video (Video message)</b> yuboring!",
+            parse_mode="HTML"
+        )
+    elif task["proof_type"] == "Text":
+        await call.message.answer(
+            text="✍️ Ushbu vazifani tasdiqlash uchun iltimos, <b>Matn (Text)</b> yuboring!",
+            parse_mode="HTML"
+        )
     else:
-        await call.message.answer(text="Ushbu vazifani tasdiqlash uchun iltimos, <b>Dumaloq video (Video message)</b> yuboring!", parse_mode="HTML")
+        await call.message.answer(
+            text="⚠️ Iltimos, isbot yuboring!",
+            parse_mode="HTML"
+        )
         
     await state.set_state(TaskStates.waiting_for_task_proof)
     await call.answer()
 
 
-# ================= VAZIFA O'CHIRISH CALLBACKS (TUZATILGAN) =================
+# ================= VAZIFA O'CHIRISH CALLBACKS =================
 
 @callback_router.callback_query(F.data.startswith("removetask_"))
 async def process_remove_task_callback(call: types.CallbackQuery):
