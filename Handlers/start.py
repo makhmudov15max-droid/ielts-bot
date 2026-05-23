@@ -21,12 +21,13 @@ from Handlers.group_report import report_router
 
 start_router = Router()
 
-# Global o'zgaruvchilar
+# ================= GLOBAL O'ZGARUVCHILAR =================
 USERS_ROLES = None
 TASKS_DATABASE = None
 ADMIN_ID = None
 
 
+# ================= INIT FUNKSIYASI =================
 def init_all_handlers(users_roles, tasks_database, admin_id):
     """Barcha handlerlar uchun global o'zgaruvchilarni o'rnatish"""
     global USERS_ROLES, TASKS_DATABASE, ADMIN_ID
@@ -40,6 +41,7 @@ def init_all_handlers(users_roles, tasks_database, admin_id):
     init_callback_handler(USERS_ROLES, TASKS_DATABASE, ADMIN_ID)
 
 
+# ================= /START COMMAND =================
 @start_router.message(CommandStart())
 async def command_start_handler(message: types.Message):
     user_id = str(message.from_user.id)
@@ -95,6 +97,7 @@ async def command_start_handler(message: types.Message):
     )
 
 
+# ================= USER NAME HANDLER =================
 @start_router.message(
     lambda msg:
     isinstance(
@@ -123,8 +126,7 @@ async def get_user_real_name_handler(message: types.Message):
     )
 
 
-# ================= VAZIFA YAKUNLASH (proof_type bilan) =================
-
+# ================= VAZIFA YAKUNLASH (FINALIZE) =================
 @start_router.message(TaskStates.waiting_for_proof_type, F.text.in_(["Dumaloq video", "Rasm yuborish", "✍️ Matn yuborish"]))
 async def finalize_task_creation_handler(message: types.Message, state: FSMContext):
     proof_mapping = {
@@ -212,8 +214,7 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
     await state.clear()
 
 
-# ================= ISBOT QABUL QILISH (Rasm, Video, Matn) =================
-
+# ================= ISBOT QABUL QILISH =================
 @start_router.message(TaskStates.waiting_for_task_proof)
 async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     state_data = await state.get_data()
@@ -316,7 +317,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
                 save_tasks(TASKS_DATABASE)
         await state.clear()
     
-    # ========== DUMALOQ VIDEO TEKSHIRUVI ==========
+    # ========== VIDEO TEKSHIRUVI ==========
     elif proof_required == "Video message":
         
         if not message.video_note:
@@ -397,8 +398,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             )
 
 
-# ================= TAYMER =================
-
+# ================= TAYMER (AUTO TASK SCHEDULER) =================
 async def auto_task_scheduler(bot):
     last_checked_minute = ""
     tashkent_tz = timezone(timedelta(hours=5))
