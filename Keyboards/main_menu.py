@@ -1,9 +1,7 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 
-# ================= ASOSIY MENU =================
 def get_main_menu(role: str):
     role = str(role).strip()
-
     if role in ["Owner", "Manager"]:
         keyboard = [
             [KeyboardButton(text="➕ Vazifa qoʻshish"), KeyboardButton(text="📋 Vazifalar roʻyxati")],
@@ -32,14 +30,10 @@ def get_main_menu(role: str):
         keyboard = [
             [KeyboardButton(text="📋 Vazifalar roʻyxati")]
         ]
-
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
-# ================= BOSHQA KLAVIATURALAR =================
-
 def get_back_home_keyboard():
-    """Ortga va Bosh sahifa tugmalari"""
     return ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text="⬅️ Ortga"), KeyboardButton(text="🏠 Bosh sahifa")]],
         resize_keyboard=True
@@ -123,10 +117,7 @@ def get_remove_tasks_keyboard(tasks_list: list):
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
 
-# ================= ISBOTLAR UCHUN KLAVIATURALAR =================
-
 def get_proof_role_keyboard():
-    """Role tanlash tugmalari (ReplyKeyboard)"""
     keyboard = [
         [KeyboardButton(text="Admin"), KeyboardButton(text="Kassir")],
         [KeyboardButton(text="Sanitar"), KeyboardButton(text="Manager")],
@@ -137,7 +128,6 @@ def get_proof_role_keyboard():
 
 
 def get_proof_date_keyboard():
-    """Sana tanlash tugmalari (ReplyKeyboard) - 2 ustunli tartibda"""
     keyboard = [
         [KeyboardButton(text="📅 Bugun"), KeyboardButton(text="📆 Kecha")],
         [KeyboardButton(text="📅 Shu oy"), KeyboardButton(text="📆 O'tgan oy")],
@@ -147,10 +137,7 @@ def get_proof_date_keyboard():
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
-# ================= VAZIFALAR RO'YXATI UCHUN KLAVIATURALAR =================
-
 def get_tasks_list_keyboard():
-    """Vazifalar ro'yxati uchun tugmalar"""
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="⏳ Kutilmoqda"), KeyboardButton(text="🔄 Doimiy")],
@@ -162,7 +149,6 @@ def get_tasks_list_keyboard():
 
 
 def get_completed_date_keyboard():
-    """Bajarilgan vazifalar uchun sana tanlash"""
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="📅 Bugun")],
@@ -171,30 +157,3 @@ def get_completed_date_keyboard():
         ],
         resize_keyboard=True
     )
-
-
-def get_custom_date_keyboard():
-    """60 kunlik sanalar ro'yxati (har bir qatorda 2 tadan)"""
-    from datetime import datetime, timedelta, timezone
-    
-    tashkent_tz = timezone(timedelta(hours=5))
-    now = datetime.now(tashkent_tz)
-    
-    date_buttons = []
-    for i in range(60):
-        d = now - timedelta(days=i)
-        date_buttons.append(KeyboardButton(text=d.strftime("%Y-%m-%d")))
-    
-    keyboard = []
-    row = []
-    for btn in date_buttons:
-        row.append(btn)
-        if len(row) == 2:
-            keyboard.append(row)
-            row = []
-    if row:
-        keyboard.append(row)
-    
-    keyboard.append([KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")])
-    
-    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
