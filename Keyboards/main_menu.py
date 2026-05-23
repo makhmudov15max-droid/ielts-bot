@@ -143,9 +143,9 @@ def get_proof_date_keyboard():
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
-# ================= VAZIFALAR RO'YXATI KEYBOARDS (YANGI) =================
+# ================= VAZIFALAR RO'YXATI KEYBOARDS (TO'LIQ TUZATILGAN) =================
 def get_tasks_simple_keyboard():
-    """Vazifalar ro'yxati uchun 2 tugma"""
+    """Vazifalar ro'yxati uchun 3 tugma (Bugun, Sana, Bosh sahifa)"""
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="📅 Bugun")],
@@ -157,7 +157,7 @@ def get_tasks_simple_keyboard():
 
 
 def get_custom_date_keyboard_simple():
-    """60 kunlik sanalar ro'yxati (har bir qatorda 2 tadan)"""
+    """60 kunlik sanalar ro'yxati (har bir qatorda 2 tadan) + Bosh sahifa va Ortga"""
     from datetime import datetime, timedelta, timezone
     
     tashkent_tz = timezone(timedelta(hours=5))
@@ -178,6 +178,7 @@ def get_custom_date_keyboard_simple():
     if row:
         keyboard.append(row)
     
-    keyboard.append([KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")])
+    # Ortqa va Bosh sahifa tugmalari
+    keyboard.append([KeyboardButton(text="⬅️ Ortga"), KeyboardButton(text="🏠 Bosh sahifa")])
     
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
