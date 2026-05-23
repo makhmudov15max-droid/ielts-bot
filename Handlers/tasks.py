@@ -17,7 +17,7 @@ from Keyboards.main_menu import (
 )
 from utils.access import check_user_access
 from utils.users_json import save_users
-from utils.tasks_json import save_tasks
+from utils.tasks_json import save_tasks, update_task_status, load_tasks
 
 tasks_router = Router()
 
@@ -301,7 +301,10 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
         "proof_type": proof_mapping.get(message.text),
         "assigned_to_id": user_data.get("assigned_to_id"),
         "assigned_to_name": user_data.get("assigned_to_name"),
-        "sent_today_times": [] 
+        "sent_today_times": [],
+        "status": "pending",
+        "completed_at": None,
+        "completed_by": None
     }
     
     TASKS_DATABASE.append(new_task)
@@ -322,7 +325,8 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
         )
     report_text += (
         f"📸 <b>Talab etiladigan isbot:</b> {message.text}\n"
-        f"👤 <b>Masʻul xodim:</b> {new_task['assigned_to_name']}"
+        f"👤 <b>Masʻul xodim:</b> {new_task['assigned_to_name']}\n"
+        f"📊 <b>Holat:</b> ⏳ Kutilmoqda"
     )
     
     await message.answer(text=report_text, parse_mode="HTML")
@@ -358,24 +362,39 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
     await state.clear()
 
 
-# ================= VAZIFALAR RO'YXATI =================
+# ================= VAZIFALAR RO'YXATI (STATUS BILAN) =================
 
 @tasks_router.message(F.text == "📋 Vazifalar roʻyxati")
 async def list_tasks_handler(message: types.Message):
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
+    
+    # Eng so'nggi ma'lumotlarni yuklash
+    global TASKS_DATABASE
+    TASKS_DATABASE = load_tasks()
+    
     if not TASKS_DATABASE:
         await message.answer(text="📭 Hozircha tizimda hech qanday faol vazifalar mavjud emas.")
         return
         
     response_text = "📋 <b>Tizimdagi joriy faol vazifalar roʻyxati:</b>\n\n"
     for idx, task in enumerate(TASKS_DATABASE, 1):
+        # Status belgisi
+        if task.get("status") == "completed":
+            status_icon = "✅ BAJARILDI"
+            if task.get("completed_by"):
+                user_name = USERS_ROLES.get(str(task["completed_by"]), {}).get("name", "Noma'lum")
+                status_icon += f" (👤 {user_name})"
+        else:
+            status_icon = "⏳ KUTILMOQDA"
+        
         if task.get("task_type") == "Kunlik (Bir martalik)":
             response_text += (
                 f"{idx}. <b>[KUNLIK] {task['task_name']}</b>\n"
                 f"   👤 Masʻul: {task['assigned_to_name']}\n"
                 f"   📝 Izoh: {task['task_description']}\n"
-                f"   📸 Isbot: {task['proof_type']}\n\n"
+                f"   📸 Isbot: {task['proof_type']}\n"
+                f"   📊 Holat: {status_icon}\n\n"
             )
         else:
             response_text += (
@@ -383,7 +402,8 @@ async def list_tasks_handler(message: types.Message):
                 f"   👤 Masʻul: {task['assigned_to_name']}\n"
                 f"   ⏰ Vaqti: {', '.join(task['task_times'])}\n"
                 f"   📅 Kunlar: {task['task_days']}\n"
-                f"   📸 Isbot: {task['proof_type']}\n\n"
+                f"   📸 Isbot: {task['proof_type']}\n"
+                f"   📊 Holat: {status_icon}\n\n"
             )
     await message.answer(text=response_text, parse_mode="HTML")
 
@@ -394,13 +414,25 @@ async def list_tasks_handler(message: types.Message):
 async def remove_task_menu_handler(message: types.Message):
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
+    
+    # Eng so'nggi ma'lumotlarni yuklash
+    global TASKS_DATABASE
+    TASKS_DATABASE = load_tasks()
+    
     if not TASKS_DATABASE:
         await message.answer(text="📭 Hozircha tizimda hech qanday faol vazifalar mavjud emas.")
         return
     
-    # Eng so'nggi TASKS_DATABASE ni ishlatish
+    # O'chirilmagan (pending) vazifalarni ko'rsatish
+    pending_tasks = [t for t in TASKS_DATABASE if t.get("status") != "completed"]
+    
+    if not pending_tasks:
+        await message.answer(text="📭 Hozircha o'chiriladigan faol vazifalar mavjud emas (barcha vazifalar bajarilgan).")
+        return
+    
     await message.answer(
-        text="🗑 <b>Oʻchirmoqchi boʻlgan vazifangizni tanlang:</b>\n<i>(Tugma bosilishi bilan vazifa bazadan butunlay oʻchadi!)</i>",
+        text="🗑 <b>Oʻchirmoqchi boʻlgan vazifangizni tanlang:</b>\n<i>(Tugma bosilishi bilan vazifa bazadan butunlay oʻchadi!)</i>\n\n"
+             "⚠️ <b>Diqqat:</b> Bajarilgan vazifalar o'chirilmaydi!",
         parse_mode="HTML",
-        reply_markup=get_remove_tasks_keyboard(TASKS_DATABASE)
+        reply_markup=get_remove_tasks_keyboard(pending_tasks)
     )
