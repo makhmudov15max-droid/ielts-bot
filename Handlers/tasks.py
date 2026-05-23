@@ -462,16 +462,20 @@ async def tasks_simple_menu_handler(message: types.Message, state: FSMContext):
     )
 
 
+# ================= BOSH SAHIFA (VAZIFALAR RO'YXATI ICHIDAN) =================
+@tasks_router.message(TaskStates.waiting_for_tasks_simple_choice, F.text == "🏠 Bosh sahifa")
+async def back_home_from_tasks_choice(message: types.Message, state: FSMContext):
+    await state.clear()
+    role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
+    await message.answer(
+        text="🏠 Asosiy menyuga qaytdingiz.",
+        reply_markup=get_main_menu(role)
+    )
+
+
 # ================= BUGUNGI VAZIFALAR =================
 @tasks_router.message(TaskStates.waiting_for_tasks_simple_choice, F.text == "📅 Bugun")
 async def show_today_all_tasks(message: types.Message, state: FSMContext):
-    # BOSH SAHIFA TEKSHIRUVI (ENG BOSHLIDA)
-    if message.text == "🏠 Bosh sahifa":
-        await state.clear()
-        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-        return
-    
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
     
@@ -551,13 +555,6 @@ async def show_today_all_tasks(message: types.Message, state: FSMContext):
 # ================= SANA TANLASH =================
 @tasks_router.message(TaskStates.waiting_for_tasks_simple_choice, F.text == "📆 Sana")
 async def ask_for_custom_date_tasks(message: types.Message, state: FSMContext):
-    # BOSH SAHIFA TEKSHIRUVI (ENG BOSHLIDA)
-    if message.text == "🏠 Bosh sahifa":
-        await state.clear()
-        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-        return
-    
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
     
@@ -579,15 +576,19 @@ async def ask_for_custom_date_tasks(message: types.Message, state: FSMContext):
     )
 
 
+# ================= BOSH SAHIFA (SANA TANLASH ICHIDAN) =================
+@tasks_router.message(TaskStates.waiting_for_custom_date, F.text == "🏠 Bosh sahifa")
+async def back_home_from_custom_date(message: types.Message, state: FSMContext):
+    await state.clear()
+    role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
+    await message.answer(
+        text="🏠 Asosiy menyuga qaytdingiz.",
+        reply_markup=get_main_menu(role)
+    )
+
+
 @tasks_router.message(TaskStates.waiting_for_custom_date)
 async def show_tasks_by_selected_date(message: types.Message, state: FSMContext):
-    # BOSH SAHIFA TEKSHIRUVI (ENG BOSHLIDA)
-    if message.text == "🏠 Bosh sahifa":
-        await state.clear()
-        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-        return
-    
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
     
