@@ -83,7 +83,7 @@ async def admin_reject_callback(call: types.CallbackQuery):
     await call.answer()
 
 
-# ================= VAZIFA BAJARISH CALLBACKS (TUZATILGAN) =================
+# ================= VAZIFA BAJARISH CALLBACKS =================
 
 @callback_router.callback_query(F.data.startswith("completetask_"))
 async def employee_complete_task_callback(call: types.CallbackQuery, state: FSMContext):
@@ -95,7 +95,6 @@ async def employee_complete_task_callback(call: types.CallbackQuery, state: FSMC
         
     await state.update_data(active_task_id=task_id, proof_required=task["proof_type"])
     
-    # Isbot turiga qarab xabar chiqarish
     if task["proof_type"] == "Photo":
         await call.message.answer(
             text="📸 Ushbu vazifani tasdiqlash uchun iltimos, <b>Rasm (Photo)</b> yuboring!",
@@ -121,7 +120,7 @@ async def employee_complete_task_callback(call: types.CallbackQuery, state: FSMC
     await call.answer()
 
 
-# ================= VAZIFA O'CHIRISH CALLBACKS =================
+# ================= VAZIFA O'CHIRISH CALLBACKS (TUZATILGAN) =================
 
 @callback_router.callback_query(F.data.startswith("removetask_"))
 async def process_remove_task_callback(call: types.CallbackQuery):
@@ -140,6 +139,12 @@ async def process_remove_task_callback(call: types.CallbackQuery):
                  f"👤 <b>Masʻul boʻlgan xodim:</b> {task_to_remove['assigned_to_name']}",
             parse_mode="HTML"
         )
+        
+        await call.message.answer(
+            text="✅ Vazifa bazadan butunlay o'chirildi.\n\n"
+                 "📋 Yangilangan ro'yxatni ko'rish uchun '📋 Vazifalar roʻyxati' tugmasini bosing.",
+            parse_mode="HTML"
+        )
     else:
         await call.answer(text="⚠️ Bu vazifa allaqachon oʻchirilgan yoki topilmadi!", show_alert=True)
     await call.answer()
@@ -149,5 +154,8 @@ async def process_remove_task_callback(call: types.CallbackQuery):
 async def cancel_remove_callback(call: types.CallbackQuery):
     await call.message.delete()
     role = USERS_ROLES[str(call.from_user.id)]["role"]
-    await call.message.answer(text="O‘chirish jarayoni bekor qilindi.", reply_markup=get_main_menu(role))
+    await call.message.answer(
+        text="O‘chirish jarayoni bekor qilindi.",
+        reply_markup=get_main_menu(role)
+    )
     await call.answer()
