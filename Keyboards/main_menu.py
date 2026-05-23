@@ -11,14 +11,14 @@ def get_main_menu(role: str):
             [KeyboardButton(text="📊 Admin oylik"), KeyboardButton(text="💰 Kassir oylik")],
             [KeyboardButton(text="🗄 Arxiv"), KeyboardButton(text="📑 Guruh Report")],
             [KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball")],
-            [KeyboardButton(text="📸 Isbotlar")]  # <-- YANGI
+            [KeyboardButton(text="📸 Isbotlar")]
         ]
     elif role == "Admin":
         keyboard = [
             [KeyboardButton(text="📋 Vazifalar roʻyxati")],
             [KeyboardButton(text="📊 Admin oylik")],
             [KeyboardButton(text="📑 Guruh Report")],
-            [KeyboardButton(text="📸 Isbotlar")]  # <-- YANGI
+            [KeyboardButton(text="📸 Isbotlar")]
         ]
     elif role == "Kassir":
         keyboard = [
@@ -69,7 +69,7 @@ proof_type_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-# Inline kunlar uchun
+
 def get_inline_days_keyboard(selected_days: list = None):
     if selected_days is None:
         selected_days = []
@@ -113,7 +113,7 @@ def get_remove_tasks_keyboard(tasks_list: list):
 # ================= ISBOTLAR UCHUN KLAVIATURALAR =================
 
 def get_proof_role_keyboard():
-    """Role tanlash tugmalari"""
+    """Role tanlash tugmalari (ReplyKeyboard)"""
     keyboard = [
         [KeyboardButton(text="Admin"), KeyboardButton(text="Kassir")],
         [KeyboardButton(text="Sanitar"), KeyboardButton(text="Manager")],
@@ -124,7 +124,7 @@ def get_proof_role_keyboard():
 
 
 def get_proof_date_keyboard():
-    """Sana tanlash tugmalari"""
+    """Sana tanlash tugmalari (ReplyKeyboard)"""
     keyboard = [
         [KeyboardButton(text="📅 Bugun"), KeyboardButton(text="📆 Kecha")],
         [KeyboardButton(text="📅 Shu oy"), KeyboardButton(text="📆 O'tgan oy")],
