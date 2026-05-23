@@ -274,8 +274,7 @@ async def get_multiple_times_handler(message: types.Message, state: FSMContext):
     await state.set_state(TaskStates.waiting_for_proof_type)
 
 
-# ================= VAZIFANI YAKUNLASH =================
-# ================= VAZIFANI YAKUNLASH =================
+# ================= VAZIFANI YAKUNLASH (TUZATILGAN) =================
 @tasks_router.message(TaskStates.waiting_for_proof_type, F.text.in_(["Dumaloq video", "Rasm yuborish", "✍️ Matn yuborish"]))
 async def finalize_task_creation_handler(message: types.Message, state: FSMContext):
     proof_mapping = {
@@ -362,6 +361,7 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
         
     await state.clear()
 
+
 # ================= VAZIFALAR RO'YXATI (3 TUGMA) =================
 @tasks_router.message(F.text == "📋 Vazifalar roʻyxati")
 async def tasks_list_menu_handler(message: types.Message, state: FSMContext):
@@ -399,7 +399,8 @@ async def show_pending_tasks(message: types.Message, state: FSMContext):
             f"{idx}. <b>{task['task_name']}</b>\n"
             f"   👤 Masʻul: {task['assigned_to_name']}\n"
             f"   📝 Izoh: {task['task_description']}\n"
-            f"   📸 Isbot: {task['proof_type']}\n\n"
+            f"   📸 Isbot: {task['proof_type']}\n"
+            f"   ⌛️ Holat: Bajarilmadi\n\n"
         )
     
     await message.answer(text=response_text, parse_mode="HTML", reply_markup=get_tasks_list_keyboard())
@@ -424,9 +425,11 @@ async def show_recurring_tasks(message: types.Message, state: FSMContext):
     response_text = "🔄 <b>Doimiy vazifalar:</b>\n\n"
     for idx, task in enumerate(recurring_tasks, 1):
         if task.get("status") == "completed":
-            status_icon = "✅ BAJARILDI"
+            status_icon = "✅ Bajarildi"
+            status_text = "✅ Holat: Bajarildi"
         else:
-            status_icon = "⏳ KUTILMOQDA"
+            status_icon = "⏳ Kutilmoqda"
+            status_text = "⌛️ Holat: Bajarilmadi"
         
         response_text += (
             f"{idx}. <b>{task['task_name']}</b>\n"
@@ -434,7 +437,7 @@ async def show_recurring_tasks(message: types.Message, state: FSMContext):
             f"   ⏰ Vaqti: {', '.join(task['task_times'])}\n"
             f"   📅 Kunlar: {task['task_days']}\n"
             f"   📸 Isbot: {task['proof_type']}\n"
-            f"   📊 Holat: {status_icon}\n\n"
+            f"   {status_text}\n\n"
         )
     
     await message.answer(text=response_text, parse_mode="HTML", reply_markup=get_tasks_list_keyboard())
@@ -456,7 +459,6 @@ async def show_completed_tasks_menu(message: types.Message, state: FSMContext):
 
 
 # ================= BAJARILGAN - BUGUN =================
-
 @tasks_router.message(TaskStates.waiting_for_completed_date, F.text == "📅 Bugun")
 async def show_completed_today(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
@@ -467,13 +469,8 @@ async def show_completed_today(message: types.Message, state: FSMContext):
     
     TASKS_DATABASE = load_tasks()
     
-    # Debug uchun log
-    print(f"Bugun: {today}")
-    print(f"Barcha tasklar: {TASKS_DATABASE}")
-    
     completed_tasks = []
     for task in TASKS_DATABASE:
-        print(f"Task: {task.get('task_name')}, status: {task.get('status')}, completed_at: {task.get('completed_at')}")
         if task.get("status") == "completed":
             completed_at = task.get("completed_at", "")
             if completed_at:
@@ -483,10 +480,7 @@ async def show_completed_today(message: types.Message, state: FSMContext):
     
     if not completed_tasks:
         await message.answer(
-            text=f"📭 Bugun ({today}) bajarilgan vazifalar topilmadi.\n\n"
-                 f"💡 Eslatma: Vazifa bajarilgandan keyin '✅ Bajarildi' tugmasi bosilganmi?\n"
-                 f"💡 Yoki tasks.json faylini tekshiring: 'status' va 'completed_at' maydonlari bormi?",
-            parse_mode="HTML",
+            text=f"📭 Bugun ({today}) bajarilgan vazifalar topilmadi.",
             reply_markup=get_completed_date_keyboard()
         )
         return
@@ -576,7 +570,8 @@ async def show_completed_by_date(message: types.Message, state: FSMContext):
             f"   👤 Masʻul: {task['assigned_to_name']}\n"
             f"   👤 Bajargan: {completed_by}\n"
             f"   📸 Isbot: {task['proof_type']}\n"
-            f"   ⏰ Vaqt: {completed_time}\n\n"
+            f"   ⏰ Vaqt: {completed_time}\n"
+            f"   ✅ Holat: Bajarildi\n\n"
         )
     
     await message.answer(text=response_text, parse_mode="HTML", reply_markup=get_completed_date_keyboard())
