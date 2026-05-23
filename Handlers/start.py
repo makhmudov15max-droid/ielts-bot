@@ -8,8 +8,8 @@ from aiogram.fsm.context import FSMContext
 
 from Handlers.states import TaskStates
 from Keyboards.main_menu import get_main_menu, get_admin_approval_keyboard, get_task_complete_keyboard
-from utils.users_json import save_users
-from utils.tasks_json import save_tasks
+from utils.users_json import save_users, set_user_busy, set_user_free, is_user_busy, get_user_active_task
+from utils.tasks_json import save_tasks, update_task_status
 from utils.proofs_json import add_proof
 from utils.access import check_user_access
 from Handlers.tasks import tasks_router, init_tasks_handler
@@ -38,6 +38,43 @@ def init_all_handlers(users_roles, tasks_database, admin_id):
     init_employees_handler(USERS_ROLES, ADMIN_ID)
     init_salaries_handler(USERS_ROLES)
     init_callback_handler(USERS_ROLES, TASKS_DATABASE, ADMIN_ID)
+
+
+# ================= BUSY MIDDLEWARE (Foydalanuvchi bandligini tekshirish) =================
+
+@start_router.message()
+async def check_user_busy(message: types.Message, state: FSMContext):
+    """Foydalanuvchi band bo'lsa, faqat isbot qabul qilish"""
+    user_id = str(message.from_user.id)
+    
+    # /cancel buyrug'i bilan bandlikdan chiqish
+    if message.text == "/cancel":
+        if is_user_busy(user_id):
+            set_user_free(user_id)
+            await state.clear()
+            await message.answer(
+                text="✅ Siz band holatdan chiqarildingiz.\n\n"
+                     "Endi botning boshqa funksiyalaridan foydalanishingiz mumkin.",
+                reply_markup=get_main_menu(USERS_ROLES[user_id]["role"])
+            )
+        else:
+            await message.answer("Siz band holatda emassiz.")
+        return
+    
+    # Agar foydalanuvchi band bo'lsa va isbot yuborish holatida bo'lmasa
+    if is_user_busy(user_id):
+        current_state = await state.get_state()
+        if current_state != TaskStates.waiting_for_task_proof:
+            await message.answer(
+                text="⏳ <b>Kechirasiz!</b> Siz avvalgi vazifangiz uchun isbot yubormagansiz.\n\n"
+                     "Iltimos, avval isbot yuboring yoki /cancel buyrug'ini bering.\n\n"
+                     f"📌 Kutilayotgan vazifa: {get_user_active_task(user_id)}",
+                parse_mode="HTML"
+            )
+            return
+    
+    # Davom etish
+    await state.update_data()
 
 
 @start_router.message(CommandStart())
@@ -151,7 +188,10 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
         "proof_type": proof_mapping.get(message.text),
         "assigned_to_id": user_data.get("assigned_to_id"),
         "assigned_to_name": user_data.get("assigned_to_name"),
-        "sent_today_times": [] 
+        "sent_today_times": [],
+        "status": "pending",
+        "completed_at": None,
+        "completed_by": None
     }
     
     TASKS_DATABASE.append(new_task)
@@ -172,7 +212,8 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
         )
     report_text += (
         f"📸 <b>Talab etiladigan isbot:</b> {message.text}\n"
-        f"👤 <b>Masʻul xodim:</b> {new_task['assigned_to_name']}"
+        f"👤 <b>Masʻul xodim:</b> {new_task['assigned_to_name']}\n"
+        f"📊 <b>Holat:</b> ⏳ Kutilmoqda"
     )
     
     await message.answer(text=report_text, parse_mode="HTML")
@@ -219,14 +260,18 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     global TASKS_DATABASE
     task = next((t for t in TASKS_DATABASE if t["id"] == task_id), None)
     GROUP_CHAT_ID = -5226036627  
+    user_id = str(message.from_user.id)
+    
+    # Foydalanuvchini band qilish
+    set_user_busy(user_id, task_id)
     
     # ========== MATN TEKSHIRUVI ==========
     if proof_required == "Text" and message.text and not message.photo and not message.video_note:
-        role = USERS_ROLES[str(message.from_user.id)]["role"]
+        role = USERS_ROLES[user_id]["role"]
         
         proof = add_proof(
             user_id=message.from_user.id,
-            user_name=USERS_ROLES[str(message.from_user.id)].get("name", "Noma'lum"),
+            user_name=USERS_ROLES[user_id].get("name", "Noma'lum"),
             task_id=task["id"] if task else 0,
             task_name=task["task_name"] if task else "Noma'lum",
             task_description=task.get("task_description", "") if task else "",
@@ -235,6 +280,15 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             group_chat_id=GROUP_CHAT_ID,
             text_content=message.text
         )
+        
+        # Vazifa statusini yangilash
+        if task:
+            update_task_status(task_id, "completed", user_id)
+            # TASKS_DATABASE ni qayta yuklash
+            TASKS_DATABASE = load_tasks()
+        
+        # Foydalanuvchini band holatidan chiqarish
+        set_user_free(user_id)
         
         await message.answer(
             text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
@@ -261,11 +315,11 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     
     # ========== RASM TEKSHIRUVI ==========
     elif proof_required == "Photo" and message.photo:
-        role = USERS_ROLES[str(message.from_user.id)]["role"]
+        role = USERS_ROLES[user_id]["role"]
         
         proof = add_proof(
             user_id=message.from_user.id,
-            user_name=USERS_ROLES[str(message.from_user.id)].get("name", "Noma'lum"),
+            user_name=USERS_ROLES[user_id].get("name", "Noma'lum"),
             task_id=task["id"] if task else 0,
             task_name=task["task_name"] if task else "Noma'lum",
             task_description=task.get("task_description", "") if task else "",
@@ -274,6 +328,12 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             group_chat_id=GROUP_CHAT_ID,
             text_content=None
         )
+        
+        if task:
+            update_task_status(task_id, "completed", user_id)
+            TASKS_DATABASE = load_tasks()
+        
+        set_user_free(user_id)
         
         await message.answer(
             text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
@@ -311,11 +371,11 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             )
             return
         
-        role = USERS_ROLES[str(message.from_user.id)]["role"]
+        role = USERS_ROLES[user_id]["role"]
         
         proof = add_proof(
             user_id=message.from_user.id,
-            user_name=USERS_ROLES[str(message.from_user.id)].get("name", "Noma'lum"),
+            user_name=USERS_ROLES[user_id].get("name", "Noma'lum"),
             task_id=task["id"] if task else 0,
             task_name=task["task_name"] if task else "Noma'lum",
             task_description=task.get("task_description", "") if task else "",
@@ -324,6 +384,12 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             group_chat_id=GROUP_CHAT_ID,
             text_content=None
         )
+        
+        if task:
+            update_task_status(task_id, "completed", user_id)
+            TASKS_DATABASE = load_tasks()
+        
+        set_user_free(user_id)
         
         await message.answer(
             text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
@@ -392,6 +458,10 @@ async def auto_task_scheduler(bot):
             if current_time_str != last_checked_minute:
                 for task in TASKS_DATABASE:
                     if task.get("task_type") == "Kunlik (Bir martalik)":
+                        continue
+                    
+                    # Faqat pending (bajarilmagan) vazifalarni yuborish
+                    if task.get("status") == "completed":
                         continue
                         
                     if current_time_str in task["task_times"] and current_time_str not in task["sent_today_times"]:
