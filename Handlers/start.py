@@ -123,7 +123,92 @@ async def get_user_real_name_handler(message: types.Message):
     )
 
 
-# ================= ISBOT QABUL QILISH VA SAQLASH =================
+# ================= VAZIFA YAKUNLASH (proof_type bilan) =================
+
+@start_router.message(TaskStates.waiting_for_proof_type, F.text.in_(["Dumaloq video", "Rasm yuborish", "✍️ Matn yuborish"]))
+async def finalize_task_creation_handler(message: types.Message, state: FSMContext):
+    proof_mapping = {
+        "Dumaloq video": "Video message", 
+        "Rasm yuborish": "Photo",
+        "✍️ Matn yuborish": "Text"
+    }
+    
+    user_data = await state.get_data()
+    task_id = len(TASKS_DATABASE) + 1
+    
+    is_daily = user_data.get("task_type") == "Kunlik (Bir martalik)"
+    raw_times = user_data.get("task_times", "")
+    times_list = [t.strip() for t in raw_times.split(",") if t.strip()] if not is_daily else []
+    
+    new_task = {
+        "id": task_id,
+        "task_type": user_data.get("task_type"),
+        "task_name": user_data.get("task_name"),
+        "task_description": user_data.get("task_description", "Mavjud emas"),
+        "task_days": user_data.get("task_days", "Kunlik vazifa"), 
+        "task_frequency": user_data.get("task_frequency", "Bir martalik"),
+        "task_times": times_list,
+        "proof_type": proof_mapping.get(message.text),
+        "assigned_to_id": user_data.get("assigned_to_id"),
+        "assigned_to_name": user_data.get("assigned_to_name"),
+        "sent_today_times": [] 
+    }
+    
+    TASKS_DATABASE.append(new_task)
+    save_tasks(TASKS_DATABASE)
+    
+    report_text = (
+        f"🎉 <b>Yangi vazifa muvaffaqiyatli yaratildi!</b>\n\n"
+        f"📋 <b>Turi:</b> {new_task['task_type']}\n"
+        f"📌 <b>Nomi:</b> {new_task['task_name']}\n"
+    )
+    if is_daily:
+        report_text += f"📝 <b>Izoh:</b> {new_task['task_description']}\n"
+    else:
+        report_text += (
+            f"📅 <b>Amal qilish kunlari:</b> {new_task['task_days']}\n"
+            f"🔢 <b>Takrorlanish chastotasi:</b> {new_task['task_frequency']}\n"
+            f"⏰ <b>Belgilangan vaqt(lar)i:</b> {', '.join(new_task['task_times'])}\n"
+        )
+    report_text += (
+        f"📸 <b>Talab etiladigan isbot:</b> {message.text}\n"
+        f"👤 <b>Masʻul xodim:</b> {new_task['assigned_to_name']}"
+    )
+    
+    await message.answer(text=report_text, parse_mode="HTML")
+
+    role = USERS_ROLES[str(message.from_user.id)]["role"]
+    await message.answer(text="Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
+    
+    try:
+        if is_daily:
+            employee_text = (
+                f"🔔 <b>Sizga yangi kunlik vazifa yuklatildi!</b>\n\n"
+                f"📌 <b>Vazifa nomi:</b> {new_task['task_name']}\n"
+                f"📝 <b>Izoh (Admin eslatmasi):</b> {new_task['task_description']}\n\n"
+                f"Vazifani bajarib, quyidagi tugma orqali hisobot (isbot) yuboring 👇"
+            )
+            await message.bot.send_message(
+                chat_id=new_task["assigned_to_id"],
+                text=employee_text,
+                parse_mode="HTML",
+                reply_markup=get_task_complete_keyboard(new_task["id"])
+            )
+        else:
+            await message.bot.send_message(
+                chat_id=new_task["assigned_to_id"],
+                text=f"🔔 <b>Sizga yangi muntazam vazifa yuklatildi!</b>\n\n"
+                     f"📌 <b>Vazifa nomi:</b> {new_task['task_name']}\n"
+                     f"⏰ <b>Belgilangan vaqt(lar)i:</b> {', '.join(new_task['task_times'])}",
+                parse_mode="HTML"
+            )
+    except Exception as e:
+        print(f"Xodimga bildirishnoma yuborishda xatolik: {e}")
+        
+    await state.clear()
+
+
+# ================= ISBOT QABUL QILISH (Rasm, Video, Matn) =================
 
 @start_router.message(TaskStates.waiting_for_task_proof)
 async def receive_task_proof_handler(message: types.Message, state: FSMContext):
@@ -135,11 +220,49 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     task = next((t for t in TASKS_DATABASE if t["id"] == task_id), None)
     GROUP_CHAT_ID = -5226036627  
     
-    # ========== RASM TEKSHIRUVI ==========
-    if proof_required == "Photo" and message.photo:
+    # ========== MATN TEKSHIRUVI ==========
+    if proof_required == "Text" and message.text and not message.photo and not message.video_note:
         role = USERS_ROLES[str(message.from_user.id)]["role"]
         
-        # ISBOTNI SAQLASH
+        proof = add_proof(
+            user_id=message.from_user.id,
+            user_name=USERS_ROLES[str(message.from_user.id)].get("name", "Noma'lum"),
+            task_id=task["id"] if task else 0,
+            task_name=task["task_name"] if task else "Noma'lum",
+            task_description=task.get("task_description", "") if task else "",
+            proof_type="Text",
+            file_id=None,
+            group_chat_id=GROUP_CHAT_ID,
+            text_content=message.text
+        )
+        
+        await message.answer(
+            text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
+            reply_markup=get_main_menu(role)
+        )
+        
+        if task:
+            group_text = (
+                f"✅ <b>VAZIFA BAJARILDI!</b>\n\n"
+                f"📋 <b>Turi:</b> {task['task_type']}\n"
+                f"📌 <b>Vazifa nomi:</b> {task['task_name']}\n"
+                f"👤 <b>Masʻul xodim:</b> {task['assigned_to_name']}\n"
+                f"✍️ <b>Isbot turi:</b> Matn\n"
+                f"📝 <b>Javob:</b> {message.text}\n"
+                f"⏰ <b>Topshirilgan vaqt:</b> {datetime.now(timezone(timedelta(hours=5))).strftime('%H:%M')}"
+            )
+            await message.bot.send_message(chat_id=GROUP_CHAT_ID, text=group_text, parse_mode="HTML")
+            
+            if task.get("task_type") == "Kunlik (Bir martalik)":
+                TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
+                save_tasks(TASKS_DATABASE)
+        
+        await state.clear()
+    
+    # ========== RASM TEKSHIRUVI ==========
+    elif proof_required == "Photo" and message.photo:
+        role = USERS_ROLES[str(message.from_user.id)]["role"]
+        
         proof = add_proof(
             user_id=message.from_user.id,
             user_name=USERS_ROLES[str(message.from_user.id)].get("name", "Noma'lum"),
@@ -148,7 +271,8 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             task_description=task.get("task_description", "") if task else "",
             proof_type="Photo",
             file_id=message.photo[-1].file_id,
-            group_chat_id=GROUP_CHAT_ID
+            group_chat_id=GROUP_CHAT_ID,
+            text_content=None
         )
         
         await message.answer(
@@ -187,10 +311,8 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             )
             return
         
-        # QABUL QILISH
         role = USERS_ROLES[str(message.from_user.id)]["role"]
         
-        # ISBOTNI SAQLASH
         proof = add_proof(
             user_id=message.from_user.id,
             user_name=USERS_ROLES[str(message.from_user.id)].get("name", "Noma'lum"),
@@ -199,7 +321,8 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             task_description=task.get("task_description", "") if task else "",
             proof_type="Video message",
             file_id=message.video_note.file_id,
-            group_chat_id=GROUP_CHAT_ID
+            group_chat_id=GROUP_CHAT_ID,
+            text_content=None
         )
         
         await message.answer(
@@ -229,6 +352,11 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
         if proof_required == "Photo":
             await message.answer(
                 text="⚠️ Notoʻgʻri format! Iltimos, ushbu vazifa uchun faqat <b>Rasm (Photo)</b> yuboring.", 
+                parse_mode="HTML"
+            )
+        elif proof_required == "Text":
+            await message.answer(
+                text="⚠️ Notoʻgʻri format! Iltimos, ushbu vazifa uchun <b>Matn</b> yuboring.",
                 parse_mode="HTML"
             )
         else:
