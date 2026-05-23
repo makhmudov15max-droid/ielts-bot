@@ -6,6 +6,8 @@ from Handlers.states import TaskStates
 from Keyboards.main_menu import (
     get_main_menu,
     get_back_home_keyboard,
+    get_tasks_list_keyboard,
+    get_completed_date_keyboard,
     task_type_keyboard,
     days_keyboard,
     frequency_keyboard,
@@ -17,7 +19,7 @@ from Keyboards.main_menu import (
 )
 from utils.access import check_user_access
 from utils.users_json import save_users
-from utils.tasks_json import save_tasks, update_task_status, load_tasks
+from utils.tasks_json import save_tasks, load_tasks
 
 tasks_router = Router()
 
@@ -49,7 +51,34 @@ async def handle_back_or_home(message: types.Message, state: FSMContext, current
     return False
 
 
-# ================= VAZIFA YARATISH =================
+def get_custom_date_keyboard():
+    """60 kunlik sanalar ro'yxati (har bir qatorda 2 tadan)"""
+    from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+    
+    tashkent_tz = timezone(timedelta(hours=5))
+    now = datetime.now(tashkent_tz)
+    
+    date_buttons = []
+    for i in range(60):
+        d = now - timedelta(days=i)
+        date_buttons.append(KeyboardButton(text=d.strftime("%Y-%m-%d")))
+    
+    keyboard = []
+    row = []
+    for btn in date_buttons:
+        row.append(btn)
+        if len(row) == 2:
+            keyboard.append(row)
+            row = []
+    if row:
+        keyboard.append(row)
+    
+    keyboard.append([KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")])
+    
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+
+
+# ================= VAZIFA YARATISH (avvalgi code) =================
 
 @tasks_router.message(F.text == "➕ Vazifa qoʻshish")
 async def add_task_handler(message: types.Message, state: FSMContext):
@@ -215,8 +244,6 @@ async def days_done_callback(call: types.CallbackQuery, state: FSMContext):
     await call.answer()
 
 
-# ================= KUNIGA 1 MARTA =================
-
 @tasks_router.message(TaskStates.waiting_for_frequency, F.text == "Kuniga 1 marta")
 async def once_frequency_handler(message: types.Message, state: FSMContext):
     if await handle_back_or_home(message, state, TaskStates.waiting_for_days):
@@ -244,8 +271,6 @@ async def get_once_time_handler(message: types.Message, state: FSMContext):
     await state.set_state(TaskStates.waiting_for_proof_type)
 
 
-# ================= BIR NECHA MARTA =================
-
 @tasks_router.message(TaskStates.waiting_for_frequency, F.text == "Bir necha marta")
 async def multiple_frequency_handler(message: types.Message, state: FSMContext):
     if await handle_back_or_home(message, state, TaskStates.waiting_for_days):
@@ -272,8 +297,6 @@ async def get_multiple_times_handler(message: types.Message, state: FSMContext):
     )
     await state.set_state(TaskStates.waiting_for_proof_type)
 
-
-# ================= VAZIFANI YAKUNLASH =================
 
 @tasks_router.message(TaskStates.waiting_for_proof_type, F.text.in_(["Dumaloq video", "Rasm yuborish", "✍️ Matn yuborish"]))
 async def finalize_task_creation_handler(message: types.Message, state: FSMContext):
@@ -362,66 +385,185 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
     await state.clear()
 
 
-# ================= VAZIFALAR RO'YXATI (STATUS BILAN) =================
+# ================= VAZIFALAR RO'YXATI (YANGI 3 TUGMA) =================
 
 @tasks_router.message(F.text == "📋 Vazifalar roʻyxati")
-async def list_tasks_handler(message: types.Message):
+async def tasks_list_menu_handler(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
     
-    # Eng so'nggi ma'lumotlarni yuklash
-    global TASKS_DATABASE
+    await state.set_state(TaskStates.waiting_for_tasks_list_choice)
+    await message.answer(
+        text="📋 <b>Vazifalar roʻyxati</b>\n\n"
+             "Qaysi turdagi vazifalarni koʻrmoqchisiz?",
+        parse_mode="HTML",
+        reply_markup=get_tasks_list_keyboard()
+    )
+
+
+# ========== 1. KUTILMOQDA (bajarilmagan bir martalik vazifalar) ==========
+@tasks_router.message(TaskStates.waiting_for_tasks_list_choice, F.text == "⏳ Kutilmoqda")
+async def show_pending_tasks(message: types.Message, state: FSMContext):
+    if not check_user_access(USERS_ROLES, message.from_user.id):
+        return
+    
     TASKS_DATABASE = load_tasks()
     
-    if not TASKS_DATABASE:
-        await message.answer(text="📭 Hozircha tizimda hech qanday faol vazifalar mavjud emas.")
+    # Bajarilmagan (pending) va kunlik (bir martalik) vazifalar
+    pending_tasks = [t for t in TASKS_DATABASE if t.get("status") == "pending" and t.get("task_type") == "Kunlik (Bir martalik)"]
+    
+    if not pending_tasks:
+        await message.answer(
+            text="📭 Hozircha kutilayotgan (bajarilmagan) bir martalik vazifalar mavjud emas.",
+            reply_markup=get_tasks_list_keyboard()
+        )
         return
-        
-    response_text = "📋 <b>Tizimdagi joriy faol vazifalar roʻyxati:</b>\n\n"
-    for idx, task in enumerate(TASKS_DATABASE, 1):
-        # Status belgisi
+    
+    response_text = "⏳ <b>Kutilayotgan vazifalar (bajarilmagan):</b>\n\n"
+    for idx, task in enumerate(pending_tasks, 1):
+        response_text += (
+            f"{idx}. <b>{task['task_name']}</b>\n"
+            f"   👤 Masʻul: {task['assigned_to_name']}\n"
+            f"   📝 Izoh: {task['task_description']}\n"
+            f"   📸 Isbot: {task['proof_type']}\n\n"
+        )
+    
+    await message.answer(text=response_text, parse_mode="HTML", reply_markup=get_tasks_list_keyboard())
+
+
+# ========== 2. DOIMIY VAZIFALAR ==========
+@tasks_router.message(TaskStates.waiting_for_tasks_list_choice, F.text == "🔄 Doimiy")
+async def show_recurring_tasks(message: types.Message, state: FSMContext):
+    if not check_user_access(USERS_ROLES, message.from_user.id):
+        return
+    
+    TASKS_DATABASE = load_tasks()
+    
+    # Doimiy (muntazam) vazifalar
+    recurring_tasks = [t for t in TASKS_DATABASE if t.get("task_type") == "Muntazam (Doimiy)"]
+    
+    if not recurring_tasks:
+        await message.answer(
+            text="📭 Hozircha doimiy vazifalar mavjud emas.",
+            reply_markup=get_tasks_list_keyboard()
+        )
+        return
+    
+    response_text = "🔄 <b>Doimiy vazifalar:</b>\n\n"
+    for idx, task in enumerate(recurring_tasks, 1):
         if task.get("status") == "completed":
             status_icon = "✅ BAJARILDI"
-            if task.get("completed_by"):
-                user_name = USERS_ROLES.get(str(task["completed_by"]), {}).get("name", "Noma'lum")
-                status_icon += f" (👤 {user_name})"
         else:
             status_icon = "⏳ KUTILMOQDA"
         
-        if task.get("task_type") == "Kunlik (Bir martalik)":
-            response_text += (
-                f"{idx}. <b>[KUNLIK] {task['task_name']}</b>\n"
-                f"   👤 Masʻul: {task['assigned_to_name']}\n"
-                f"   📝 Izoh: {task['task_description']}\n"
-                f"   📸 Isbot: {task['proof_type']}\n"
-                f"   📊 Holat: {status_icon}\n\n"
-            )
-        else:
-            response_text += (
-                f"{idx}. <b>[DOIMIY] {task['task_name']}</b>\n"
-                f"   👤 Masʻul: {task['assigned_to_name']}\n"
-                f"   ⏰ Vaqti: {', '.join(task['task_times'])}\n"
-                f"   📅 Kunlar: {task['task_days']}\n"
-                f"   📸 Isbot: {task['proof_type']}\n"
-                f"   📊 Holat: {status_icon}\n\n"
-            )
-    await message.answer(text=response_text, parse_mode="HTML")
+        response_text += (
+            f"{idx}. <b>{task['task_name']}</b>\n"
+            f"   👤 Masʻul: {task['assigned_to_name']}\n"
+            f"   ⏰ Vaqti: {', '.join(task['task_times'])}\n"
+            f"   📅 Kunlar: {task['task_days']}\n"
+            f"   📸 Isbot: {task['proof_type']}\n"
+            f"   📊 Holat: {status_icon}\n\n"
+        )
+    
+    await message.answer(text=response_text, parse_mode="HTML", reply_markup=get_tasks_list_keyboard())
 
 
-# ================= VAZIFA O'CHIRISH MENYU (TUZATILGAN) =================
+# ========== 3. BAJARILGAN VAZIFALAR ==========
+@tasks_router.message(TaskStates.waiting_for_tasks_list_choice, F.text == "✅ Bajarilgan")
+async def show_completed_tasks_menu(message: types.Message, state: FSMContext):
+    if not check_user_access(USERS_ROLES, message.from_user.id):
+        return
+    
+    await state.set_state(TaskStates.waiting_for_completed_date)
+    await message.answer(
+        text="✅ <b>Bajarilgan vazifalar</b>\n\n"
+             "Qaysi sana uchun bajarilgan vazifalarni koʻrmoqchisiz?",
+        parse_mode="HTML",
+        reply_markup=get_completed_date_keyboard()
+    )
+
+
+@tasks_router.message(TaskStates.waiting_for_completed_date)
+async def handle_completed_date_choice(message: types.Message, state: FSMContext):
+    choice = message.text
+    tashkent_tz = timezone(timedelta(hours=5))
+    now = datetime.now(tashkent_tz)
+    
+    if choice == "🏠 Bosh sahifa":
+        await state.clear()
+        role = USERS_ROLES[str(message.from_user.id)]["role"]
+        await message.answer(
+            text="Asosiy menyuga qaytdingiz.",
+            reply_markup=get_main_menu(role)
+        )
+        return
+    
+    elif choice == "⬅️ Ortga":
+        await state.set_state(TaskStates.waiting_for_tasks_list_choice)
+        await message.answer(
+            text="📋 <b>Vazifalar roʻyxati</b>\n\n"
+                 "Qaysi turdagi vazifalarni koʻrmoqchisiz?",
+            parse_mode="HTML",
+            reply_markup=get_tasks_list_keyboard()
+        )
+        return
+    
+    elif choice == "📅 Bugun":
+        target_date = now.strftime("%Y-%m-%d")
+        date_text = "Bugun"
+    elif choice == "✍️ Sana tanlash":
+        await message.answer(
+            text="📅 <b>Sanani tanlang (oxirgi 60 kun):</b>",
+            parse_mode="HTML",
+            reply_markup=get_custom_date_keyboard()
+        )
+        return
+    else:
+        # Custom sana kiritildi
+        try:
+            custom_date = datetime.strptime(choice.strip(), "%Y-%m-%d")
+            target_date = custom_date.strftime("%Y-%m-%d")
+            date_text = custom_date.strftime("%Y-%m-%d")
+        except ValueError:
+            await message.answer(
+                text="❌ <b>Notoʻgʻri format!</b> Iltimos, sanani YYYY-MM-DD formatida kiriting.",
+                parse_mode="HTML"
+            )
+            return
+    
+    # Bajarilgan vazifalarni olish
+    TASKS_DATABASE = load_tasks()
+    completed_tasks = [t for t in TASKS_DATABASE if t.get("status") == "completed" and t.get("completed_at", "").startswith(target_date)]
+    
+    if not completed_tasks:
+        await message.answer(
+            text=f"📭 {date_text} uchun bajarilgan vazifalar topilmadi.",
+            reply_markup=get_completed_date_keyboard()
+        )
+        return
+    
+    response_text = f"✅ <b>{date_text} bajarilgan vazifalar:</b>\n\n"
+    for idx, task in enumerate(completed_tasks, 1):
+        completed_by = USERS_ROLES.get(str(task.get("completed_by")), {}).get("name", "Noma'lum")
+        response_text += (
+            f"{idx}. <b>{task['task_name']}</b>\n"
+            f"   👤 Masʻul: {task['assigned_to_name']}\n"
+            f"   👤 Bajargan: {completed_by}\n"
+            f"   📸 Isbot: {task['proof_type']}\n"
+            f"   ⏰ Bajarilgan vaqt: {task.get('completed_at', 'Nomaʼlum')}\n\n"
+        )
+    
+    await message.answer(text=response_text, parse_mode="HTML", reply_markup=get_completed_date_keyboard())
+
+
+# ================= VAZIFA O'CHIRISH =================
 
 @tasks_router.message(F.text == "🗑 Vazifani oʻchirish")
 async def remove_task_menu_handler(message: types.Message):
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
     
-    # Eng so'nggi ma'lumotlarni yuklash
-    global TASKS_DATABASE
     TASKS_DATABASE = load_tasks()
-    
-    if not TASKS_DATABASE:
-        await message.answer(text="📭 Hozircha tizimda hech qanday faol vazifalar mavjud emas.")
-        return
     
     # O'chirilmagan (pending) vazifalarni ko'rsatish
     pending_tasks = [t for t in TASKS_DATABASE if t.get("status") != "completed"]
