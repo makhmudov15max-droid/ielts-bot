@@ -30,6 +30,20 @@ def init_callback_handler(users_roles, tasks_database, admin_id):
     ADMIN_ID = admin_id
 
 
+# ================= VAZIFA YARATISHNI BEKOR QILISH =================
+@callback_router.callback_query(F.data == "cancel_task_creation")
+async def cancel_task_creation_callback(call: types.CallbackQuery, state: FSMContext):
+    """Vazifa yaratishni bekor qilish - xodim tanlash bosqichidan"""
+    await state.clear()
+    role = USERS_ROLES.get(str(call.from_user.id), {}).get("role", "Owner")
+    await call.message.delete()
+    await call.message.answer(
+        text="❌ Vazifa yaratish bekor qilindi. Asosiy menyuga qaytdingiz.",
+        reply_markup=get_main_menu(role)
+    )
+    await call.answer()
+
+
 # ================= ADMIN APPROVAL CALLBACKS =================
 @callback_router.callback_query(F.data.startswith("approve_"))
 async def admin_approve_callback(call: types.CallbackQuery, state: FSMContext):
