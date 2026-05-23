@@ -15,12 +15,13 @@ from utils.tasks_json import save_tasks, load_tasks, update_task_status
 
 callback_router = Router()
 
-# Global o'zgaruvchilar
+# ================= GLOBAL O'ZGARUVCHILAR =================
 USERS_ROLES = None
 TASKS_DATABASE = None
 ADMIN_ID = None
 
 
+# ================= INIT FUNKSIYASI =================
 def init_callback_handler(users_roles, tasks_database, admin_id):
     """Callback handler uchun global o'zgaruvchilarni o'rnatish"""
     global USERS_ROLES, TASKS_DATABASE, ADMIN_ID
@@ -30,7 +31,6 @@ def init_callback_handler(users_roles, tasks_database, admin_id):
 
 
 # ================= ADMIN APPROVAL CALLBACKS =================
-
 @callback_router.callback_query(F.data.startswith("approve_"))
 async def admin_approve_callback(call: types.CallbackQuery, state: FSMContext):
     try:
@@ -88,7 +88,6 @@ async def admin_reject_callback(call: types.CallbackQuery):
 
 
 # ================= VAZIFA BAJARISH CALLBACKS =================
-
 @callback_router.callback_query(F.data.startswith("completetask_"))
 async def employee_complete_task_callback(call: types.CallbackQuery, state: FSMContext):
     task_id = int(call.data.split("_")[1])
@@ -145,8 +144,7 @@ async def employee_complete_task_callback(call: types.CallbackQuery, state: FSMC
     await call.answer()
 
 
-# ================= VAZIFA O'CHIRISH CALLBACKS (TUZATILGAN) =================
-
+# ================= VAZIFA O'CHIRISH CALLBACKS =================
 @callback_router.callback_query(F.data.startswith("removetask_"))
 async def process_remove_task_callback(call: types.CallbackQuery):
     task_id = int(call.data.split("_")[1])
