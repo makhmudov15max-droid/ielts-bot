@@ -44,20 +44,10 @@ async def add_task_handler(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
     await state.clear()
-    await state.set_state(TaskStates.waiting_for_task_type)
     await message.answer(
         text="Qanday turdagi vazifa yaratmoqchisiz?",
         reply_markup=task_type_keyboard
     )
-
-
-# ================= 1-STEP: VAZIFA TURI =================
-@tasks_router.message(F.text == "🏠 Bosh sahifa", TaskStates.waiting_for_task_type)
-@tasks_router.message(F.text == "⬅️ Ortga", TaskStates.waiting_for_task_type)
-async def task_type_nav_handler(message: types.Message, state: FSMContext):
-    await state.clear()
-    role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-    await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
 
 
 @tasks_router.message(F.text.in_(["Muntazam (Doimiy)", "Kunlik (Bir martalik)"]))
@@ -83,7 +73,7 @@ async def target_role_home_handler(message: types.Message, state: FSMContext):
 
 @tasks_router.message(TaskStates.waiting_for_target_role, F.text == "⬅️ Ortga")
 async def target_role_back_handler(message: types.Message, state: FSMContext):
-    await state.set_state(TaskStates.waiting_for_task_type)
+    await state.clear()
     await message.answer("Qanday turdagi vazifa yaratmoqchisiz?", reply_markup=task_type_keyboard)
 
 
