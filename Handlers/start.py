@@ -10,6 +10,7 @@ from Handlers.states import TaskStates
 from Keyboards.main_menu import get_main_menu, get_admin_approval_keyboard, get_task_complete_keyboard
 from utils.users_json import save_users
 from utils.tasks_json import save_tasks
+from utils.proofs_json import add_proof
 from utils.access import check_user_access
 from Handlers.tasks import tasks_router, init_tasks_handler
 from Handlers.employees import employees_router, init_employees_handler
@@ -122,7 +123,7 @@ async def get_user_real_name_handler(message: types.Message):
     )
 
 
-# ================= ISBOT QABUL QILISH =================
+# ================= ISBOT QABUL QILISH VA SAQLASH =================
 
 @start_router.message(TaskStates.waiting_for_task_proof)
 async def receive_task_proof_handler(message: types.Message, state: FSMContext):
@@ -137,6 +138,19 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     # ========== RASM TEKSHIRUVI ==========
     if proof_required == "Photo" and message.photo:
         role = USERS_ROLES[str(message.from_user.id)]["role"]
+        
+        # ISBOTNI SAQLASH
+        proof = add_proof(
+            user_id=message.from_user.id,
+            user_name=USERS_ROLES[str(message.from_user.id)].get("name", "Noma'lum"),
+            task_id=task["id"] if task else 0,
+            task_name=task["task_name"] if task else "Noma'lum",
+            task_description=task.get("task_description", "") if task else "",
+            proof_type="Photo",
+            file_id=message.photo[-1].file_id,
+            group_chat_id=GROUP_CHAT_ID
+        )
+        
         await message.answer(
             text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
             reply_markup=get_main_menu(role)
@@ -158,7 +172,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
                 save_tasks(TASKS_DATABASE)
         await state.clear()
     
-    # ========== DUMALOQ VIDEO TEKSHIRUVI (FORWARD TEKSHIRUVISIZ) ==========
+    # ========== DUMALOQ VIDEO TEKSHIRUVI ==========
     elif proof_required == "Video message":
         
         if not message.video_note:
@@ -175,6 +189,19 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
         
         # QABUL QILISH
         role = USERS_ROLES[str(message.from_user.id)]["role"]
+        
+        # ISBOTNI SAQLASH
+        proof = add_proof(
+            user_id=message.from_user.id,
+            user_name=USERS_ROLES[str(message.from_user.id)].get("name", "Noma'lum"),
+            task_id=task["id"] if task else 0,
+            task_name=task["task_name"] if task else "Noma'lum",
+            task_description=task.get("task_description", "") if task else "",
+            proof_type="Video message",
+            file_id=message.video_note.file_id,
+            group_chat_id=GROUP_CHAT_ID
+        )
+        
         await message.answer(
             text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
             reply_markup=get_main_menu(role)
