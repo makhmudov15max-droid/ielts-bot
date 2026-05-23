@@ -1,4 +1,5 @@
 from aiogram import Router, types, F
+from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from datetime import datetime, timedelta, timezone
 import re
@@ -48,6 +49,16 @@ async def add_task_handler(message: types.Message, state: FSMContext):
         text="Qanday turdagi vazifa yaratmoqchisiz?",
         reply_markup=task_type_keyboard
     )
+
+
+# ================= 1-STEP NAV: VAZIFA TURI EKRANIDAN CHIQISH =================
+@tasks_router.message(F.text.in_(["🏠 Bosh sahifa", "⬅️ Ortga"]), StateFilter(None))
+async def task_type_nav_handler(message: types.Message, state: FSMContext):
+    if not check_user_access(USERS_ROLES, message.from_user.id):
+        return
+    role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
+    await state.clear()
+    await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
 
 
 @tasks_router.message(F.text.in_(["Muntazam (Doimiy)", "Kunlik (Bir martalik)"]))
