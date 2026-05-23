@@ -37,20 +37,21 @@ def init_tasks_handler(users_roles, tasks_database):
     TASKS_DATABASE = tasks_database
 
 
-async def handle_back_or_home(message: types.Message, state: FSMContext, current_state: str):
-    """Ortga yoki Bosh sahifa tugmalarini boshqarish"""
+# ================= UNIVERSAL BACK/HOME HANDLER =================
+async def handle_back_or_home_global(message: types.Message, state: FSMContext, target_state=None):
+    """Ortga yoki Bosh sahifa tugmalarini boshqarish - universal"""
     if message.text == "🏠 Bosh sahifa":
         await state.clear()
-        role = USERS_ROLES[str(message.from_user.id)]["role"]
+        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
         await message.answer(
-            text="Asosiy menyuga qaytdingiz.",
+            text="🏠 Asosiy menyuga qaytdingiz.",
             reply_markup=get_main_menu(role)
         )
         return True
     elif message.text == "⬅️ Ortga":
-        if current_state:
-            await state.set_state(current_state)
-        return True
+        if target_state:
+            await state.set_state(target_state)
+            return True
     return False
 
 
@@ -71,7 +72,7 @@ async def task_type_selected_handler(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
     
-    if await handle_back_or_home(message, state, None):
+    if await handle_back_or_home_global(message, state, None):
         return
     
     await state.update_data(task_type=message.text)
@@ -84,7 +85,7 @@ async def task_type_selected_handler(message: types.Message, state: FSMContext):
 
 @tasks_router.message(TaskStates.waiting_for_target_role, F.text.in_(["Admin", "Kassir", "Sanitar", "Manager"]))
 async def get_target_role_handler(message: types.Message, state: FSMContext):
-    if await handle_back_or_home(message, state, None):
+    if await handle_back_or_home_global(message, state, None):
         return
     
     selected_role = message.text
@@ -127,7 +128,7 @@ async def process_target_user_callback(call: types.CallbackQuery, state: FSMCont
 
 @tasks_router.message(TaskStates.waiting_for_name)
 async def get_task_name_handler(message: types.Message, state: FSMContext):
-    if await handle_back_or_home(message, state, TaskStates.waiting_for_target_user):
+    if await handle_back_or_home_global(message, state, TaskStates.waiting_for_target_user):
         return
     
     await state.update_data(task_name=message.text.strip())
@@ -149,7 +150,7 @@ async def get_task_name_handler(message: types.Message, state: FSMContext):
 
 @tasks_router.message(TaskStates.waiting_for_description)
 async def get_task_description_handler(message: types.Message, state: FSMContext):
-    if await handle_back_or_home(message, state, TaskStates.waiting_for_name):
+    if await handle_back_or_home_global(message, state, TaskStates.waiting_for_name):
         return
     
     await state.update_data(task_description=message.text.strip())
@@ -163,7 +164,7 @@ async def get_task_description_handler(message: types.Message, state: FSMContext
 # ================= KUNLARNI TANLASH (DOIMIY) =================
 @tasks_router.message(TaskStates.waiting_for_days, F.text.in_(["Toq kunlar", "Juft kunlar", "Haftada 6 kun"]))
 async def get_task_days_handler(message: types.Message, state: FSMContext):
-    if await handle_back_or_home(message, state, TaskStates.waiting_for_name):
+    if await handle_back_or_home_global(message, state, TaskStates.waiting_for_name):
         return
     
     day_mapping = {"Toq kunlar": "ODD", "Juft kunlar": "EVEN", "Haftada 6 kun": "6 days a week"}
@@ -177,7 +178,7 @@ async def get_task_days_handler(message: types.Message, state: FSMContext):
 
 @tasks_router.message(TaskStates.waiting_for_days, F.text == "Boshqa kunlar")
 async def other_days_handler(message: types.Message, state: FSMContext):
-    if await handle_back_or_home(message, state, TaskStates.waiting_for_name):
+    if await handle_back_or_home_global(message, state, TaskStates.waiting_for_name):
         return
     
     await state.update_data(selected_days=[])
@@ -221,7 +222,7 @@ async def days_done_callback(call: types.CallbackQuery, state: FSMContext):
 # ================= KUNIGA 1 MARTA =================
 @tasks_router.message(TaskStates.waiting_for_frequency, F.text == "Kuniga 1 marta")
 async def once_frequency_handler(message: types.Message, state: FSMContext):
-    if await handle_back_or_home(message, state, TaskStates.waiting_for_days):
+    if await handle_back_or_home_global(message, state, TaskStates.waiting_for_days):
         return
     
     await state.update_data(task_frequency="Once")
@@ -235,7 +236,7 @@ async def once_frequency_handler(message: types.Message, state: FSMContext):
 
 @tasks_router.message(TaskStates.waiting_for_once_time)
 async def get_once_time_handler(message: types.Message, state: FSMContext):
-    if await handle_back_or_home(message, state, TaskStates.waiting_for_frequency):
+    if await handle_back_or_home_global(message, state, TaskStates.waiting_for_frequency):
         return
     
     await state.update_data(task_times=message.text.strip())
@@ -249,7 +250,7 @@ async def get_once_time_handler(message: types.Message, state: FSMContext):
 # ================= BIR NECHA MARTA =================
 @tasks_router.message(TaskStates.waiting_for_frequency, F.text == "Bir necha marta")
 async def multiple_frequency_handler(message: types.Message, state: FSMContext):
-    if await handle_back_or_home(message, state, TaskStates.waiting_for_days):
+    if await handle_back_or_home_global(message, state, TaskStates.waiting_for_days):
         return
     
     await state.update_data(task_frequency="Multiple times")
@@ -263,7 +264,7 @@ async def multiple_frequency_handler(message: types.Message, state: FSMContext):
 
 @tasks_router.message(TaskStates.waiting_for_multiple_times)
 async def get_multiple_times_handler(message: types.Message, state: FSMContext):
-    if await handle_back_or_home(message, state, TaskStates.waiting_for_frequency):
+    if await handle_back_or_home_global(message, state, TaskStates.waiting_for_frequency):
         return
     
     await state.update_data(task_times=message.text.strip())
@@ -274,7 +275,7 @@ async def get_multiple_times_handler(message: types.Message, state: FSMContext):
     await state.set_state(TaskStates.waiting_for_proof_type)
 
 
-# ================= VAZIFANI YAKUNLASH =================
+# ================= ISBOT TURINI QABUL QILISH (TEXT + MEDIA) =================
 @tasks_router.message(TaskStates.waiting_for_proof_type, F.text.in_(["Dumaloq video", "Rasm yuborish", "✍️ Matn yuborish"]))
 async def finalize_task_creation_handler(message: types.Message, state: FSMContext):
     proof_mapping = {
@@ -365,7 +366,7 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
     await state.clear()
 
 
-# ================= VAZIFALAR RO'YXATI (YANGI 2 TUGMA) =================
+# ================= VAZIFALAR RO'YXATI (2 TUGMA) =================
 @tasks_router.message(F.text == "📋 Vazifalar roʻyxati")
 async def tasks_simple_menu_handler(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
@@ -380,10 +381,14 @@ async def tasks_simple_menu_handler(message: types.Message, state: FSMContext):
     )
 
 
-# ================= BUGUNGI VAZIFALAR =================
+# ================= BUGUNGI VAZIFALAR (TUZATILGAN) =================
 @tasks_router.message(TaskStates.waiting_for_tasks_simple_choice, F.text == "📅 Bugun")
 async def show_today_all_tasks(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
+        return
+    
+    # Back/Home tekshiruvi
+    if await handle_back_or_home_global(message, state, None):
         return
     
     tashkent_tz = timezone(timedelta(hours=5))
@@ -393,19 +398,17 @@ async def show_today_all_tasks(message: types.Message, state: FSMContext):
     
     TASKS_DATABASE = load_tasks()
     
-    # Agar kechasi 12 dan keyin bo'lsa, faqat doimiy vazifalar
-    show_only_recurring = current_hour >= 0 and current_hour < 6  # 00:00 dan 06:00 gacha
+    # Barcha vazifalarni yig'ish (kechasi faqat doimiy, kunduzi hammasi)
+    show_only_recurring = current_hour >= 0 and current_hour < 6
     
     all_tasks = []
     for task in TASKS_DATABASE:
         task_type = task.get("task_type")
         
         if task_type == "Muntazam (Doimiy)":
-            # Doimiy vazifalar har doim ko'rinadi
             all_tasks.append(task)
         elif task_type == "Kunlik (Bir martalik)":
             if not show_only_recurring:
-                # Bir martalik vazifalar faqat ertalabgacha ko'rinadi
                 all_tasks.append(task)
     
     if not all_tasks:
@@ -457,6 +460,10 @@ async def ask_for_custom_date_tasks(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
     
+    # Back/Home tekshiruvi
+    if await handle_back_or_home_global(message, state, None):
+        return
+    
     await state.set_state(TaskStates.waiting_for_custom_date)
     await message.answer(
         text="📅 <b>Sanani tanlang (oxirgi 60 kun):</b>",
@@ -470,13 +477,15 @@ async def show_tasks_by_selected_date(message: types.Message, state: FSMContext)
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
     
-    if await handle_back_or_home(message, state, TaskStates.waiting_for_tasks_simple_choice):
+    # Back/Home tekshiruvi
+    if await handle_back_or_home_global(message, state, TaskStates.waiting_for_tasks_simple_choice):
         return
     
     date_text = message.text.strip()
     if not re.match(r"\d{4}-\d{2}-\d{2}", date_text):
         await message.answer(
-            text="❌ <b>Notoʻgʻri format!</b> Iltimos, sanani YYYY-MM-DD formatida kiriting.",
+            text="❌ <b>Notoʻgʻri format!</b> Iltimos, sanani YYYY-MM-DD formatida kiriting.\n\n"
+                 "Masalan: <code>2026-05-23</code>",
             parse_mode="HTML",
             reply_markup=get_custom_date_keyboard_simple()
         )
@@ -489,10 +498,8 @@ async def show_tasks_by_selected_date(message: types.Message, state: FSMContext)
         task_type = task.get("task_type")
         
         if task_type == "Muntazam (Doimiy)":
-            # Doimiy vazifalar har doim ko'rinadi
             all_tasks.append(task)
         elif task_type == "Kunlik (Bir martalik)":
-            # Bir martalik vazifalar faqat o'sha sanada ko'rinadi
             created_at = task.get("created_at", "")
             if created_at:
                 created_date = created_at.split("T")[0]
