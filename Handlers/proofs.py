@@ -1,11 +1,11 @@
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from datetime import datetime, timedelta, timezone
-import calendar
+import asyncio
 import logging
 
 from Handlers.states import TaskStates
-from Keyboards.main_menu import get_main_menu
+from Keyboards.main_menu import get_main_menu, get_proof_role_keyboard, get_proof_date_keyboard
 from utils.access import check_user_access
 from utils.users_json import load_users
 from utils.proofs_json import get_proofs_by_user, get_proofs_by_role, get_proofs_by_date_range
@@ -23,10 +23,7 @@ def init_proofs_handler(users_roles, admin_id):
     ADMIN_ID = admin_id
 
 
-# ================= YORDAMCHI FUNKSIYALAR =================
-
 def get_proof_employee_keyboard(role_name):
-    """Tanlangan role dagi xodimlar ro'yxati (inline)"""
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
     
     employees = []
@@ -46,7 +43,6 @@ def get_proof_employee_keyboard(role_name):
 
 
 def format_proof_message(proof, index):
-    """Isbotni formatlash"""
     icon = "📸" if proof["proof_type"] == "Photo" else "📹"
     
     return (
@@ -59,7 +55,6 @@ def format_proof_message(proof, index):
 
 
 async def send_proofs(message: types.Message, proofs_list, title):
-    """Isbotlarni yuborish"""
     if not proofs_list:
         await message.answer(
             text=f"📭 <b>{title}</b>\n\nHech qanday isbot topilmadi.",
@@ -67,47 +62,33 @@ async def send_proofs(message: types.Message, proofs_list, title):
         )
         return
     
-    # Har bir xabarga maksimal 5 ta isbot
-    batch_size = 5
-    total = len(proofs_list)
-    
     await message.answer(
-        text=f"📸 <b>{title}</b>\n\n🔍 {total} ta isbot topildi:\n{'-' * 30}",
+        text=f"📸 <b>{title}</b>\n\n🔍 {len(proofs_list)} ta isbot topildi:\n{'-' * 30}",
         parse_mode="HTML"
     )
     
-    for i in range(0, total, batch_size):
-        batch = proofs_list[i:i+batch_size]
-        text = ""
-        
-        for idx, proof in enumerate(batch, start=i+1):
-            text += format_proof_message(proof, idx) + "\n" + "─" * 30 + "\n\n"
-        
-        # Isbotlarni jo'natish (rasm/video bilan)
-        for proof in batch:
-            try:
-                if proof["proof_type"] == "Photo":
-                    await message.bot.send_photo(
-                        chat_id=message.chat.id,
-                        photo=proof["file_id"],
-                        caption=f"📸 {proof['task_name']}\n👤 {proof['user_name']}\n📅 {proof['date']} {proof['time']}"
-                    )
-                else:
-                    await message.bot.send_video_note(
-                        chat_id=message.chat.id,
-                        video_note=proof["file_id"]
-                    )
-                    await message.answer(
-                        text=f"📹 {proof['task_name']}\n👤 {proof['user_name']}\n📅 {proof['date']} {proof['time']}"
-                    )
-            except Exception as e:
-                logging.error(f"Isbot yuborishda xatolik: {e}")
-                await message.answer(f"❌ Isbot yuborishda xatolik: {proof['task_name']}")
+    for proof in proofs_list:
+        try:
+            if proof["proof_type"] == "Photo":
+                await message.bot.send_photo(
+                    chat_id=message.chat.id,
+                    photo=proof["file_id"],
+                    caption=f"📸 {proof['task_name']}\n👤 {proof['user_name']}\n📅 {proof['date']} {proof['time']}"
+                )
+            else:
+                await message.bot.send_video_note(
+                    chat_id=message.chat.id,
+                    video_note=proof["file_id"]
+                )
+                await message.answer(
+                    text=f"📹 {proof['task_name']}\n👤 {proof['user_name']}\n📅 {proof['date']} {proof['time']}"
+                )
+        except Exception as e:
+            logging.error(f"Isbot yuborishda xatolik: {e}")
+            await message.answer(f"❌ Isbot yuborishda xatolik: {proof['task_name']}")
         
         await asyncio.sleep(0.5)
 
-
-# ================= ASOSIY HANDLERLAR =================
 
 @proofs_router.message(F.text == "📸 Isbotlar")
 async def proofs_start_handler(message: types.Message, state: FSMContext):
@@ -155,7 +136,6 @@ async def proof_role_selected_handler(message: types.Message, state: FSMContext)
     
     await state.update_data(selected_role=role)
     
-    # Xodimlar bormi tekshirish
     employees = []
     for u_id, u_info in USERS_ROLES.items():
         if isinstance(u_info, dict) and u_info.get("role") == role and u_info.get("name"):
@@ -271,15 +251,13 @@ async def proof_date_selected_handler(message: types.Message, state: FSMContext)
     elif date_choice == "✍️ Boshqa sana":
         await message.answer(
             text="📅 <b>Sanani kiriting (YYYY-MM-DD formatida):</b>\n\n"
-                 "Masalan: <code>2026-05-23</code>\n\n"
-                 "Yoki 'Ortga' tugmasini bosing.",
+                 "Masalan: <code>2026-05-23</code>",
             parse_mode="HTML",
             reply_markup=get_proof_date_keyboard()
         )
         return
     
     else:
-        # Custom sana kiritildi
         try:
             custom_date = datetime.strptime(date_choice.strip(), "%Y-%m-%d")
             start_date = custom_date.strftime("%Y-%m-%d")
@@ -287,13 +265,11 @@ async def proof_date_selected_handler(message: types.Message, state: FSMContext)
             date_text = f"{custom_date.strftime('%Y-%m-%d')} sanadagi isbotlar"
         except ValueError:
             await message.answer(
-                text="❌ <b>Notoʻgʻri format!</b> Iltimos, sanani YYYY-MM-DD formatida kiriting.\n\n"
-                     "Masalan: <code>2026-05-23</code>",
+                text="❌ <b>Notoʻgʻri format!</b> Iltimos, sanani YYYY-MM-DD formatida kiriting.",
                 parse_mode="HTML"
             )
             return
     
-    # Isbotlarni olish
     user_data = await state.get_data()
     selected_role = user_data.get("selected_role")
     selected_user_id = user_data.get("selected_user_id")
@@ -302,24 +278,14 @@ async def proof_date_selected_handler(message: types.Message, state: FSMContext)
     proofs = []
     
     if selected_user_id:
-        # Muayyan xodim
         proofs = get_proofs_by_user(selected_user_id, start_date, end_date)
         title = f"{selected_user_name} ning {date_text}"
-    
     elif selected_role == "all":
-        # Barcha xodimlar
         proofs = get_proofs_by_date_range(start_date, end_date)
         title = f"Barcha xodimlarning {date_text}"
-    
     else:
-        # Role bo'yicha
         proofs = get_proofs_by_role(selected_role, start_date, end_date)
         title = f"{selected_role} role dagi xodimlarning {date_text}"
     
     await state.clear()
     await send_proofs(message, proofs, title)
-
-
-# Import asyncio (funksiya ichida ishlatilgan)
-import asyncio
-from Keyboards.main_menu import get_proof_role_keyboard, get_proof_date_keyboard
