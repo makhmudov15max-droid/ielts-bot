@@ -43,37 +43,52 @@ def get_back_home_keyboard():
     )
 
 
-# ================= STATIC KEYBOARDS =================
+# ================= STATIC KEYBOARDS (BARCHA STEPLAR UCHUN TUGMALAR) =================
+
+# Vazifa turi tanlash (1-step)
 task_type_keyboard = ReplyKeyboardMarkup(
-    keyboard=[[KeyboardButton(text="Muntazam (Doimiy)"), KeyboardButton(text="Kunlik (Bir martalik)")]],
+    keyboard=[
+        [KeyboardButton(text="Muntazam (Doimiy)"), KeyboardButton(text="Kunlik (Bir martalik)")],
+        [KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")]
+    ],
     resize_keyboard=True
 )
 
+# Unvon tanlash (2-step)
 assign_role_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Admin"), KeyboardButton(text="Manager")],
-        [KeyboardButton(text="Kassir"), KeyboardButton(text="Sanitar")]
+        [KeyboardButton(text="Kassir"), KeyboardButton(text="Sanitar")],
+        [KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")]
     ],
     resize_keyboard=True
 )
 
+# Kunlar tanlash (doimiy vazifa uchun)
 days_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Toq kunlar"), KeyboardButton(text="Juft kunlar")],
-        [KeyboardButton(text="Haftada 6 kun"), KeyboardButton(text="Boshqa kunlar")]
+        [KeyboardButton(text="Haftada 6 kun"), KeyboardButton(text="Boshqa kunlar")],
+        [KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")]
     ],
     resize_keyboard=True
 )
 
+# Chastota tanlash (kuniga necha marta)
 frequency_keyboard = ReplyKeyboardMarkup(
-    keyboard=[[KeyboardButton(text="Kuniga 1 marta"), KeyboardButton(text="Bir necha marta")]],
+    keyboard=[
+        [KeyboardButton(text="Kuniga 1 marta"), KeyboardButton(text="Bir necha marta")],
+        [KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")]
+    ],
     resize_keyboard=True
 )
 
+# Isbot turi tanlash
 proof_type_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Dumaloq video"), KeyboardButton(text="Rasm yuborish")],
-        [KeyboardButton(text="✍️ Matn yuborish")]
+        [KeyboardButton(text="✍️ Matn yuborish")],
+        [KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")]
     ],
     resize_keyboard=True
 )
@@ -89,6 +104,7 @@ def get_inline_days_keyboard(selected_days: list = None):
         text = f"✅ {day}" if day in selected_days else day
         inline_keyboard.append([InlineKeyboardButton(text=text, callback_data=f"day_{day}")])
     inline_keyboard.append([InlineKeyboardButton(text="✅ Tanlab bo'ldim", callback_data="days_done")])
+    inline_keyboard.append([InlineKeyboardButton(text="❌ Bekor qilish", callback_data="cancel_task_creation")])
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
 
@@ -143,7 +159,7 @@ def get_proof_date_keyboard():
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
-# ================= VAZIFALAR RO'YXATI KEYBOARDS (TO'LIQ TUZATILGAN) =================
+# ================= VAZIFALAR RO'YXATI KEYBOARDS =================
 def get_tasks_simple_keyboard():
     """Vazifalar ro'yxati uchun 3 tugma (Bugun, Sana, Bosh sahifa)"""
     return ReplyKeyboardMarkup(
@@ -178,7 +194,6 @@ def get_custom_date_keyboard_simple():
     if row:
         keyboard.append(row)
     
-    # Ortqa va Bosh sahifa tugmalari
     keyboard.append([KeyboardButton(text="⬅️ Ortga"), KeyboardButton(text="🏠 Bosh sahifa")])
     
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
