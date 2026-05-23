@@ -65,7 +65,10 @@ frequency_keyboard = ReplyKeyboardMarkup(
 )
 
 proof_type_keyboard = ReplyKeyboardMarkup(
-    keyboard=[[KeyboardButton(text="Dumaloq video"), KeyboardButton(text="Rasm yuborish")]],
+    keyboard=[
+        [KeyboardButton(text="Dumaloq video"), KeyboardButton(text="Rasm yuborish")],
+        [KeyboardButton(text="✍️ Matn yuborish")]
+    ],
     resize_keyboard=True
 )
 
@@ -124,7 +127,7 @@ def get_proof_role_keyboard():
 
 
 def get_proof_date_keyboard():
-    """Sana tanlash tugmalari (ReplyKeyboard)"""
+    """Sana tanlash tugmalari (ReplyKeyboard) - 2 ustunli tartibda"""
     keyboard = [
         [KeyboardButton(text="📅 Bugun"), KeyboardButton(text="📆 Kecha")],
         [KeyboardButton(text="📅 Shu oy"), KeyboardButton(text="📆 O'tgan oy")],
