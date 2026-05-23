@@ -37,9 +37,12 @@ def init_tasks_handler(users_roles, tasks_database):
     TASKS_DATABASE = tasks_database
 
 
-# ================= UNIVERSAL BACK/HOME HANDLER =================
-async def handle_back_or_home_global(message: types.Message, state: FSMContext, target_state=None):
-    """Ortga yoki Bosh sahifa tugmalarini boshqarish - universal"""
+# ================= UNIVERSAL BACK/HOME HANDLER (YANGILANGAN) =================
+async def handle_back_or_home_global(message: types.Message, state: FSMContext, target_state=None, return_to_main=False):
+    """
+    Ortga yoki Bosh sahifa tugmalarini boshqarish - universal
+    return_to_main=True bo'lsa, ortga tugmasi asosiy menyuga qaytaradi
+    """
     if message.text == "🏠 Bosh sahifa":
         await state.clear()
         role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
@@ -49,7 +52,15 @@ async def handle_back_or_home_global(message: types.Message, state: FSMContext, 
         )
         return True
     elif message.text == "⬅️ Ortga":
-        if target_state:
+        if return_to_main:
+            await state.clear()
+            role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
+            await message.answer(
+                text="🏠 Asosiy menyuga qaytdingiz.",
+                reply_markup=get_main_menu(role)
+            )
+            return True
+        elif target_state:
             await state.set_state(target_state)
             return True
     return False
@@ -381,26 +392,38 @@ async def tasks_simple_menu_handler(message: types.Message, state: FSMContext):
     )
 
 
-# ================= BUGUNGI VAZIFALAR (TUZATILGAN) =================
+# ================= BUGUNGI VAZIFALAR (TO'LIQ TUZATILGAN) =================
 @tasks_router.message(TaskStates.waiting_for_tasks_simple_choice, F.text == "📅 Bugun")
 async def show_today_all_tasks(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
     
-    # Back/Home tekshiruvi
-    if await handle_back_or_home_global(message, state, None):
+    # Back/Home tekshiruvi - Bosh sahifa yoki Ortga
+    if message.text == "🏠 Bosh sahifa":
+        await state.clear()
+        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
+        await message.answer(
+            text="🏠 Asosiy menyuga qaytdingiz.",
+            reply_markup=get_main_menu(role)
+        )
+        return
+    elif message.text == "⬅️ Ortga":
+        await state.set_state(TaskStates.waiting_for_tasks_simple_choice)
+        await message.answer(
+            text="📋 <b>Vazifalar roʻyxati</b>\n\n"
+                 "Qaysi kun uchun vazifalarni koʻrmoqchisiz?",
+            parse_mode="HTML",
+            reply_markup=get_tasks_simple_keyboard()
+        )
         return
     
     tashkent_tz = timezone(timedelta(hours=5))
     now = datetime.now(tashkent_tz)
     today = now.strftime("%Y-%m-%d")
-    current_hour = now.hour
     
     TASKS_DATABASE = load_tasks()
     
-    # Barcha vazifalarni yig'ish (kechasi faqat doimiy, kunduzi hammasi)
-    show_only_recurring = current_hour >= 0 and current_hour < 6
-    
+    # Barcha vazifalarni yig'ish (kunlik vazifalar faqat o'z yaratilgan kunida ko'rinadi)
     all_tasks = []
     for task in TASKS_DATABASE:
         task_type = task.get("task_type")
@@ -408,21 +431,17 @@ async def show_today_all_tasks(message: types.Message, state: FSMContext):
         if task_type == "Muntazam (Doimiy)":
             all_tasks.append(task)
         elif task_type == "Kunlik (Bir martalik)":
-            if not show_only_recurring:
-                all_tasks.append(task)
+            created_at = task.get("created_at", "")
+            if created_at:
+                created_date = created_at.split("T")[0]
+                if created_date == today:
+                    all_tasks.append(task)
     
     if not all_tasks:
-        if show_only_recurring:
-            await message.answer(
-                text=f"📭 Hozir (kechasi {current_hour}:00) faqat doimiy vazifalar ko'rinadi.\n\n"
-                     "Doimiy vazifalar mavjud emas.",
-                reply_markup=get_tasks_simple_keyboard()
-            )
-        else:
-            await message.answer(
-                text=f"📭 Bugun ({today}) uchun vazifalar topilmadi.",
-                reply_markup=get_tasks_simple_keyboard()
-            )
+        await message.answer(
+            text=f"📭 Bugun ({today}) uchun vazifalar topilmadi.",
+            reply_markup=get_tasks_simple_keyboard()
+        )
         return
     
     response_text = f"📅 <b>{today} kungi vazifalar:</b>\n\n"
@@ -454,14 +473,29 @@ async def show_today_all_tasks(message: types.Message, state: FSMContext):
     await message.answer(text=response_text, parse_mode="HTML", reply_markup=get_tasks_simple_keyboard())
 
 
-# ================= SANA TANLASH =================
+# ================= SANA TANLASH (TO'LIQ TUZATILGAN) =================
 @tasks_router.message(TaskStates.waiting_for_tasks_simple_choice, F.text == "📆 Sana")
 async def ask_for_custom_date_tasks(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
     
     # Back/Home tekshiruvi
-    if await handle_back_or_home_global(message, state, None):
+    if message.text == "🏠 Bosh sahifa":
+        await state.clear()
+        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
+        await message.answer(
+            text="🏠 Asosiy menyuga qaytdingiz.",
+            reply_markup=get_main_menu(role)
+        )
+        return
+    elif message.text == "⬅️ Ortga":
+        await state.set_state(TaskStates.waiting_for_tasks_simple_choice)
+        await message.answer(
+            text="📋 <b>Vazifalar roʻyxati</b>\n\n"
+                 "Qaysi kun uchun vazifalarni koʻrmoqchisiz?",
+            parse_mode="HTML",
+            reply_markup=get_tasks_simple_keyboard()
+        )
         return
     
     await state.set_state(TaskStates.waiting_for_custom_date)
@@ -478,7 +512,22 @@ async def show_tasks_by_selected_date(message: types.Message, state: FSMContext)
         return
     
     # Back/Home tekshiruvi
-    if await handle_back_or_home_global(message, state, TaskStates.waiting_for_tasks_simple_choice):
+    if message.text == "🏠 Bosh sahifa":
+        await state.clear()
+        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
+        await message.answer(
+            text="🏠 Asosiy menyuga qaytdingiz.",
+            reply_markup=get_main_menu(role)
+        )
+        return
+    elif message.text == "⬅️ Ortga":
+        await state.set_state(TaskStates.waiting_for_tasks_simple_choice)
+        await message.answer(
+            text="📋 <b>Vazifalar roʻyxati</b>\n\n"
+                 "Qaysi kun uchun vazifalarni koʻrmoqchisiz?",
+            parse_mode="HTML",
+            reply_markup=get_tasks_simple_keyboard()
+        )
         return
     
     date_text = message.text.strip()
