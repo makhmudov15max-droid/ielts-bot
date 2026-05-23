@@ -2,9 +2,12 @@ import json
 import os
 from datetime import datetime, timedelta, timezone
 
+
+# ================= FILE PATH =================
 TASKS_FILE = "tasks.json"
 
 
+# ================= LOAD & SAVE FUNCTIONS =================
 def load_tasks():
     """tasks.json faylidan vazifalarni yuklaydi"""
     try:
@@ -25,6 +28,7 @@ def save_tasks(tasks_database):
         print(f"❌ Tasks saqlash xatosi: {e}")
 
 
+# ================= UPDATE FUNCTIONS =================
 def update_task_status(task_id: int, status: str, completed_by: str = None):
     """Vazifa statusini yangilash"""
     tasks = load_tasks()
@@ -40,6 +44,7 @@ def update_task_status(task_id: int, status: str, completed_by: str = None):
     return False
 
 
+# ================= GET FUNCTIONS =================
 def get_task_by_id(task_id: int):
     """ID bo'yicha vazifani olish"""
     tasks = load_tasks()
