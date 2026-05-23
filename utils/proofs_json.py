@@ -2,9 +2,12 @@ import json
 import os
 from datetime import datetime, timedelta, timezone
 
+
+# ================= FILE PATH =================
 PROOFS_FILE = "proofs.json"
 
 
+# ================= LOAD & SAVE FUNCTIONS =================
 def load_proofs():
     """proofs.json faylidan barcha isbotlarni yuklaydi"""
     try:
@@ -25,6 +28,7 @@ def save_proofs(proofs_database):
         print(f"❌ Proofs saqlash xatosi: {e}")
 
 
+# ================= ADD & CLEAN FUNCTIONS =================
 def add_proof(user_id, user_name, task_id, task_name, task_description, proof_type, file_id, group_chat_id, text_content=None):
     """Yangi isbot qo'shish va 60 kundan eskilarni o'chirish"""
     proofs = load_proofs()
@@ -39,7 +43,7 @@ def add_proof(user_id, user_name, task_id, task_name, task_description, proof_ty
         "task_id": task_id,
         "task_name": task_name,
         "task_description": task_description,
-        "proof_type": proof_type,  # "Photo", "Video message", "Text"
+        "proof_type": proof_type,
         "file_id": file_id if file_id else "",
         "text_content": text_content if text_content else "",
         "group_chat_id": group_chat_id,
@@ -68,6 +72,27 @@ def add_proof(user_id, user_name, task_id, task_name, task_description, proof_ty
     return new_proof
 
 
+def clean_old_proofs(days=60):
+    """60 kundan eski isbotlarni o'chirish"""
+    proofs = load_proofs()
+    tashkent_tz = timezone(timedelta(hours=5))
+    now = datetime.now(tashkent_tz)
+    cutoff = now - timedelta(days=days)
+    
+    new_proofs = []
+    for proof in proofs:
+        proof_date = datetime.fromisoformat(proof["timestamp"])
+        if proof_date > cutoff:
+            new_proofs.append(proof)
+    
+    if len(new_proofs) != len(proofs):
+        save_proofs(new_proofs)
+        print(f"🗑 {len(proofs) - len(new_proofs)} ta eski isbot o'chirildi")
+    
+    return new_proofs
+
+
+# ================= GET PROOFS BY FILTERS =================
 def get_proofs_by_user(user_id, start_date=None, end_date=None):
     """Foydalanuvchi bo'yicha isbotlarni olish"""
     proofs = load_proofs()
@@ -121,23 +146,3 @@ def get_proofs_by_date_range(start_date, end_date):
             result.append(proof)
     
     return result
-
-
-def clean_old_proofs(days=60):
-    """60 kundan eski isbotlarni o'chirish"""
-    proofs = load_proofs()
-    tashkent_tz = timezone(timedelta(hours=5))
-    now = datetime.now(tashkent_tz)
-    cutoff = now - timedelta(days=days)
-    
-    new_proofs = []
-    for proof in proofs:
-        proof_date = datetime.fromisoformat(proof["timestamp"])
-        if proof_date > cutoff:
-            new_proofs.append(proof)
-    
-    if len(new_proofs) != len(proofs):
-        save_proofs(new_proofs)
-        print(f"🗑 {len(proofs) - len(new_proofs)} ta eski isbot o'chirildi")
-    
-    return new_proofs
