@@ -47,7 +47,8 @@ async def handle_back_or_home(message: types.Message, state: FSMContext, current
         )
         return True
     elif message.text == "⬅️ Ortga":
-        await state.set_state(current_state)
+        if current_state:
+            await state.set_state(current_state)
         return True
     return False
 
@@ -436,6 +437,20 @@ async def show_recurring_tasks(message: types.Message, state: FSMContext):
     await message.answer(text=response_text, parse_mode="HTML", reply_markup=get_tasks_list_keyboard())
 
 
+@tasks_router.message(TaskStates.waiting_for_tasks_list_choice, F.text == "✅ Bajarilgan")
+async def show_completed_tasks_menu(message: types.Message, state: FSMContext):
+    if not check_user_access(USERS_ROLES, message.from_user.id):
+        return
+    
+    await state.set_state(TaskStates.waiting_for_completed_date)
+    await message.answer(
+        text="✅ <b>Bajarilgan vazifalar</b>\n\n"
+             "Qaysi sana uchun bajarilgan vazifalarni koʻrmoqchisiz?",
+        parse_mode="HTML",
+        reply_markup=get_completed_date_keyboard()
+    )
+
+
 @tasks_router.message(TaskStates.waiting_for_completed_date, F.text == "📅 Bugun")
 async def show_completed_today(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
@@ -446,22 +461,20 @@ async def show_completed_today(message: types.Message, state: FSMContext):
     
     TASKS_DATABASE = load_tasks()
     
-    # completed_at ni tekshirish (ISO formatdan faqat sana qismini olish)
+    # completed_at dan sanani ajratib olish
     completed_tasks = []
-    for t in TASKS_DATABASE:
-        if t.get("status") == "completed":
-            completed_at = t.get("completed_at", "")
+    for task in TASKS_DATABASE:
+        if task.get("status") == "completed":
+            completed_at = task.get("completed_at", "")
             if completed_at:
                 # 2026-05-23T18:30:00+05:00 dan faqat 2026-05-23 ni olish
                 completed_date = completed_at.split("T")[0]
                 if completed_date == today:
-                    completed_tasks.append(t)
+                    completed_tasks.append(task)
     
     if not completed_tasks:
         await message.answer(
-            text=f"📭 Bugun ({today}) bajarilgan vazifalar topilmadi.\n\n"
-                 f"💡 Eslatma: Vazifa bajarilgandan keyin '✅ Bajarildi' tugmasi bosilganmi?",
-            parse_mode="HTML",
+            text=f"📭 Bugun ({today}) bajarilgan vazifalar topilmadi.",
             reply_markup=get_completed_date_keyboard()
         )
         return
@@ -469,12 +482,18 @@ async def show_completed_today(message: types.Message, state: FSMContext):
     response_text = f"✅ <b>{today} bajarilgan vazifalar:</b>\n\n"
     for idx, task in enumerate(completed_tasks, 1):
         completed_by = USERS_ROLES.get(str(task.get("completed_by")), {}).get("name", "Noma'lum")
+        
+        # completed_at dan vaqtni chiroyli ko'rsatish
+        completed_time = task.get("completed_at", "Nomaʼlum")
+        if "T" in completed_time:
+            completed_time = completed_time.split("T")[1].split("+")[0][:5]
+        
         response_text += (
             f"{idx}. <b>{task['task_name']}</b>\n"
             f"   👤 Masʻul: {task['assigned_to_name']}\n"
             f"   👤 Bajargan: {completed_by}\n"
             f"   📸 Isbot: {task['proof_type']}\n"
-            f"   ⏰ Vaqt: {task.get('completed_at', 'Nomaʼlum')}\n\n"
+            f"   ⏰ Vaqt: {completed_time}\n\n"
         )
     
     await message.answer(text=response_text, parse_mode="HTML", reply_markup=get_completed_date_keyboard())
@@ -508,12 +527,21 @@ async def show_completed_by_date(message: types.Message, state: FSMContext):
         await message.answer(
             text="❌ <b>Notoʻgʻri format!</b> Iltimos, sanani YYYY-MM-DD formatida kiriting.\n\n"
                  "Masalan: <code>2026-05-23</code>",
-            parse_mode="HTML"
+            parse_mode="HTML",
+            reply_markup=get_completed_date_keyboard()
         )
         return
     
     TASKS_DATABASE = load_tasks()
-    completed_tasks = [t for t in TASKS_DATABASE if t.get("status") == "completed" and t.get("completed_at", "").startswith(date_text)]
+    
+    completed_tasks = []
+    for task in TASKS_DATABASE:
+        if task.get("status") == "completed":
+            completed_at = task.get("completed_at", "")
+            if completed_at:
+                completed_date = completed_at.split("T")[0]
+                if completed_date == date_text:
+                    completed_tasks.append(task)
     
     if not completed_tasks:
         await message.answer(
@@ -525,12 +553,17 @@ async def show_completed_by_date(message: types.Message, state: FSMContext):
     response_text = f"✅ <b>{date_text} bajarilgan vazifalar:</b>\n\n"
     for idx, task in enumerate(completed_tasks, 1):
         completed_by = USERS_ROLES.get(str(task.get("completed_by")), {}).get("name", "Noma'lum")
+        
+        completed_time = task.get("completed_at", "Nomaʼlum")
+        if "T" in completed_time:
+            completed_time = completed_time.split("T")[1].split("+")[0][:5]
+        
         response_text += (
             f"{idx}. <b>{task['task_name']}</b>\n"
             f"   👤 Masʻul: {task['assigned_to_name']}\n"
             f"   👤 Bajargan: {completed_by}\n"
             f"   📸 Isbot: {task['proof_type']}\n"
-            f"   ⏰ Vaqt: {task.get('completed_at', 'Nomaʼlum')}\n\n"
+            f"   ⏰ Vaqt: {completed_time}\n\n"
         )
     
     await message.answer(text=response_text, parse_mode="HTML", reply_markup=get_completed_date_keyboard())
