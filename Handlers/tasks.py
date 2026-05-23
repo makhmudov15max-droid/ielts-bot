@@ -334,12 +334,10 @@ async def get_multiple_times_handler(message: types.Message, state: FSMContext):
 
 
 # ================= ISBOT TURINI QABUL QILISH (TEXT + MEDIA) =================
-# MUHIM: Bu handler kunlik va doimiy vazifalar uchun ishlaydi
 @tasks_router.message(TaskStates.waiting_for_proof_type)
 async def finalize_task_creation_handler(message: types.Message, state: FSMContext):
     logging.info(f"finalize_task_creation_handler chaqirildi. Matn: {message.text}")
     
-    # Back/Home tekshiruvi
     if message.text == "🏠 Bosh sahifa":
         await state.clear()
         role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
@@ -350,7 +348,6 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
         await message.answer("Izohni qayta kiriting:", reply_markup=get_back_home_keyboard())
         return
     
-    # Faqat 3 ta variantni qabul qilish
     if message.text not in ["Dumaloq video", "Rasm yuborish", "✍️ Matn yuborish"]:
         await message.answer(
             text="❌ Iltimos, quyidagi tugmalardan birini tanlang:\n\n"
@@ -450,7 +447,7 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
     logging.info(f"Vazifa yaratildi, state tozalandi. Task ID: {task_id}")
 
 
-# ================= VAZIFALAR RO'YXATI (2 TUGMA) =================
+# ================= VAZIFALAR RO'YXATI =================
 @tasks_router.message(F.text == "📋 Vazifalar roʻyxati")
 async def tasks_simple_menu_handler(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
@@ -493,26 +490,25 @@ async def show_today_all_tasks(message: types.Message, state: FSMContext):
     TASKS_DATABASE = load_tasks()
     
     user_role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "")
-user_id = str(message.from_user.id)
-
-all_tasks = []
-for task in TASKS_DATABASE:
-    task_type = task.get("task_type")
+    user_id = str(message.from_user.id)
     
-    # ROLE BO'YICHA FILTR
-    if user_role not in ["Owner", "Manager"]:
-        # Oddiy xodimlar: faqat o'ziga biriktirilgan vazifalar
-        if str(task.get("assigned_to_id")) != user_id:
-            continue
-    
-    if task_type == "Muntazam (Doimiy)":
-        all_tasks.append(task)
-    elif task_type == "Kunlik (Bir martalik)":
-        created_at = task.get("created_at", "")
-        if created_at:
-            created_date = created_at.split("T")[0]
-            if created_date == today:
-                all_tasks.append(task)
+    all_tasks = []
+    for task in TASKS_DATABASE:
+        task_type = task.get("task_type")
+        
+        # ROLE BO'YICHA FILTR
+        if user_role not in ["Owner", "Manager"]:
+            if str(task.get("assigned_to_id")) != user_id:
+                continue
+        
+        if task_type == "Muntazam (Doimiy)":
+            all_tasks.append(task)
+        elif task_type == "Kunlik (Bir martalik)":
+            created_at = task.get("created_at", "")
+            if created_at:
+                created_date = created_at.split("T")[0]
+                if created_date == today:
+                    all_tasks.append(task)
     
     if not all_tasks:
         await message.answer(
@@ -612,26 +608,25 @@ async def show_tasks_by_selected_date(message: types.Message, state: FSMContext)
     TASKS_DATABASE = load_tasks()
     
     user_role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "")
-user_id = str(message.from_user.id)
-
-all_tasks = []
-for task in TASKS_DATABASE:
-    task_type = task.get("task_type")
+    user_id = str(message.from_user.id)
     
-    # ROLE BO'YICHA FILTR
-    if user_role not in ["Owner", "Manager"]:
-        # Oddiy xodimlar: faqat o'ziga biriktirilgan vazifalar
-        if str(task.get("assigned_to_id")) != user_id:
-            continue
-    
-    if task_type == "Muntazam (Doimiy)":
-        all_tasks.append(task)
-    elif task_type == "Kunlik (Bir martalik)":
-        created_at = task.get("created_at", "")
-        if created_at:
-            created_date = created_at.split("T")[0]
-            if created_date == today:
-                all_tasks.append(task)
+    all_tasks = []
+    for task in TASKS_DATABASE:
+        task_type = task.get("task_type")
+        
+        # ROLE BO'YICHA FILTR
+        if user_role not in ["Owner", "Manager"]:
+            if str(task.get("assigned_to_id")) != user_id:
+                continue
+        
+        if task_type == "Muntazam (Doimiy)":
+            all_tasks.append(task)
+        elif task_type == "Kunlik (Bir martalik)":
+            created_at = task.get("created_at", "")
+            if created_at:
+                created_date = created_at.split("T")[0]
+                if created_date == date_text:
+                    all_tasks.append(task)
     
     if not all_tasks:
         await message.answer(
