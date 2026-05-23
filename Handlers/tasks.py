@@ -97,13 +97,16 @@ async def get_target_role_handler(message: types.Message, state: FSMContext):
         if isinstance(u_info, dict) and u_info.get("role") == selected_role and u_info.get("name"):
             found_users = True
             inline_kb.append([types.InlineKeyboardButton(text=u_info.get("name"), callback_data=f"assignuser_{u_id}")])
+    
+    # BEKOR QILISH TUGMASI QO'SHILDI
+    inline_kb.append([types.InlineKeyboardButton(text="❌ Bekor qilish", callback_data="cancel_task_creation")])
             
     if not found_users:
         await message.answer(text=f"⚠️ Diqqat! Tizimda hali tasdiqlangan va ismi kiritilgan '{selected_role}' xodimlari topilmadi!")
         return
         
     await message.answer(
-        text=f"Aynan qaysi '{selected_role}' xodimiga ushbu vazifani biriktirmoqchisiz? Quyidagilardan tanlang 👇", 
+        text=f"Aynan qaysi '{selected_role}' xodimiga ushbu vazifani biriktirmoqchisiz? Quyidagilardan tanlang 👇\n\n❌ Bekor qilish tugmasi bilan vazifa yaratishdan voz kechishingiz mumkin.", 
         reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_kb)
     )
     await state.set_state(TaskStates.waiting_for_target_user)
@@ -134,7 +137,7 @@ async def get_task_name_handler(message: types.Message, state: FSMContext):
         return
     elif message.text == "⬅️ Ortga":
         await state.set_state(TaskStates.waiting_for_target_user)
-        await message.answer("Qaytish...", reply_markup=assign_role_keyboard)
+        await message.answer("Qaytish... Iltimos, xodimni qayta tanlang:", reply_markup=assign_role_keyboard)
         return
     
     await state.update_data(task_name=message.text.strip())
