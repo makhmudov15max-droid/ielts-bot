@@ -447,41 +447,14 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
     logging.info(f"Vazifa yaratildi, state tozalandi. Task ID: {task_id}")
 
 
-# ================= VAZIFALAR RO'YXATI =================
+# ================= VAZIFALAR RO'YXATI (TO'G'RIDAN-TO'G'RI BUGUNGI KUN) =================
 @tasks_router.message(F.text == "📋 Vazifalar roʻyxati")
 async def tasks_simple_menu_handler(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
     
-    await state.set_state(TaskStates.waiting_for_tasks_simple_choice)
-    await message.answer(
-        text="📋 <b>Vazifalar roʻyxati</b>\n\n"
-             "Qaysi kun uchun vazifalarni koʻrmoqchisiz?",
-        parse_mode="HTML",
-        reply_markup=get_tasks_simple_keyboard()
-    )
-
-
-# ================= BUGUNGI VAZIFALAR =================
-@tasks_router.message(TaskStates.waiting_for_tasks_simple_choice, F.text == "📅 Bugun")
-async def show_today_all_tasks(message: types.Message, state: FSMContext):
-    if not check_user_access(USERS_ROLES, message.from_user.id):
-        return
-    
-    if message.text == "🏠 Bosh sahifa":
-        await state.clear()
-        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-        return
-    elif message.text == "⬅️ Ortga":
-        await state.set_state(TaskStates.waiting_for_tasks_simple_choice)
-        await message.answer(
-            text="📋 <b>Vazifalar roʻyxati</b>\n\n"
-                 "Qaysi kun uchun vazifalarni koʻrmoqchisiz?",
-            parse_mode="HTML",
-            reply_markup=get_tasks_simple_keyboard()
-        )
-        return
+    # State ni tozalab, to'g'ridan-to'g'ri bugungi vazifalarni ko'rsatamiz
+    await state.clear()
     
     tashkent_tz = timezone(timedelta(hours=5))
     now = datetime.now(tashkent_tz)
@@ -513,7 +486,7 @@ async def show_today_all_tasks(message: types.Message, state: FSMContext):
     if not all_tasks:
         await message.answer(
             text=f"📭 Bugun ({today}) uchun vazifalar topilmadi.",
-            reply_markup=get_tasks_simple_keyboard()
+            reply_markup=get_main_menu(user_role)
         )
         return
     
@@ -543,38 +516,33 @@ async def show_today_all_tasks(message: types.Message, state: FSMContext):
                 f"   {status_text}\n\n"
             )
     
-    await message.answer(text=response_text, parse_mode="HTML", reply_markup=get_tasks_simple_keyboard())
+    # Vaqtinchalik "Sana tanlash" tugmasini qo'shamiz (keyingi versiyada to'liq ishlaydi)
+    temp_keyboard = types.ReplyKeyboardMarkup(
+        keyboard=[
+            [types.KeyboardButton(text="📆 Boshqa sana")],
+            [types.KeyboardButton(text="🏠 Bosh sahifa")]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(text=response_text, parse_mode="HTML", reply_markup=temp_keyboard)
 
 
-# ================= SANA TANLASH =================
-@tasks_router.message(TaskStates.waiting_for_tasks_simple_choice, F.text == "📆 Sana")
-async def ask_for_custom_date_tasks(message: types.Message, state: FSMContext):
+# ================= BOSHQA SANA UCHUN VAQTINCHA HANDLER =================
+@tasks_router.message(F.text == "📆 Boshqa sana")
+async def temp_custom_date_handler(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
-        return
-    
-    if message.text == "🏠 Bosh sahifa":
-        await state.clear()
-        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-        return
-    elif message.text == "⬅️ Ortga":
-        await state.set_state(TaskStates.waiting_for_tasks_simple_choice)
-        await message.answer(
-            text="📋 <b>Vazifalar roʻyxati</b>\n\n"
-                 "Qaysi kun uchun vazifalarni koʻrmoqchisiz?",
-            parse_mode="HTML",
-            reply_markup=get_tasks_simple_keyboard()
-        )
         return
     
     await state.set_state(TaskStates.waiting_for_custom_date)
     await message.answer(
-        text="📅 <b>Sanani tanlang (oxirgi 60 kun):</b>",
+        text="📅 <b>Sanani kiriting (YYYY-MM-DD formatida):</b>\n\n"
+             "Masalan: <code>2026-05-23</code>",
         parse_mode="HTML",
-        reply_markup=get_custom_date_keyboard_simple()
+        reply_markup=get_back_home_keyboard()
     )
 
 
+# ================= SANA BO'YICHA VAZIFALAR =================
 @tasks_router.message(TaskStates.waiting_for_custom_date)
 async def show_tasks_by_selected_date(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
@@ -586,13 +554,9 @@ async def show_tasks_by_selected_date(message: types.Message, state: FSMContext)
         await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
         return
     elif message.text == "⬅️ Ortga":
-        await state.set_state(TaskStates.waiting_for_tasks_simple_choice)
-        await message.answer(
-            text="📋 <b>Vazifalar roʻyxati</b>\n\n"
-                 "Qaysi kun uchun vazifalarni koʻrmoqchisiz?",
-            parse_mode="HTML",
-            reply_markup=get_tasks_simple_keyboard()
-        )
+        await state.clear()
+        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
+        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
         return
     
     date_text = message.text.strip()
@@ -601,7 +565,7 @@ async def show_tasks_by_selected_date(message: types.Message, state: FSMContext)
             text="❌ <b>Notoʻgʻri format!</b> Iltimos, sanani YYYY-MM-DD formatida kiriting.\n\n"
                  "Masalan: <code>2026-05-23</code>",
             parse_mode="HTML",
-            reply_markup=get_custom_date_keyboard_simple()
+            reply_markup=get_back_home_keyboard()
         )
         return
     
@@ -631,8 +595,9 @@ async def show_tasks_by_selected_date(message: types.Message, state: FSMContext)
     if not all_tasks:
         await message.answer(
             text=f"📭 {date_text} sanada vazifalar topilmadi.",
-            reply_markup=get_custom_date_keyboard_simple()
+            reply_markup=get_main_menu(user_role)
         )
+        await state.clear()
         return
     
     response_text = f"📅 <b>{date_text} kungi vazifalar:</b>\n\n"
@@ -661,7 +626,8 @@ async def show_tasks_by_selected_date(message: types.Message, state: FSMContext)
                 f"   {status_text}\n\n"
             )
     
-    await message.answer(text=response_text, parse_mode="HTML", reply_markup=get_custom_date_keyboard_simple())
+    await message.answer(text=response_text, parse_mode="HTML", reply_markup=get_main_menu(user_role))
+    await state.clear()
 
 
 # ================= VAZIFA O'CHIRISH =================
