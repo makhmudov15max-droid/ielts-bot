@@ -2,6 +2,7 @@ from aiogram.fsm.state import StatesGroup, State
 
 # Tizim bosqichlari
 class TaskStates(StatesGroup):
+    # ================= ASOSIY STATE LAR =================
     waiting_for_user_name = State()       # Foydalanuvchi ism-familiyasini kutish
     waiting_for_name = State()            # Vazifa nomini kutish holati
     waiting_for_days = State()            # Kunlarni tanlashni kutish holati
@@ -9,29 +10,34 @@ class TaskStates(StatesGroup):
     waiting_for_once_time = State()       # Bitta aniq vaqtni matn ko'rinishida kutish
     waiting_for_multiple_times = State()  # Bir nechta vaqtni vergul bilan kutish
     
-    # Vazifa yaratish bosqichlari
-    waiting_for_proof_type = State()      # Isbot turini kutish (Photo/Video)
+    # ================= VAZIFA YARATISH BOSQICHLARI =================
+    waiting_for_proof_type = State()      # Isbot turini kutish (Photo/Video/Text)
     waiting_for_target_role = State()     # Qaysi unvonga biriktirishni kutish
     waiting_for_target_user = State()     # Aniq qaysi xodimga biriktirishni kutish
     waiting_for_task_proof = State()      # Xodim tomonidan rasm yoki videoni kutish
     waiting_for_description = State()     # Admin tomonidan izoh kiritilishini kutish
 
-    # Xodimlarni tahrirlash bosqichlari
+    # ================= XODIMLARNI TAHRIRLASH BOSQICHLARI =================
     waiting_for_edit_staff = State()      # Xodim tahrirlash menyusi
     waiting_for_new_name = State()        # Ism o'zgartirish uchun yangi ismni kutish
     
-    # Arxivni boshqarish bosqichi
+    # ================= ARXIVNI BOSHQARISH BOSQICHI =================
     waiting_for_archive_staff = State()   # Arxivdan tiklash
     
-    # Oyliklarni boshqarish bosqichi
+    # ================= OYLIKLARNI BOSHQARISH BOSQICHI =================
     waiting_for_salary_management = State()
     
-    # ========== ISBOTLAR (PROOFS) UCHUN STATE LAR ==========
+    # ================= ISBOTLAR (PROOFS) UCHUN STATE LAR =================
     waiting_for_proof_role = State()      # Qaysi role ni tanlash
     waiting_for_proof_user = State()      # Qaysi xodimni tanlash
     waiting_for_proof_date = State()      # Qaysi sanani tanlash
+    
+    # ================= VAZIFALAR RO'YXATI UCHUN STATE LAR =================
+    waiting_for_tasks_list_choice = State()   # 3 tugmadan birini tanlash (Kutilmoqda/Doimiy/Bajarilgan)
+    waiting_for_completed_date = State()      # Bajarilgan vazifalar uchun sana tanlash
 
-# ADMIN OYLIK HISOBLASH BOSQICHLARI
+
+# ================= ADMIN OYLIK HISOBLASH BOSQICHLARI =================
 class AdminSalaryStates(StatesGroup):
     status = State()
     daily_hours = State()
@@ -51,7 +57,8 @@ class AdminSalaryStates(StatesGroup):
     active_plan = State()
     actual_active = State()
 
-# Kassir oylik bosqichlari
+
+# ================= KASSIR OYLIK BOSQICHLARI =================
 class CashierSalaryStates(StatesGroup):
     hours = State()
     custom_hours = State()
@@ -65,7 +72,3 @@ class CashierSalaryStates(StatesGroup):
     active_debtors = State()
     archive_students = State()
     archive_debtors = State()
-
-# Vazifalar ro'yxati uchun state lar
-waiting_for_tasks_list_choice = State()   # 3 tugmadan birini tanlash
-waiting_for_completed_date = State()      # Bajarilgan vazifalar uchun sana tanlash
