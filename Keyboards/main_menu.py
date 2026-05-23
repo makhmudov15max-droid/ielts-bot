@@ -102,13 +102,15 @@ def get_admin_approval_keyboard(user_id: int):
         if len(row) == 2:
             inline_keyboard.append(row)
             row = []
+    if row:
+        inline_keyboard.append(row)
     inline_keyboard.append([InlineKeyboardButton(text="❌ Rad etish", callback_data=f"reject_{user_id}")])
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
 
 def get_task_complete_keyboard(task_id: int):
     return InlineKeyboardMarkup(
-        inline_keyboard=[[InlineKeyboardButton(text="Bajarildi ✅", callback_data=f"completetask_{task_id}")]]
+        inline_keyboard=[[InlineKeyboardButton(text="✅ Bajarildi", callback_data=f"completetask_{task_id}")]]
     )
 
 
@@ -142,4 +144,57 @@ def get_proof_date_keyboard():
         [KeyboardButton(text="✍️ Boshqa sana")],
         [KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")]
     ]
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+
+
+# ================= VAZIFALAR RO'YXATI UCHUN KLAVIATURALAR =================
+
+def get_tasks_list_keyboard():
+    """Vazifalar ro'yxati uchun tugmalar"""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="⏳ Kutilmoqda"), KeyboardButton(text="🔄 Doimiy")],
+            [KeyboardButton(text="✅ Bajarilgan")],
+            [KeyboardButton(text="🏠 Bosh sahifa")]
+        ],
+        resize_keyboard=True
+    )
+
+
+def get_completed_date_keyboard():
+    """Bajarilgan vazifalar uchun sana tanlash"""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📅 Bugun")],
+            [KeyboardButton(text="✍️ Sana tanlash")],
+            [KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")]
+        ],
+        resize_keyboard=True
+    )
+
+
+def get_custom_date_keyboard():
+    """60 kunlik sanalar ro'yxati (har bir qatorda 2 tadan)"""
+    from datetime import datetime, timedelta, timezone
+    
+    tashkent_tz = timezone(timedelta(hours=5))
+    now = datetime.now(tashkent_tz)
+    
+    date_buttons = []
+    for i in range(60):
+        d = now - timedelta(days=i)
+        date_buttons.append(KeyboardButton(text=d.strftime("%Y-%m-%d")))
+    
+    keyboard = []
+    row = []
+    for btn in date_buttons:
+        row.append(btn)
+        if len(row) == 2:
+            keyboard.append(row)
+            row = []
+    if row:
+        keyboard.append(row)
+    
+    keyboard.append([KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")])
+    
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
