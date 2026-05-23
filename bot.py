@@ -12,6 +12,7 @@ from Handlers.tasks import tasks_router
 from Handlers.employees import employees_router
 from Handlers.salaries import salaries_router
 from Handlers.callback_handlers import callback_router
+from Handlers.proofs import proofs_router, init_proofs_handler  # <-- YANGI
 from utils.users_json import load_users
 from utils.tasks_json import load_tasks
 from utils.access import is_admin
@@ -57,6 +58,7 @@ async def main():
         
         # Barcha handlerlar uchun global o'zgaruvchilarni o'rnatish
         init_all_handlers(USERS_ROLES, TASKS_DATABASE, ADMIN_ID)
+        init_proofs_handler(USERS_ROLES, ADMIN_ID)  # <-- YANGI
         
         bot = Bot(token=BOT_TOKEN)
         dp = Dispatcher()
@@ -67,6 +69,7 @@ async def main():
         dp.include_router(employees_router)
         dp.include_router(salaries_router)
         dp.include_router(callback_router)
+        dp.include_router(proofs_router)  # <-- YANGI
         dp.include_router(sheets_router)
         dp.include_router(report_router)
         
