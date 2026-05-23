@@ -275,6 +275,7 @@ async def get_multiple_times_handler(message: types.Message, state: FSMContext):
 
 
 # ================= VAZIFANI YAKUNLASH =================
+# ================= VAZIFANI YAKUNLASH =================
 @tasks_router.message(TaskStates.waiting_for_proof_type, F.text.in_(["Dumaloq video", "Rasm yuborish", "✍️ Matn yuborish"]))
 async def finalize_task_creation_handler(message: types.Message, state: FSMContext):
     proof_mapping = {
@@ -360,7 +361,6 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
         print(f"Xodimga bildirishnoma yuborishda xatolik: {e}")
         
     await state.clear()
-
 
 # ================= VAZIFALAR RO'YXATI (3 TUGMA) =================
 @tasks_router.message(F.text == "📋 Vazifalar roʻyxati")
