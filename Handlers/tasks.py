@@ -38,6 +38,23 @@ def init_tasks_handler(users_roles, tasks_database):
     TASKS_DATABASE = tasks_database
 
 
+# ================= UNIVERSAL BACK/HOME HANDLER =================
+async def handle_back_home_in_task_creation(message: types.Message, state: FSMContext, back_state=None):
+    """Vazifa yaratish jarayonida 🏠 Bosh sahifa va ⬅️ Ortga tugmalarini boshqarish"""
+    if message.text == "🏠 Bosh sahifa":
+        await state.clear()
+        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
+        await message.answer(
+            text="🏠 Asosiy menyuga qaytdingiz.",
+            reply_markup=get_main_menu(role)
+        )
+        return True
+    elif message.text == "⬅️ Ortga" and back_state:
+        await state.set_state(back_state)
+        return True
+    return False
+
+
 # ================= VAZIFA YARATISH (ADD) =================
 @tasks_router.message(F.text == "➕ Vazifa qoʻshish")
 async def add_task_handler(message: types.Message, state: FSMContext):
@@ -55,15 +72,7 @@ async def task_type_selected_handler(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
     
-    if message.text == "🏠 Bosh sahifa":
-        await state.clear()
-        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-        return
-    elif message.text == "⬅️ Ortga":
-        await state.clear()
-        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
+    if await handle_back_home_in_task_creation(message, state):
         return
     
     await state.update_data(task_type=message.text)
@@ -76,15 +85,7 @@ async def task_type_selected_handler(message: types.Message, state: FSMContext):
 
 @tasks_router.message(TaskStates.waiting_for_target_role, F.text.in_(["Admin", "Kassir", "Sanitar", "Manager"]))
 async def get_target_role_handler(message: types.Message, state: FSMContext):
-    if message.text == "🏠 Bosh sahifa":
-        await state.clear()
-        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-        return
-    elif message.text == "⬅️ Ortga":
-        await state.clear()
-        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
+    if await handle_back_home_in_task_creation(message, state):
         return
     
     selected_role = message.text
@@ -98,7 +99,6 @@ async def get_target_role_handler(message: types.Message, state: FSMContext):
             found_users = True
             inline_kb.append([types.InlineKeyboardButton(text=u_info.get("name"), callback_data=f"assignuser_{u_id}")])
     
-    # BEKOR QILISH TUGMASI QO'SHILDI
     inline_kb.append([types.InlineKeyboardButton(text="❌ Bekor qilish", callback_data="cancel_task_creation")])
             
     if not found_users:
@@ -130,14 +130,7 @@ async def process_target_user_callback(call: types.CallbackQuery, state: FSMCont
 
 @tasks_router.message(TaskStates.waiting_for_name)
 async def get_task_name_handler(message: types.Message, state: FSMContext):
-    if message.text == "🏠 Bosh sahifa":
-        await state.clear()
-        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-        return
-    elif message.text == "⬅️ Ortga":
-        await state.set_state(TaskStates.waiting_for_target_user)
-        await message.answer("Qaytish... Iltimos, xodimni qayta tanlang:", reply_markup=assign_role_keyboard)
+    if await handle_back_home_in_task_creation(message, state, TaskStates.waiting_for_target_user):
         return
     
     await state.update_data(task_name=message.text.strip())
@@ -159,14 +152,7 @@ async def get_task_name_handler(message: types.Message, state: FSMContext):
 
 @tasks_router.message(TaskStates.waiting_for_description)
 async def get_task_description_handler(message: types.Message, state: FSMContext):
-    if message.text == "🏠 Bosh sahifa":
-        await state.clear()
-        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-        return
-    elif message.text == "⬅️ Ortga":
-        await state.set_state(TaskStates.waiting_for_name)
-        await message.answer("Vazifa nomini qayta kiriting:", reply_markup=get_back_home_keyboard())
+    if await handle_back_home_in_task_creation(message, state, TaskStates.waiting_for_name):
         return
     
     await state.update_data(task_description=message.text.strip())
@@ -181,14 +167,7 @@ async def get_task_description_handler(message: types.Message, state: FSMContext
 # ================= KUNLARNI TANLASH (DOIMIY) =================
 @tasks_router.message(TaskStates.waiting_for_days, F.text.in_(["Toq kunlar", "Juft kunlar", "Haftada 6 kun"]))
 async def get_task_days_handler(message: types.Message, state: FSMContext):
-    if message.text == "🏠 Bosh sahifa":
-        await state.clear()
-        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-        return
-    elif message.text == "⬅️ Ortga":
-        await state.set_state(TaskStates.waiting_for_name)
-        await message.answer("Vazifa nomini qayta kiriting:", reply_markup=get_back_home_keyboard())
+    if await handle_back_home_in_task_creation(message, state, TaskStates.waiting_for_name):
         return
     
     day_mapping = {"Toq kunlar": "ODD", "Juft kunlar": "EVEN", "Haftada 6 kun": "6 days a week"}
@@ -202,14 +181,7 @@ async def get_task_days_handler(message: types.Message, state: FSMContext):
 
 @tasks_router.message(TaskStates.waiting_for_days, F.text == "Boshqa kunlar")
 async def other_days_handler(message: types.Message, state: FSMContext):
-    if message.text == "🏠 Bosh sahifa":
-        await state.clear()
-        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-        return
-    elif message.text == "⬅️ Ortga":
-        await state.set_state(TaskStates.waiting_for_name)
-        await message.answer("Vazifa nomini qayta kiriting:", reply_markup=get_back_home_keyboard())
+    if await handle_back_home_in_task_creation(message, state, TaskStates.waiting_for_name):
         return
     
     await state.update_data(selected_days=[])
@@ -253,14 +225,7 @@ async def days_done_callback(call: types.CallbackQuery, state: FSMContext):
 # ================= KUNIGA 1 MARTA =================
 @tasks_router.message(TaskStates.waiting_for_frequency, F.text == "Kuniga 1 marta")
 async def once_frequency_handler(message: types.Message, state: FSMContext):
-    if message.text == "🏠 Bosh sahifa":
-        await state.clear()
-        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-        return
-    elif message.text == "⬅️ Ortga":
-        await state.set_state(TaskStates.waiting_for_days)
-        await message.answer("Kunlarni qayta tanlang:", reply_markup=days_keyboard)
+    if await handle_back_home_in_task_creation(message, state, TaskStates.waiting_for_days):
         return
     
     await state.update_data(task_frequency="Once")
@@ -274,14 +239,7 @@ async def once_frequency_handler(message: types.Message, state: FSMContext):
 
 @tasks_router.message(TaskStates.waiting_for_once_time)
 async def get_once_time_handler(message: types.Message, state: FSMContext):
-    if message.text == "🏠 Bosh sahifa":
-        await state.clear()
-        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-        return
-    elif message.text == "⬅️ Ortga":
-        await state.set_state(TaskStates.waiting_for_frequency)
-        await message.answer("Chastotani qayta tanlang:", reply_markup=frequency_keyboard)
+    if await handle_back_home_in_task_creation(message, state, TaskStates.waiting_for_frequency):
         return
     
     await state.update_data(task_times=message.text.strip())
@@ -296,14 +254,7 @@ async def get_once_time_handler(message: types.Message, state: FSMContext):
 # ================= BIR NECHA MARTA =================
 @tasks_router.message(TaskStates.waiting_for_frequency, F.text == "Bir necha marta")
 async def multiple_frequency_handler(message: types.Message, state: FSMContext):
-    if message.text == "🏠 Bosh sahifa":
-        await state.clear()
-        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-        return
-    elif message.text == "⬅️ Ortga":
-        await state.set_state(TaskStates.waiting_for_days)
-        await message.answer("Kunlarni qayta tanlang:", reply_markup=days_keyboard)
+    if await handle_back_home_in_task_creation(message, state, TaskStates.waiting_for_days):
         return
     
     await state.update_data(task_frequency="Multiple times")
@@ -317,14 +268,7 @@ async def multiple_frequency_handler(message: types.Message, state: FSMContext):
 
 @tasks_router.message(TaskStates.waiting_for_multiple_times)
 async def get_multiple_times_handler(message: types.Message, state: FSMContext):
-    if message.text == "🏠 Bosh sahifa":
-        await state.clear()
-        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-        return
-    elif message.text == "⬅️ Ortga":
-        await state.set_state(TaskStates.waiting_for_frequency)
-        await message.answer("Chastotani qayta tanlang:", reply_markup=frequency_keyboard)
+    if await handle_back_home_in_task_creation(message, state, TaskStates.waiting_for_frequency):
         return
     
     await state.update_data(task_times=message.text.strip())
@@ -336,7 +280,7 @@ async def get_multiple_times_handler(message: types.Message, state: FSMContext):
     logging.info(f"State o'zgartirildi: waiting_for_proof_type (vaqtlar kiritildi)")
 
 
-# ================= ISBOT TURINI QABUL QILISH (TEXT + MEDIA) =================
+# ================= ISBOT TURINI QABUL QILISH =================
 @tasks_router.message(TaskStates.waiting_for_proof_type)
 async def finalize_task_creation_handler(message: types.Message, state: FSMContext):
     logging.info(f"finalize_task_creation_handler chaqirildi. Matn: {message.text}")
@@ -450,7 +394,7 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
     logging.info(f"Vazifa yaratildi, state tozalandi. Task ID: {task_id}")
 
 
-# ================= VAZIFALAR RO'YXATI (2 TUGMA) =================
+# ================= VAZIFALAR RO'YXATI =================
 @tasks_router.message(F.text == "📋 Vazifalar roʻyxati")
 async def tasks_simple_menu_handler(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
@@ -465,7 +409,6 @@ async def tasks_simple_menu_handler(message: types.Message, state: FSMContext):
     )
 
 
-# ================= BOSH SAHIFA (VAZIFALAR RO'YXATI ICHIDAN) =================
 @tasks_router.message(TaskStates.waiting_for_tasks_simple_choice, F.text == "🏠 Bosh sahifa")
 async def back_home_from_tasks_choice(message: types.Message, state: FSMContext):
     await state.clear()
@@ -476,7 +419,6 @@ async def back_home_from_tasks_choice(message: types.Message, state: FSMContext)
     )
 
 
-# ================= BUGUNGI VAZIFALAR =================
 @tasks_router.message(TaskStates.waiting_for_tasks_simple_choice, F.text == "📅 Bugun")
 async def show_today_all_tasks(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
@@ -505,7 +447,6 @@ async def show_today_all_tasks(message: types.Message, state: FSMContext):
     for task in TASKS_DATABASE:
         task_type = task.get("task_type")
         
-        # ROLE BO'YICHA FILTR
         if user_role not in ["Owner", "Manager"]:
             if str(task.get("assigned_to_id")) != user_id:
                 continue
@@ -555,7 +496,6 @@ async def show_today_all_tasks(message: types.Message, state: FSMContext):
     await message.answer(text=response_text, parse_mode="HTML", reply_markup=get_tasks_simple_keyboard())
 
 
-# ================= SANA TANLASH =================
 @tasks_router.message(TaskStates.waiting_for_tasks_simple_choice, F.text == "📆 Sana")
 async def ask_for_custom_date_tasks(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
@@ -579,7 +519,6 @@ async def ask_for_custom_date_tasks(message: types.Message, state: FSMContext):
     )
 
 
-# ================= BOSH SAHIFA (SANA TANLASH ICHIDAN) =================
 @tasks_router.message(TaskStates.waiting_for_custom_date, F.text == "🏠 Bosh sahifa")
 async def back_home_from_custom_date(message: types.Message, state: FSMContext):
     await state.clear()
@@ -624,7 +563,6 @@ async def show_tasks_by_selected_date(message: types.Message, state: FSMContext)
     for task in TASKS_DATABASE:
         task_type = task.get("task_type")
         
-        # ROLE BO'YICHA FILTR
         if user_role not in ["Owner", "Manager"]:
             if str(task.get("assigned_to_id")) != user_id:
                 continue
