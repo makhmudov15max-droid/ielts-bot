@@ -296,4 +296,120 @@ async def proof_date_selected_handler(message: types.Message, state: FSMContext)
     # BOSH SAHIFA VA ORTGA TEKSHIRUVI
     if date_choice == "🏠 Bosh sahifa":
         await state.clear()
-        role = USERS_ROLES[str
+        role = USERS_ROLES[str(message.from_user.id)]["role"]
+        await message.answer(
+            text="Asosiy menyuga qaytdingiz.",
+            reply_markup=get_main_menu(role)
+        )
+        return
+    
+    elif date_choice == "⬅️ Ortga":
+        user_data = await state.get_data()
+        if user_data.get("selected_user_id"):
+            selected_role = user_data.get("selected_role")
+            if selected_role:
+                keyboard = get_proof_employee_keyboard(selected_role)
+                if keyboard:
+                    await state.set_state(TaskStates.waiting_for_proof_user)
+                    await message.answer(
+                        text=f"👥 <b>{selected_role}</b> role dagi xodimlardan birini tanlang:",
+                        parse_mode="HTML",
+                        reply_markup=keyboard
+                    )
+                else:
+                    await state.set_state(TaskStates.waiting_for_proof_role)
+                    await message.answer(
+                        text="📸 <b>Isbotlar arxivi</b>\n\n"
+                             "Qaysi role dagi xodimlarning isbotlarini koʻrmoqchisiz?",
+                        parse_mode="HTML",
+                        reply_markup=get_proof_role_keyboard()
+                    )
+            else:
+                await state.set_state(TaskStates.waiting_for_proof_role)
+                await message.answer(
+                    text="📸 <b>Isbotlar arxivi</b>\n\n"
+                         "Qaysi role dagi xodimlarning isbotlarini koʻrmoqchisiz?",
+                    parse_mode="HTML",
+                    reply_markup=get_proof_role_keyboard()
+                )
+        else:
+            await state.set_state(TaskStates.waiting_for_proof_role)
+            await message.answer(
+                text="📸 <b>Isbotlar arxivi</b>\n\n"
+                     "Qaysi role dagi xodimlarning isbotlarini koʻrmoqchisiz?",
+                parse_mode="HTML",
+                reply_markup=get_proof_role_keyboard()
+            )
+        return
+    
+    # SANA TANLASH
+    elif date_choice == "📅 Bugun":
+        start_date = now.strftime("%Y-%m-%d")
+        end_date = now.strftime("%Y-%m-%d")
+        date_text = "Bugungi isbotlar"
+    
+    elif date_choice == "📆 Kecha":
+        yesterday = now - timedelta(days=1)
+        start_date = yesterday.strftime("%Y-%m-%d")
+        end_date = yesterday.strftime("%Y-%m-%d")
+        date_text = "Kechagi isbotlar"
+    
+    elif date_choice == "📅 Shu oy":
+        start_date = now.replace(day=1).strftime("%Y-%m-%d")
+        end_date = now.strftime("%Y-%m-%d")
+        date_text = f"{now.strftime('%B')} oyidagi isbotlar"
+    
+    elif date_choice == "📆 O'tgan oy":
+        first_day_current = now.replace(day=1)
+        last_day_prev = first_day_current - timedelta(days=1)
+        first_day_prev = last_day_prev.replace(day=1)
+        start_date = first_day_prev.strftime("%Y-%m-%d")
+        end_date = last_day_prev.strftime("%Y-%m-%d")
+        date_text = f"{first_day_prev.strftime('%B')} oyidagi isbotlar"
+    
+    elif date_choice == "✍️ Boshqa sana":
+        await message.answer(
+            text="📅 <b>Sanani tanlang (oxirgi 60 kun):</b>\n\n"
+                 "🏠 Bosh sahifa - Asosiy menyuga qaytish\n"
+                 "⬅️ Ortga - Oldingi bosqichga qaytish",
+            parse_mode="HTML",
+            reply_markup=get_custom_date_keyboard()
+        )
+        return
+    
+    else:
+        try:
+            custom_date = datetime.strptime(date_choice.strip(), "%Y-%m-%d")
+            start_date = custom_date.strftime("%Y-%m-%d")
+            end_date = custom_date.strftime("%Y-%m-%d")
+            date_text = f"{custom_date.strftime('%Y-%m-%d')} sanadagi isbotlar"
+        except ValueError:
+            await message.answer(
+                text="❌ <b>Notoʻgʻri format!</b> Iltimos, sanani YYYY-MM-DD formatida kiriting.",
+                parse_mode="HTML"
+            )
+            return
+    
+    user_data = await state.get_data()
+    selected_role = user_data.get("selected_role")
+    selected_user_id = user_data.get("selected_user_id")
+    selected_user_name = user_data.get("selected_user_name")
+    selected_role_name = user_data.get("selected_role_name")
+    
+    proofs = []
+    
+    if selected_user_id:
+        proofs = get_proofs_by_user(selected_user_id, start_date, end_date)
+        title = f"{selected_user_name} ning {date_text}"
+    elif selected_role_name:
+        proofs = get_proofs_by_role(selected_role_name, start_date, end_date)
+        title = f"{selected_role_name} role dagi barcha xodimlarning {date_text}"
+    elif selected_role == "all":
+        proofs = get_proofs_by_date_range(start_date, end_date)
+        title = f"Barcha xodimlarning {date_text}"
+    else:
+        proofs = get_proofs_by_role(selected_role, start_date, end_date)
+        title = f"{selected_role} role dagi xodimlarning {date_text}"
+    
+    await state.clear()
+    await send_proofs(message, proofs, title)
