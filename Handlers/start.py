@@ -9,7 +9,7 @@ from aiogram.fsm.context import FSMContext
 from Handlers.states import TaskStates
 from Keyboards.main_menu import get_main_menu, get_admin_approval_keyboard, get_task_complete_keyboard
 from utils.users_json import save_users, set_user_busy, set_user_free, is_user_busy, get_user_active_task
-from utils.tasks_json import save_tasks, update_task_status
+from utils.tasks_json import save_tasks, update_task_status, load_tasks
 from utils.proofs_json import add_proof
 from utils.access import check_user_access
 from Handlers.tasks import tasks_router, init_tasks_handler
@@ -38,43 +38,6 @@ def init_all_handlers(users_roles, tasks_database, admin_id):
     init_employees_handler(USERS_ROLES, ADMIN_ID)
     init_salaries_handler(USERS_ROLES)
     init_callback_handler(USERS_ROLES, TASKS_DATABASE, ADMIN_ID)
-
-
-# ================= BUSY MIDDLEWARE (Foydalanuvchi bandligini tekshirish) =================
-
-@start_router.message()
-async def check_user_busy(message: types.Message, state: FSMContext):
-    """Foydalanuvchi band bo'lsa, faqat isbot qabul qilish"""
-    user_id = str(message.from_user.id)
-    
-    # /cancel buyrug'i bilan bandlikdan chiqish
-    if message.text == "/cancel":
-        if is_user_busy(user_id):
-            set_user_free(user_id)
-            await state.clear()
-            await message.answer(
-                text="✅ Siz band holatdan chiqarildingiz.\n\n"
-                     "Endi botning boshqa funksiyalaridan foydalanishingiz mumkin.",
-                reply_markup=get_main_menu(USERS_ROLES[user_id]["role"])
-            )
-        else:
-            await message.answer("Siz band holatda emassiz.")
-        return
-    
-    # Agar foydalanuvchi band bo'lsa va isbot yuborish holatida bo'lmasa
-    if is_user_busy(user_id):
-        current_state = await state.get_state()
-        if current_state != TaskStates.waiting_for_task_proof:
-            await message.answer(
-                text="⏳ <b>Kechirasiz!</b> Siz avvalgi vazifangiz uchun isbot yubormagansiz.\n\n"
-                     "Iltimos, avval isbot yuboring yoki /cancel buyrug'ini bering.\n\n"
-                     f"📌 Kutilayotgan vazifa: {get_user_active_task(user_id)}",
-                parse_mode="HTML"
-            )
-            return
-    
-    # Davom etish
-    await state.update_data()
 
 
 @start_router.message(CommandStart())
@@ -281,13 +244,10 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             text_content=message.text
         )
         
-        # Vazifa statusini yangilash
         if task:
             update_task_status(task_id, "completed", user_id)
-            # TASKS_DATABASE ni qayta yuklash
             TASKS_DATABASE = load_tasks()
         
-        # Foydalanuvchini band holatidan chiqarish
         set_user_free(user_id)
         
         await message.answer(
@@ -460,7 +420,6 @@ async def auto_task_scheduler(bot):
                     if task.get("task_type") == "Kunlik (Bir martalik)":
                         continue
                     
-                    # Faqat pending (bajarilmagan) vazifalarni yuborish
                     if task.get("status") == "completed":
                         continue
                         
