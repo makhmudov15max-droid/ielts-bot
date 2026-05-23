@@ -1,5 +1,7 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 
+
+# ================= ASOSIY MENU =================
 def get_main_menu(role: str):
     role = str(role).strip()
     if role in ["Owner", "Manager"]:
@@ -33,6 +35,7 @@ def get_main_menu(role: str):
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
+# ================= ORTGA / BOSH SAHIFA =================
 def get_back_home_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text="⬅️ Ortga"), KeyboardButton(text="🏠 Bosh sahifa")]],
@@ -40,6 +43,7 @@ def get_back_home_keyboard():
     )
 
 
+# ================= STATIC KEYBOARDS =================
 task_type_keyboard = ReplyKeyboardMarkup(
     keyboard=[[KeyboardButton(text="Muntazam (Doimiy)"), KeyboardButton(text="Kunlik (Bir martalik)")]],
     resize_keyboard=True
@@ -75,6 +79,7 @@ proof_type_keyboard = ReplyKeyboardMarkup(
 )
 
 
+# ================= INLINE KEYBOARDS =================
 def get_inline_days_keyboard(selected_days: list = None):
     if selected_days is None:
         selected_days = []
@@ -117,6 +122,7 @@ def get_remove_tasks_keyboard(tasks_list: list):
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
 
+# ================= ISBOTLAR KEYBOARDS =================
 def get_proof_role_keyboard():
     keyboard = [
         [KeyboardButton(text="Admin"), KeyboardButton(text="Kassir")],
@@ -137,6 +143,7 @@ def get_proof_date_keyboard():
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
+# ================= VAZIFALAR RO'YXATI KEYBOARDS =================
 def get_tasks_list_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
