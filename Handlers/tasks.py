@@ -7,8 +7,8 @@ from Handlers.states import TaskStates
 from Keyboards.main_menu import (
     get_main_menu,
     get_back_home_keyboard,
-    get_tasks_list_keyboard,
-    get_completed_date_keyboard,
+    get_tasks_simple_keyboard,
+    get_custom_date_keyboard_simple,
     task_type_keyboard,
     days_keyboard,
     frequency_keyboard,
@@ -274,7 +274,7 @@ async def get_multiple_times_handler(message: types.Message, state: FSMContext):
     await state.set_state(TaskStates.waiting_for_proof_type)
 
 
-# ================= VAZIFANI YAKUNLASH (TUZATILGAN) =================
+# ================= VAZIFANI YAKUNLASH =================
 @tasks_router.message(TaskStates.waiting_for_proof_type, F.text.in_(["Dumaloq video", "Rasm yuborish", "✍️ Matn yuborish"]))
 async def finalize_task_creation_handler(message: types.Message, state: FSMContext):
     proof_mapping = {
@@ -282,6 +282,8 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
         "Rasm yuborish": "Photo",
         "✍️ Matn yuborish": "Text"
     }
+    
+    tashkent_tz = timezone(timedelta(hours=5))
     
     user_data = await state.get_data()
     task_id = len(TASKS_DATABASE) + 1
@@ -304,7 +306,8 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
         "sent_today_times": [],
         "status": "pending",
         "completed_at": None,
-        "completed_by": None
+        "completed_by": None,
+        "created_at": datetime.now(tashkent_tz).isoformat()
     }
     
     TASKS_DATABASE.append(new_task)
@@ -362,219 +365,174 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
     await state.clear()
 
 
-# ================= VAZIFALAR RO'YXATI (3 TUGMA) =================
+# ================= VAZIFALAR RO'YXATI (YANGI 2 TUGMA) =================
 @tasks_router.message(F.text == "📋 Vazifalar roʻyxati")
-async def tasks_list_menu_handler(message: types.Message, state: FSMContext):
+async def tasks_simple_menu_handler(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
     
-    await state.set_state(TaskStates.waiting_for_tasks_list_choice)
+    await state.set_state(TaskStates.waiting_for_tasks_simple_choice)
     await message.answer(
         text="📋 <b>Vazifalar roʻyxati</b>\n\n"
-             "Qaysi turdagi vazifalarni koʻrmoqchisiz?",
+             "Qaysi kun uchun vazifalarni koʻrmoqchisiz?",
         parse_mode="HTML",
-        reply_markup=get_tasks_list_keyboard()
+        reply_markup=get_tasks_simple_keyboard()
     )
 
 
-# ================= KUTILMOQDA (PENDING) =================
-@tasks_router.message(TaskStates.waiting_for_tasks_list_choice, F.text == "⏳ Kutilmoqda")
-async def show_pending_tasks(message: types.Message, state: FSMContext):
-    if not check_user_access(USERS_ROLES, message.from_user.id):
-        return
-    
-    TASKS_DATABASE = load_tasks()
-    pending_tasks = [t for t in TASKS_DATABASE if t.get("status") == "pending" and t.get("task_type") == "Kunlik (Bir martalik)"]
-    
-    if not pending_tasks:
-        await message.answer(
-            text="📭 Hozircha kutilayotgan (bajarilmagan) bir martalik vazifalar mavjud emas.",
-            reply_markup=get_tasks_list_keyboard()
-        )
-        return
-    
-    response_text = "⏳ <b>Kutilayotgan vazifalar (bajarilmagan):</b>\n\n"
-    for idx, task in enumerate(pending_tasks, 1):
-        response_text += (
-            f"{idx}. <b>{task['task_name']}</b>\n"
-            f"   👤 Masʻul: {task['assigned_to_name']}\n"
-            f"   📝 Izoh: {task['task_description']}\n"
-            f"   📸 Isbot: {task['proof_type']}\n"
-            f"   ⌛️ Holat: Bajarilmadi\n\n"
-        )
-    
-    await message.answer(text=response_text, parse_mode="HTML", reply_markup=get_tasks_list_keyboard())
-
-
-# ================= DOIMIY (RECURRING) =================
-@tasks_router.message(TaskStates.waiting_for_tasks_list_choice, F.text == "🔄 Doimiy")
-async def show_recurring_tasks(message: types.Message, state: FSMContext):
-    if not check_user_access(USERS_ROLES, message.from_user.id):
-        return
-    
-    TASKS_DATABASE = load_tasks()
-    recurring_tasks = [t for t in TASKS_DATABASE if t.get("task_type") == "Muntazam (Doimiy)"]
-    
-    if not recurring_tasks:
-        await message.answer(
-            text="📭 Hozircha doimiy vazifalar mavjud emas.",
-            reply_markup=get_tasks_list_keyboard()
-        )
-        return
-    
-    response_text = "🔄 <b>Doimiy vazifalar:</b>\n\n"
-    for idx, task in enumerate(recurring_tasks, 1):
-        if task.get("status") == "completed":
-            status_icon = "✅ Bajarildi"
-            status_text = "✅ Holat: Bajarildi"
-        else:
-            status_icon = "⏳ Kutilmoqda"
-            status_text = "⌛️ Holat: Bajarilmadi"
-        
-        response_text += (
-            f"{idx}. <b>{task['task_name']}</b>\n"
-            f"   👤 Masʻul: {task['assigned_to_name']}\n"
-            f"   ⏰ Vaqti: {', '.join(task['task_times'])}\n"
-            f"   📅 Kunlar: {task['task_days']}\n"
-            f"   📸 Isbot: {task['proof_type']}\n"
-            f"   {status_text}\n\n"
-        )
-    
-    await message.answer(text=response_text, parse_mode="HTML", reply_markup=get_tasks_list_keyboard())
-
-
-# ================= BAJARILGAN (COMPLETED) =================
-@tasks_router.message(TaskStates.waiting_for_tasks_list_choice, F.text == "✅ Bajarilgan")
-async def show_completed_tasks_menu(message: types.Message, state: FSMContext):
-    if not check_user_access(USERS_ROLES, message.from_user.id):
-        return
-    
-    await state.set_state(TaskStates.waiting_for_completed_date)
-    await message.answer(
-        text="✅ <b>Bajarilgan vazifalar</b>\n\n"
-             "Qaysi sana uchun bajarilgan vazifalarni koʻrmoqchisiz?",
-        parse_mode="HTML",
-        reply_markup=get_completed_date_keyboard()
-    )
-
-
-# ================= BAJARILGAN - BUGUN =================
-@tasks_router.message(TaskStates.waiting_for_completed_date, F.text == "📅 Bugun")
-async def show_completed_today(message: types.Message, state: FSMContext):
+# ================= BUGUNGI VAZIFALAR =================
+@tasks_router.message(TaskStates.waiting_for_tasks_simple_choice, F.text == "📅 Bugun")
+async def show_today_all_tasks(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
     
     tashkent_tz = timezone(timedelta(hours=5))
-    today = datetime.now(tashkent_tz).strftime("%Y-%m-%d")
+    now = datetime.now(tashkent_tz)
+    today = now.strftime("%Y-%m-%d")
+    current_hour = now.hour
     
     TASKS_DATABASE = load_tasks()
     
-    completed_tasks = []
-    for task in TASKS_DATABASE:
-        if task.get("status") == "completed":
-            completed_at = task.get("completed_at", "")
-            if completed_at:
-                completed_date = completed_at.split("T")[0]
-                if completed_date == today:
-                    completed_tasks.append(task)
+    # Agar kechasi 12 dan keyin bo'lsa, faqat doimiy vazifalar
+    show_only_recurring = current_hour >= 0 and current_hour < 6  # 00:00 dan 06:00 gacha
     
-    if not completed_tasks:
-        await message.answer(
-            text=f"📭 Bugun ({today}) bajarilgan vazifalar topilmadi.",
-            reply_markup=get_completed_date_keyboard()
-        )
+    all_tasks = []
+    for task in TASKS_DATABASE:
+        task_type = task.get("task_type")
+        
+        if task_type == "Muntazam (Doimiy)":
+            # Doimiy vazifalar har doim ko'rinadi
+            all_tasks.append(task)
+        elif task_type == "Kunlik (Bir martalik)":
+            if not show_only_recurring:
+                # Bir martalik vazifalar faqat ertalabgacha ko'rinadi
+                all_tasks.append(task)
+    
+    if not all_tasks:
+        if show_only_recurring:
+            await message.answer(
+                text=f"📭 Hozir (kechasi {current_hour}:00) faqat doimiy vazifalar ko'rinadi.\n\n"
+                     "Doimiy vazifalar mavjud emas.",
+                reply_markup=get_tasks_simple_keyboard()
+            )
+        else:
+            await message.answer(
+                text=f"📭 Bugun ({today}) uchun vazifalar topilmadi.",
+                reply_markup=get_tasks_simple_keyboard()
+            )
         return
     
-    response_text = f"✅ <b>{today} bajarilgan vazifalar:</b>\n\n"
-    for idx, task in enumerate(completed_tasks, 1):
-        completed_by = USERS_ROLES.get(str(task.get("completed_by")), {}).get("name", "Noma'lum")
+    response_text = f"📅 <b>{today} kungi vazifalar:</b>\n\n"
+    for idx, task in enumerate(all_tasks, 1):
+        if task.get("status") == "completed":
+            completed_by = USERS_ROLES.get(str(task.get("completed_by")), {}).get("name", "Noma'lum")
+            status_text = f"✅ Holat: Bajarildi (👤 {completed_by})"
+        else:
+            status_text = "⌛️ Holat: Bajarilmadi"
         
-        completed_time = task.get("completed_at", "Nomaʼlum")
-        if "T" in completed_time:
-            completed_time = completed_time.split("T")[1].split("+")[0][:5]
-        
-        response_text += (
-            f"{idx}. <b>{task['task_name']}</b>\n"
-            f"   👤 Masʻul: {task['assigned_to_name']}\n"
-            f"   👤 Bajargan: {completed_by}\n"
-            f"   📸 Isbot: {task['proof_type']}\n"
-            f"   ⏰ Vaqt: {completed_time}\n"
-            f"   ✅ Holat: Bajarildi\n\n"
-        )
+        if task.get("task_type") == "Kunlik (Bir martalik)":
+            response_text += (
+                f"{idx}. <b>[KUNLIK] {task['task_name']}</b>\n"
+                f"   👤 Masʻul: {task['assigned_to_name']}\n"
+                f"   📝 Izoh: {task['task_description']}\n"
+                f"   📸 Isbot: {task['proof_type']}\n"
+                f"   {status_text}\n\n"
+            )
+        else:
+            response_text += (
+                f"{idx}. <b>[DOIMIY] {task['task_name']}</b>\n"
+                f"   👤 Masʻul: {task['assigned_to_name']}\n"
+                f"   ⏰ Vaqti: {', '.join(task['task_times'])}\n"
+                f"   📅 Kunlar: {task['task_days']}\n"
+                f"   📸 Isbot: {task['proof_type']}\n"
+                f"   {status_text}\n\n"
+            )
     
-    await message.answer(text=response_text, parse_mode="HTML", reply_markup=get_completed_date_keyboard())
+    await message.answer(text=response_text, parse_mode="HTML", reply_markup=get_tasks_simple_keyboard())
 
 
-# ================= BAJARILGAN - SANA TANLASH =================
-@tasks_router.message(TaskStates.waiting_for_completed_date, F.text == "✍️ Sana tanlash")
-async def ask_for_custom_date(message: types.Message, state: FSMContext):
+# ================= SANA TANLASH =================
+@tasks_router.message(TaskStates.waiting_for_tasks_simple_choice, F.text == "📆 Sana")
+async def ask_for_custom_date_tasks(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
     
+    await state.set_state(TaskStates.waiting_for_custom_date)
     await message.answer(
-        text="📅 <b>Sanani kiriting (YYYY-MM-DD formatida):</b>\n\n"
-             "Masalan: <code>2026-05-23</code>\n\n"
-             "🏠 Bosh sahifa - Asosiy menyuga qaytish\n"
-             "⬅️ Ortga - Oldingi bosqichga qaytish",
+        text="📅 <b>Sanani tanlang (oxirgi 60 kun):</b>",
         parse_mode="HTML",
-        reply_markup=get_back_home_keyboard()
+        reply_markup=get_custom_date_keyboard_simple()
     )
 
 
-@tasks_router.message(TaskStates.waiting_for_completed_date)
-async def show_completed_by_date(message: types.Message, state: FSMContext):
+@tasks_router.message(TaskStates.waiting_for_custom_date)
+async def show_tasks_by_selected_date(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
     
-    if await handle_back_or_home(message, state, TaskStates.waiting_for_tasks_list_choice):
+    if await handle_back_or_home(message, state, TaskStates.waiting_for_tasks_simple_choice):
         return
     
     date_text = message.text.strip()
     if not re.match(r"\d{4}-\d{2}-\d{2}", date_text):
         await message.answer(
-            text="❌ <b>Notoʻgʻri format!</b> Iltimos, sanani YYYY-MM-DD formatida kiriting.\n\n"
-                 "Masalan: <code>2026-05-23</code>",
+            text="❌ <b>Notoʻgʻri format!</b> Iltimos, sanani YYYY-MM-DD formatida kiriting.",
             parse_mode="HTML",
-            reply_markup=get_completed_date_keyboard()
+            reply_markup=get_custom_date_keyboard_simple()
         )
         return
     
     TASKS_DATABASE = load_tasks()
     
-    completed_tasks = []
+    all_tasks = []
     for task in TASKS_DATABASE:
-        if task.get("status") == "completed":
-            completed_at = task.get("completed_at", "")
-            if completed_at:
-                completed_date = completed_at.split("T")[0]
-                if completed_date == date_text:
-                    completed_tasks.append(task)
+        task_type = task.get("task_type")
+        
+        if task_type == "Muntazam (Doimiy)":
+            # Doimiy vazifalar har doim ko'rinadi
+            all_tasks.append(task)
+        elif task_type == "Kunlik (Bir martalik)":
+            # Bir martalik vazifalar faqat o'sha sanada ko'rinadi
+            created_at = task.get("created_at", "")
+            if created_at:
+                created_date = created_at.split("T")[0]
+                if created_date == date_text:
+                    all_tasks.append(task)
     
-    if not completed_tasks:
+    if not all_tasks:
         await message.answer(
-            text=f"📭 {date_text} sanada bajarilgan vazifalar topilmadi.",
-            reply_markup=get_completed_date_keyboard()
+            text=f"📭 {date_text} sanada vazifalar topilmadi.",
+            reply_markup=get_custom_date_keyboard_simple()
         )
         return
     
-    response_text = f"✅ <b>{date_text} bajarilgan vazifalar:</b>\n\n"
-    for idx, task in enumerate(completed_tasks, 1):
-        completed_by = USERS_ROLES.get(str(task.get("completed_by")), {}).get("name", "Noma'lum")
+    response_text = f"📅 <b>{date_text} kungi vazifalar:</b>\n\n"
+    for idx, task in enumerate(all_tasks, 1):
+        if task.get("status") == "completed":
+            completed_by = USERS_ROLES.get(str(task.get("completed_by")), {}).get("name", "Noma'lum")
+            status_text = f"✅ Holat: Bajarildi (👤 {completed_by})"
+        else:
+            status_text = "⌛️ Holat: Bajarilmadi"
         
-        completed_time = task.get("completed_at", "Nomaʼlum")
-        if "T" in completed_time:
-            completed_time = completed_time.split("T")[1].split("+")[0][:5]
-        
-        response_text += (
-            f"{idx}. <b>{task['task_name']}</b>\n"
-            f"   👤 Masʻul: {task['assigned_to_name']}\n"
-            f"   👤 Bajargan: {completed_by}\n"
-            f"   📸 Isbot: {task['proof_type']}\n"
-            f"   ⏰ Vaqt: {completed_time}\n"
-            f"   ✅ Holat: Bajarildi\n\n"
-        )
+        if task.get("task_type") == "Kunlik (Bir martalik)":
+            response_text += (
+                f"{idx}. <b>[KUNLIK] {task['task_name']}</b>\n"
+                f"   👤 Masʻul: {task['assigned_to_name']}\n"
+                f"   📝 Izoh: {task['task_description']}\n"
+                f"   📸 Isbot: {task['proof_type']}\n"
+                f"   {status_text}\n\n"
+            )
+        else:
+            response_text += (
+                f"{idx}. <b>[DOIMIY] {task['task_name']}</b>\n"
+                f"   👤 Masʻul: {task['assigned_to_name']}\n"
+                f"   ⏰ Vaqti: {', '.join(task['task_times'])}\n"
+                f"   📅 Kunlar: {task['task_days']}\n"
+                f"   📸 Isbot: {task['proof_type']}\n"
+                f"   {status_text}\n\n"
+            )
     
-    await message.answer(text=response_text, parse_mode="HTML", reply_markup=get_completed_date_keyboard())
+    await message.answer(text=response_text, parse_mode="HTML", reply_markup=get_custom_date_keyboard_simple())
 
 
 # ================= VAZIFA O'CHIRISH =================
