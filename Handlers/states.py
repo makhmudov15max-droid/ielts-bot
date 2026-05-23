@@ -65,3 +65,7 @@ class CashierSalaryStates(StatesGroup):
     active_debtors = State()
     archive_students = State()
     archive_debtors = State()
+
+# Vazifalar ro'yxati uchun state lar
+waiting_for_tasks_list_choice = State()   # 3 tugmadan birini tanlash
+waiting_for_completed_date = State()      # Bajarilgan vazifalar uchun sana tanlash
