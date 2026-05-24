@@ -9,7 +9,6 @@ from Keyboards.main_menu import (
     get_employee_list_keyboard
 )
 from utils.access import check_user_access
-from utils.users_db import get_all_employees
 
 admin_report_router = Router()
 
