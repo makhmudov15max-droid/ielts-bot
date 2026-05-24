@@ -53,17 +53,36 @@ async def save_tasks(tasks_database):
             await conn.execute("TRUNCATE tasks RESTART IDENTITY")
             
             for task in tasks_database:
+                # assigned_to_id ni STRING ga o'zgartirish (PostgreSQL TEXT uchun)
+                assigned_to_id = str(task.get("assigned_to_id"))
+                # created_at ni string formatda saqlash
+                created_at = task.get("created_at")
+                if created_at and isinstance(created_at, str):
+                    created_at = created_at.replace('T', ' ').replace('Z', '')
+                
                 await conn.execute("""
                     INSERT INTO tasks (id, task_type, task_name, task_description, task_days,
                                        task_frequency, task_times, proof_type, assigned_to_id,
                                        assigned_to_name, sent_today_times, status, completed_at,
                                        completed_by, created_at)
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-                """, task["id"], task["task_type"], task["task_name"], task.get("task_description"),
-                   task.get("task_days"), task.get("task_frequency"), task.get("task_times", []),
-                   task["proof_type"], task["assigned_to_id"], task["assigned_to_name"],
-                   task.get("sent_today_times", []), task["status"], task.get("completed_at"),
-                   task.get("completed_by"), task.get("created_at"))
+                """, 
+                    task["id"], 
+                    task["task_type"], 
+                    task["task_name"], 
+                    task.get("task_description"),
+                    task.get("task_days"), 
+                    task.get("task_frequency"), 
+                    task.get("task_times", []),
+                    task["proof_type"], 
+                    assigned_to_id,  # STRING sifatida
+                    task.get("assigned_to_name"),
+                    task.get("sent_today_times", []), 
+                    task["status"], 
+                    task.get("completed_at"),
+                    task.get("completed_by"), 
+                    created_at
+                )
     except Exception as e:
         logging.error(f"Tasks saqlash xatosi: {e}")
 
