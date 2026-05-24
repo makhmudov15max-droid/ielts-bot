@@ -7,8 +7,8 @@ import logging
 from Handlers.states import TaskStates
 from Keyboards.main_menu import get_main_menu, get_proof_role_keyboard, get_proof_date_keyboard
 from utils.access import check_user_access
-from utils.users_json import load_users
-from utils.proofs_json import get_proofs_by_user, get_proofs_by_role, get_proofs_by_date_range
+from utils.users_db import load_users
+from utils.proofs_db import get_proofs_by_user, get_proofs_by_role, get_proofs_by_date_range
 
 proofs_router = Router()
 
@@ -399,16 +399,16 @@ async def proof_date_selected_handler(message: types.Message, state: FSMContext)
     proofs = []
     
     if selected_user_id:
-        proofs = get_proofs_by_user(selected_user_id, start_date, end_date)
+        proofs = await get_proofs_by_user(selected_user_id, start_date, end_date)
         title = f"{selected_user_name} ning {date_text}"
     elif selected_role_name:
-        proofs = get_proofs_by_role(selected_role_name, start_date, end_date)
+        proofs = await get_proofs_by_role(selected_role_name, start_date, end_date)
         title = f"{selected_role_name} role dagi barcha xodimlarning {date_text}"
     elif selected_role == "all":
-        proofs = get_proofs_by_date_range(start_date, end_date)
+        proofs = await get_proofs_by_date_range(start_date, end_date)
         title = f"Barcha xodimlarning {date_text}"
     else:
-        proofs = get_proofs_by_role(selected_role, start_date, end_date)
+        proofs = await get_proofs_by_role(selected_role, start_date, end_date)
         title = f"{selected_role} role dagi xodimlarning {date_text}"
     
     await state.clear()
