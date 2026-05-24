@@ -108,15 +108,15 @@ async def insert_task(task: dict):
         if isinstance(created_at, str):
             try:
                 created_at = datetime.fromisoformat(created_at)
-                # Agar timezone yo'q bo'lsa (naive), Tashkent vaqtini qo'shish
-                if created_at.tzinfo is None:
-                    created_at = created_at.replace(tzinfo=tashkent_tz)
             except Exception:
                 created_at = datetime.now(tashkent_tz)
         elif created_at is None:
             created_at = datetime.now(tashkent_tz)
-        elif isinstance(created_at, datetime) and created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=tashkent_tz)
+        
+        # PostgreSQL TIMESTAMP (without time zone) naive datetime kutadi
+        # Timezone-aware bo'lsa, tzinfo ni olib tashlaymiz
+        if isinstance(created_at, datetime) and created_at.tzinfo is not None:
+            created_at = created_at.replace(tzinfo=None)
 
         # task_times list bo'lishi kerak
         task_times = task.get("task_times", [])
