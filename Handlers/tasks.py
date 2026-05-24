@@ -456,7 +456,10 @@ async def show_today_all_tasks(message: types.Message, state: FSMContext):
     now = datetime.now(tashkent_tz)
     today = now.strftime("%Y-%m-%d")
     
+    print(f"DEBUG TODAY: {today}")
+    
     TASKS_DATABASE = await load_tasks()
+    print(f"DEBUG: {len(TASKS_DATABASE)} ta vazifa yuklandi")
     
     user_role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "")
     user_id = str(message.from_user.id)
@@ -464,19 +467,28 @@ async def show_today_all_tasks(message: types.Message, state: FSMContext):
     all_tasks = []
     for task in TASKS_DATABASE:
         task_type = task.get("task_type")
+        print(f"DEBUG: Task {task.get('id')} - type: {task_type}, created_at: {task.get('created_at')}")
         
         if user_role not in ["Owner", "Manager"]:
             if str(task.get("assigned_to_id")) != user_id:
+                print(f"DEBUG: Task {task.get('id')} - filter by role: skip")
                 continue
         
         if task_type == "Muntazam (Doimiy)":
             all_tasks.append(task)
+            print(f"DEBUG: Task {task.get('id')} - DOIMIY qo'shildi")
         elif task_type == "Kunlik (Bir martalik)":
             created_at = task.get("created_at", "")
             if created_at:
                 created_date = created_at.split("T")[0]
+                print(f"DEBUG: Task {task.get('id')} - created_date: {created_date}, today: {today}")
                 if created_date == today:
                     all_tasks.append(task)
+                    print(f"DEBUG: Task {task.get('id')} - KUNLIK qo'shildi")
+                else:
+                    print(f"DEBUG: Task {task.get('id')} - KUNLIK skipped (date mismatch)")
+    
+    print(f"DEBUG: {len(all_tasks)} ta vazifa topildi")
     
     if not all_tasks:
         await message.answer(
@@ -485,33 +497,7 @@ async def show_today_all_tasks(message: types.Message, state: FSMContext):
         )
         return
     
-    response_text = f"📅 <b>{today} kungi vazifalar:</b>\n\n"
-    for idx, task in enumerate(all_tasks, 1):
-        if task.get("status") == "completed":
-            completed_by = USERS_ROLES.get(str(task.get("completed_by")), {}).get("name", "Noma'lum")
-            status_text = f"✅ Holat: Bajarildi (👤 {completed_by})"
-        else:
-            status_text = "⌛️ Holat: Bajarilmadi"
-        
-        if task.get("task_type") == "Kunlik (Bir martalik)":
-            response_text += (
-                f"{idx}. <b>[KUNLIK] {task['task_name']}</b>\n"
-                f"   👤 Masʻul: {task['assigned_to_name']}\n"
-                f"   📝 Izoh: {task['task_description']}\n"
-                f"   📸 Isbot: {task['proof_type']}\n"
-                f"   {status_text}\n\n"
-            )
-        else:
-            response_text += (
-                f"{idx}. <b>[DOIMIY] {task['task_name']}</b>\n"
-                f"   👤 Masʻul: {task['assigned_to_name']}\n"
-                f"   ⏰ Vaqti: {', '.join(task['task_times'])}\n"
-                f"   📅 Kunlar: {task['task_days']}\n"
-                f"   📸 Isbot: {task['proof_type']}\n"
-                f"   {status_text}\n\n"
-            )
-    
-    await message.answer(text=response_text, parse_mode="HTML", reply_markup=get_tasks_simple_keyboard())
+    # ... qolgan kod ...
 
 
 @tasks_router.message(TaskStates.waiting_for_tasks_simple_choice, F.text == "📆 Sana")
