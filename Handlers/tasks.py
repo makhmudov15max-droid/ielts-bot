@@ -50,7 +50,6 @@ async def handle_back_home_in_task_creation(message: types.Message, state: FSMCo
         await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
         return
     elif message.text == "⬅️ Ortga":
-        # Ortga bosilganda - avvalgi stepga qaytish
         current_state = await state.get_state()
         print(f"DEBUG: Hozirgi state: {current_state}")
         
@@ -87,7 +86,6 @@ async def handle_back_home_in_task_creation(message: types.Message, state: FSMCo
                 await state.set_state(TaskStates.waiting_for_multiple_times if user_data.get("task_frequency") == "Multiple times" else TaskStates.waiting_for_once_time)
                 await message.answer("Qaytish... Vaqtni qayta kiriting:", reply_markup=get_back_home_keyboard())
         else:
-            # Boshqa holatlar uchun asosiy menyuga qaytish
             await state.clear()
             role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
             await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
@@ -319,18 +317,12 @@ async def get_multiple_times_handler(message: types.Message, state: FSMContext):
 # ================= ISBOT TURINI QABUL QILISH =================
 @tasks_router.message(TaskStates.waiting_for_proof_type)
 async def finalize_task_creation_handler(message: types.Message, state: FSMContext):
-    print(f"DEBUG FINALIZE: Handler chaqirildi. Matn: '{message.text}'")
-    print(f"DEBUG FINALIZE: State: {await state.get_state()}")
-    print(f"DEBUG FINALIZE: check_user_access: {check_user_access(USERS_ROLES, message.from_user.id)}")
+    logging.info(f"finalize_task_creation_handler chaqirildi. Matn: {message.text}")
     
     if not check_user_access(USERS_ROLES, message.from_user.id):
-        print("DEBUG FINALIZE: check_user_access FALSE, return")
         return
     
-    print("DEBUG FINALIZE: Davom etilmoqda...")
-    
     if message.text not in ["Dumaloq video", "Rasm yuborish", "✍️ Matn yuborish"]:
-        print("DEBUG FINALIZE: Notugri tugma")
         await message.answer(
             text="❌ Iltimos, quyidagi tugmalardan birini tanlang:\n\n"
                  "• Dumaloq video\n"
@@ -339,9 +331,6 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
             reply_markup=proof_type_keyboard
         )
         return
-    
-    print("DEBUG FINALIZE: Tugma to'g'ri, davom...")
-    # ... qolgan kod ...
     
     proof_mapping = {
         "Dumaloq video": "Video message", 
@@ -379,6 +368,7 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
     TASKS_DATABASE.append(new_task)
     await save_tasks(TASKS_DATABASE)
     
+    # TO'G'RILANGAN REPORT_TEXT (HTML XATOSIZ)
     report_text = (
         f"🎉 <b>Yangi vazifa muvaffaqiyatli yaratildi!</b>\n\n"
         f"📋 <b>Turi:</b> {new_task['task_type']}\n"
@@ -394,7 +384,7 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
         )
     report_text += (
         f"📸 <b>Talab etiladigan isbot:</b> {message.text}\n"
-        f"👤 <b>Masʻul xodim:</b> {new_task['assigned_to_name']}\n"
+        f"👤 <b>Mas'ul xodim:</b> {new_task['assigned_to_name']}\n"
         f"📊 <b>Holat:</b> ⏳ Kutilmoqda"
     )
     
