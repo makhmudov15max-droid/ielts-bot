@@ -57,61 +57,80 @@ async def load_tasks():
         return []
 
 async def save_tasks(tasks_database):
-    """PostgreSQL ga vazifalarni saqlaydi"""
+    """Faqat sent_today_times maydonini yangilaydi (scheduler uchun)"""
     pool = get_pool()
     if not pool:
         logging.error("save_tasks: pool mavjud emas")
         return
     
-    logging.info(f"save_tasks: {len(tasks_database)} ta vazifa saqlanmoqda")
+    logging.info(f"save_tasks: {len(tasks_database)} ta vazifa sent_today_times yangilanmoqda")
     
     try:
         async with pool.acquire() as conn:
-            await conn.execute("TRUNCATE tasks RESTART IDENTITY")
-            
-            for idx, task in enumerate(tasks_database):
+            for task in tasks_database:
                 try:
-                    assigned_to_id = str(task.get("assigned_to_id"))
-                    created_at = task.get("created_at")
-                    
-                    if created_at and isinstance(created_at, str):
-                        try:
-                            created_at = created_at.replace('T', ' ').replace('Z', '')[:19]
-                        except:
-                            created_at = datetime.now().isoformat()
-                    
                     await conn.execute("""
-                        INSERT INTO tasks (id, task_type, task_name, task_description, task_days,
-                                           task_frequency, task_times, proof_type, assigned_to_id,
-                                           assigned_to_name, sent_today_times, status, completed_at,
-                                           completed_by, created_at)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-                    """, 
-                        task["id"], 
-                        task["task_type"], 
-                        task["task_name"], 
-                        task.get("task_description"),
-                        task.get("task_days"), 
-                        task.get("task_frequency"), 
-                        task.get("task_times", []),
-                        task["proof_type"], 
-                        assigned_to_id,
-                        task.get("assigned_to_name"),
-                        task.get("sent_today_times", []), 
-                        task["status"], 
-                        task.get("completed_at"),
-                        task.get("completed_by"), 
-                        created_at
+                        UPDATE tasks SET sent_today_times = $1 WHERE id = $2
+                    """,
+                        task.get("sent_today_times", []),
+                        task["id"]
                     )
-                    logging.info(f"save_tasks: Task {task['id']} saqlandi")
                 except Exception as inner_e:
-                    logging.error(f"save_tasks: Task {task.get('id')} saqlashda xatolik: {inner_e}")
-                    logging.error(f"Task malumotlari: {task}")
-                    
+                    logging.error(f"save_tasks: Task {task.get('id')} yangilashda xatolik: {inner_e}")
     except Exception as e:
         logging.error(f"save_tasks xatosi: {e}")
         import traceback
         traceback.print_exc()
+    
+async def reset_sent_today_times():
+    """Har kuni 00:00 da barcha sent_today_times ni tozalash"""
+    pool = get_pool()
+    if not pool:
+        return
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute("UPDATE tasks SET sent_today_times = '{}'")
+        logging.info("reset_sent_today_times: barcha sent_today_times tozalandi")
+    except Exception as e:
+        logging.error(f"reset_sent_today_times xatosi: {e}")
+
+
+async def insert_task(task: dict):
+    """Yangi vazifani to'g'ridan-to'g'ri PostgreSQL ga qo'shish (ID auto-increment)"""
+    pool = get_pool()
+    if not pool:
+        logging.error("insert_task: pool mavjud emas")
+        return None
+    try:
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                INSERT INTO tasks (task_type, task_name, task_description, task_days,
+                                   task_frequency, task_times, proof_type, assigned_to_id,
+                                   assigned_to_name, sent_today_times, status, created_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                RETURNING id
+            """,
+                task["task_type"],
+                task["task_name"],
+                task.get("task_description"),
+                task.get("task_days"),
+                task.get("task_frequency"),
+                task.get("task_times", []),
+                task["proof_type"],
+                str(task["assigned_to_id"]),
+                task.get("assigned_to_name"),
+                task.get("sent_today_times", []),
+                task.get("status", "pending"),
+                task.get("created_at")
+            )
+            new_id = row["id"]
+            logging.info(f"insert_task: yangi task ID={new_id} saqlandi")
+            return new_id
+    except Exception as e:
+        logging.error(f"insert_task xatosi: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 async def update_task_status(task_id: int, status: str, completed_by: str = None):
     """Vazifa statusini yangilash"""
