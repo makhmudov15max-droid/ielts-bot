@@ -104,13 +104,19 @@ async def insert_task(task: dict):
     try:
         # created_at ni datetime obyektiga o'tkazish
         created_at = task.get("created_at")
+        tashkent_tz = timezone(timedelta(hours=5))
         if isinstance(created_at, str):
             try:
                 created_at = datetime.fromisoformat(created_at)
+                # Agar timezone yo'q bo'lsa (naive), Tashkent vaqtini qo'shish
+                if created_at.tzinfo is None:
+                    created_at = created_at.replace(tzinfo=tashkent_tz)
             except Exception:
-                created_at = datetime.now(timezone(timedelta(hours=5)))
+                created_at = datetime.now(tashkent_tz)
         elif created_at is None:
-            created_at = datetime.now(timezone(timedelta(hours=5)))
+            created_at = datetime.now(tashkent_tz)
+        elif isinstance(created_at, datetime) and created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=tashkent_tz)
 
         # task_times list bo'lishi kerak
         task_times = task.get("task_times", [])
