@@ -160,8 +160,8 @@ async def update_task_status(task_id: int, status: str, completed_by: str = None
     try:
         async with pool.acquire() as conn:
             if status == "completed":
-                tashkent_tz = timezone(timedelta(hours=5))
-                completed_at = datetime.now(tashkent_tz).isoformat()
+                # PostgreSQL TIMESTAMP (without time zone) naive datetime kutadi
+                completed_at = datetime.now()  # timezone yo'q (naive)
                 await conn.execute("""
                     UPDATE tasks SET status = $1, completed_at = $2, completed_by = $3
                     WHERE id = $4
