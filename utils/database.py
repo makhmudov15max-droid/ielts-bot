@@ -1,7 +1,5 @@
 import asyncpg
 import os
-import json
-from datetime import datetime, timedelta, timezone
 import logging
 
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -12,7 +10,25 @@ async def init_db():
     """Database pool ni yaratish va jadvallarni yaratish"""
     global db_pool
     try:
-        db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=10)
+        if not DATABASE_URL:
+            logging.error("❌ DATABASE_URL environment variable topilmadi!")
+            raise Exception("DATABASE_URL not set")
+        
+        logging.info("🔗 PostgreSQL ga ulanish...")
+        
+        # Railway PostgreSQL uchun ulanish
+        db_pool = await asyncpg.create_pool(
+            DATABASE_URL,
+            min_size=1,
+            max_size=10,
+            command_timeout=60,
+            timeout=60
+        )
+        
+        # Ulanishni tekshirish
+        async with db_pool.acquire() as conn:
+            await conn.execute("SELECT 1")
+        
         logging.info("✅ PostgreSQL ulandi!")
         
         # Jadvallarni yaratish
