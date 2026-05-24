@@ -319,12 +319,18 @@ async def get_multiple_times_handler(message: types.Message, state: FSMContext):
 # ================= ISBOT TURINI QABUL QILISH =================
 @tasks_router.message(TaskStates.waiting_for_proof_type)
 async def finalize_task_creation_handler(message: types.Message, state: FSMContext):
-    logging.info(f"finalize_task_creation_handler chaqirildi. Matn: {message.text}")
+    print(f"DEBUG FINALIZE: Handler chaqirildi. Matn: '{message.text}'")
+    print(f"DEBUG FINALIZE: State: {await state.get_state()}")
+    print(f"DEBUG FINALIZE: check_user_access: {check_user_access(USERS_ROLES, message.from_user.id)}")
     
     if not check_user_access(USERS_ROLES, message.from_user.id):
+        print("DEBUG FINALIZE: check_user_access FALSE, return")
         return
     
+    print("DEBUG FINALIZE: Davom etilmoqda...")
+    
     if message.text not in ["Dumaloq video", "Rasm yuborish", "✍️ Matn yuborish"]:
+        print("DEBUG FINALIZE: Notugri tugma")
         await message.answer(
             text="❌ Iltimos, quyidagi tugmalardan birini tanlang:\n\n"
                  "• Dumaloq video\n"
@@ -333,6 +339,9 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
             reply_markup=proof_type_keyboard
         )
         return
+    
+    print("DEBUG FINALIZE: Tugma to'g'ri, davom...")
+    # ... qolgan kod ...
     
     proof_mapping = {
         "Dumaloq video": "Video message", 
