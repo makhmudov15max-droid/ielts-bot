@@ -1,9 +1,6 @@
-aiogram>=3.0.0
-gspread==6.0.0
-python-dotenv==1.0.1
-google-auth
-google-auth-oauthlib
-google-auth-httplib2
+aiogram==3.4.1
 asyncpg==0.29.0
 redis==5.0.1
 aioredis==2.0.1
+gspread==6.1.0
+oauth2client==4.1.3
