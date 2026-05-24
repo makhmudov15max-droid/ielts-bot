@@ -23,7 +23,6 @@ async def load_tasks():
             
             tasks = []
             for row in rows:
-                # created_at ni to'g'ri formatlash
                 created_at_value = row["created_at"]
                 if created_at_value:
                     if isinstance(created_at_value, datetime):
@@ -52,7 +51,9 @@ async def load_tasks():
                 })
             return tasks
     except Exception as e:
-        logging.error(f"Tasks yuklash xatosi: {e}")
+        logging.error(f"load_tasks xatosi: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 async def save_tasks(tasks_database):
@@ -66,46 +67,51 @@ async def save_tasks(tasks_database):
     
     try:
         async with pool.acquire() as conn:
-            # Avval barcha vazifalarni o'chiramiz
             await conn.execute("TRUNCATE tasks RESTART IDENTITY")
             
-            for task in tasks_database:
-                assigned_to_id = str(task.get("assigned_to_id"))
-                created_at = task.get("created_at")
-                
-                # created_at ni datetime ga o'zgartirish
-                if created_at and isinstance(created_at, str):
-                    try:
-                        created_at = created_at.replace('T', ' ').replace('Z', '')[:19]
-                    except:
-                        created_at = datetime.now().isoformat()
-                
-                await conn.execute("""
-                    INSERT INTO tasks (id, task_type, task_name, task_description, task_days,
-                                       task_frequency, task_times, proof_type, assigned_to_id,
-                                       assigned_to_name, sent_today_times, status, completed_at,
-                                       completed_by, created_at)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-                """, 
-                    task["id"], 
-                    task["task_type"], 
-                    task["task_name"], 
-                    task.get("task_description"),
-                    task.get("task_days"), 
-                    task.get("task_frequency"), 
-                    task.get("task_times", []),
-                    task["proof_type"], 
-                    assigned_to_id,
-                    task.get("assigned_to_name"),
-                    task.get("sent_today_times", []), 
-                    task["status"], 
-                    task.get("completed_at"),
-                    task.get("completed_by"), 
-                    created_at
-                )
-                logging.info(f"save_tasks: Task {task['id']} saqlandi")
+            for idx, task in enumerate(tasks_database):
+                try:
+                    assigned_to_id = str(task.get("assigned_to_id"))
+                    created_at = task.get("created_at")
+                    
+                    if created_at and isinstance(created_at, str):
+                        try:
+                            created_at = created_at.replace('T', ' ').replace('Z', '')[:19]
+                        except:
+                            created_at = datetime.now().isoformat()
+                    
+                    await conn.execute("""
+                        INSERT INTO tasks (id, task_type, task_name, task_description, task_days,
+                                           task_frequency, task_times, proof_type, assigned_to_id,
+                                           assigned_to_name, sent_today_times, status, completed_at,
+                                           completed_by, created_at)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+                    """, 
+                        task["id"], 
+                        task["task_type"], 
+                        task["task_name"], 
+                        task.get("task_description"),
+                        task.get("task_days"), 
+                        task.get("task_frequency"), 
+                        task.get("task_times", []),
+                        task["proof_type"], 
+                        assigned_to_id,
+                        task.get("assigned_to_name"),
+                        task.get("sent_today_times", []), 
+                        task["status"], 
+                        task.get("completed_at"),
+                        task.get("completed_by"), 
+                        created_at
+                    )
+                    logging.info(f"save_tasks: Task {task['id']} saqlandi")
+                except Exception as inner_e:
+                    logging.error(f"save_tasks: Task {task.get('id')} saqlashda xatolik: {inner_e}")
+                    logging.error(f"Task malumotlari: {task}")
+                    
     except Exception as e:
-        logging.error(f"Tasks saqlash xatosi: {e}")
+        logging.error(f"save_tasks xatosi: {e}")
+        import traceback
+        traceback.print_exc()
 
 async def update_task_status(task_id: int, status: str, completed_by: str = None):
     """Vazifa statusini yangilash"""
