@@ -368,9 +368,9 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
     TASKS_DATABASE.append(new_task)
     await save_tasks(TASKS_DATABASE)
     
-    # TO'G'RILANGAN REPORT_TEXT (HTML XATOSIZ)
+        # TO'LIQ TOZALANGAN REPORT_TEXT (hech qanday HTML xatosi yo'q)
     report_text = (
-        f"🎉 <b>Yangi vazifa muvaffaqiyatli yaratildi!</b>\n\n"
+        "🎉 <b>Yangi vazifa muvaffaqiyatli yaratildi!</b>\n\n"
         f"📋 <b>Turi:</b> {new_task['task_type']}\n"
         f"📌 <b>Nomi:</b> {new_task['task_name']}\n"
     )
@@ -384,7 +384,7 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
         )
     report_text += (
         f"📸 <b>Talab etiladigan isbot:</b> {message.text}\n"
-        f"👤 <b>Mas'ul xodim:</b> {new_task['assigned_to_name']}\n"
+        f"👤 <b>Masul xodim:</b> {new_task['assigned_to_name']}\n"
         f"📊 <b>Holat:</b> ⏳ Kutilmoqda"
     )
     
