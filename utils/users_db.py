@@ -124,3 +124,17 @@ async def get_user_active_task(user_id: str) -> int:
     except Exception as e:
         logging.error(f"get_user_active_task xatosi: {e}")
         return None
+
+async def get_user_role(user_id: str) -> str:
+    """Foydalanuvchining rolini qaytaradi (teachers_sheets, group_report uchun)"""
+    pool = get_pool()
+    if not pool:
+        return None
+    
+    try:
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow("SELECT role FROM users WHERE user_id = $1", user_id)
+            return row["role"] if row else None
+    except Exception as e:
+        logging.error(f"get_user_role xatosi: {e}")
+        return None
