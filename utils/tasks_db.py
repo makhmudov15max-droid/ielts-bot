@@ -6,6 +6,7 @@ async def load_tasks():
     """PostgreSQL dan vazifalarni yuklaydi"""
     pool = get_pool()
     if not pool:
+        logging.error("load_tasks: pool mavjud emas")
         return []
     
     try:
@@ -18,8 +19,20 @@ async def load_tasks():
                 FROM tasks ORDER BY id
             """)
             
+            logging.info(f"load_tasks: {len(rows)} ta vazifa topildi")
+            
             tasks = []
             for row in rows:
+                # created_at ni to'g'ri formatlash
+                created_at_value = row["created_at"]
+                if created_at_value:
+                    if isinstance(created_at_value, datetime):
+                        created_at_str = created_at_value.isoformat()
+                    else:
+                        created_at_str = str(created_at_value)
+                else:
+                    created_at_str = None
+                    
                 tasks.append({
                     "id": row["id"],
                     "task_type": row["task_type"],
@@ -33,9 +46,9 @@ async def load_tasks():
                     "assigned_to_name": row["assigned_to_name"] or "Noma'lum",
                     "sent_today_times": row["sent_today_times"] or [],
                     "status": row["status"],
-                    "completed_at": row["completed_at"].isoformat() if row["completed_at"] else None,
+                    "completed_at": row["completed_at"].isoformat() if row["completed_at"] and isinstance(row["completed_at"], datetime) else row["completed_at"],
                     "completed_by": row["completed_by"],
-                    "created_at": row["created_at"].isoformat()
+                    "created_at": created_at_str
                 })
             return tasks
     except Exception as e:
@@ -43,22 +56,29 @@ async def load_tasks():
         return []
 
 async def save_tasks(tasks_database):
-    """PostgreSQL ga vazifalarni saqlaydi (to'liq qayta yozadi)"""
+    """PostgreSQL ga vazifalarni saqlaydi"""
     pool = get_pool()
     if not pool:
+        logging.error("save_tasks: pool mavjud emas")
         return
+    
+    logging.info(f"save_tasks: {len(tasks_database)} ta vazifa saqlanmoqda")
     
     try:
         async with pool.acquire() as conn:
+            # Avval barcha vazifalarni o'chiramiz
             await conn.execute("TRUNCATE tasks RESTART IDENTITY")
             
             for task in tasks_database:
-                # assigned_to_id ni STRING ga o'zgartirish (PostgreSQL TEXT uchun)
                 assigned_to_id = str(task.get("assigned_to_id"))
-                # created_at ni string formatda saqlash
                 created_at = task.get("created_at")
+                
+                # created_at ni datetime ga o'zgartirish
                 if created_at and isinstance(created_at, str):
-                    created_at = created_at.replace('T', ' ').replace('Z', '')
+                    try:
+                        created_at = created_at.replace('T', ' ').replace('Z', '')[:19]
+                    except:
+                        created_at = datetime.now().isoformat()
                 
                 await conn.execute("""
                     INSERT INTO tasks (id, task_type, task_name, task_description, task_days,
@@ -75,7 +95,7 @@ async def save_tasks(tasks_database):
                     task.get("task_frequency"), 
                     task.get("task_times", []),
                     task["proof_type"], 
-                    assigned_to_id,  # STRING sifatida
+                    assigned_to_id,
                     task.get("assigned_to_name"),
                     task.get("sent_today_times", []), 
                     task["status"], 
@@ -83,6 +103,7 @@ async def save_tasks(tasks_database):
                     task.get("completed_by"), 
                     created_at
                 )
+                logging.info(f"save_tasks: Task {task['id']} saqlandi")
     except Exception as e:
         logging.error(f"Tasks saqlash xatosi: {e}")
 
