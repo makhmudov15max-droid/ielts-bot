@@ -18,6 +18,12 @@ from Handlers.proofs import proofs_router, init_proofs_handler
 from utils.database import init_db, close_db
 from utils.users_db import load_users
 from utils.tasks_db import load_tasks
+from Handlers.teachers_sheets import set_users_roles as set_teachers_users_roles
+from Handlers.group_report import set_users_roles as set_report_users_roles
+
+# ... ma'lumotlar yuklangandan keyin ...
+set_teachers_users_roles(USERS_ROLES)
+set_report_users_roles(USERS_ROLES)
 
 # ================= LOGGING =================
 logging.basicConfig(
