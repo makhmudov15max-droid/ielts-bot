@@ -4,7 +4,7 @@ from aiogram.fsm.context import FSMContext
 from Handlers.states import TaskStates
 from Keyboards.main_menu import get_main_menu
 from utils.access import check_user_access
-from utils.users_json import save_users
+from utils.users_db import save_users  # USERS_DB ga o'zgartirildi
 
 employees_router = Router()
 
@@ -21,7 +21,6 @@ def init_employees_handler(users_roles, admin_id):
 
 
 # ================= XODIMLAR RO'YXATI =================
-
 @employees_router.message(F.text == "👥 Xodimlar")
 async def view_employees_handler(message: types.Message):
     if not check_user_access(USERS_ROLES, message.from_user.id):
@@ -53,7 +52,6 @@ async def view_employees_handler(message: types.Message):
 
 
 # ================= XODIM TAHRIRLASH MENYU =================
-
 @employees_router.callback_query(F.data.startswith("editstaff_"))
 async def process_edit_staff_callback(call: types.CallbackQuery, state: FSMContext):
     target_user_id = call.data.split("_")[1]
@@ -84,7 +82,6 @@ async def process_edit_staff_callback(call: types.CallbackQuery, state: FSMConte
 
 
 # ================= ISM O'ZGARTIRISH =================
-
 @employees_router.callback_query(F.data.startswith("rename_"))
 async def rename_staff_callback(call: types.CallbackQuery, state: FSMContext):
     target_user_id = call.data.split("_")[1]
@@ -114,7 +111,7 @@ async def process_new_name_handler(message: types.Message, state: FSMContext):
     if target_user_id and target_user_id in USERS_ROLES:
         old_name = USERS_ROLES[target_user_id]["name"]
         USERS_ROLES[target_user_id]["name"] = new_name
-        save_users(USERS_ROLES)
+        await save_users(USERS_ROLES)  # AWAIT QO'SHILDI
         
         await message.answer(
             text=f"✅ <b>Ism muvaffaqiyatli o‘zgartirildi!</b>\n\n"
@@ -142,7 +139,6 @@ async def process_new_name_handler(message: types.Message, state: FSMContext):
 
 
 # ================= LAVOZIMNI O'ZGARTIRISH =================
-
 @employees_router.callback_query(F.data.startswith("rolechange_"))
 async def process_role_change_menu(call: types.CallbackQuery):
     target_user_id = call.data.split("_")[1]
@@ -175,7 +171,7 @@ async def save_new_role_callback(call: types.CallbackQuery, state: FSMContext):
     
     if target_user_id in USERS_ROLES:
         USERS_ROLES[target_user_id]["role"] = new_role
-        save_users(USERS_ROLES)
+        await save_users(USERS_ROLES)  # AWAIT QO'SHILDI
         staff_name = USERS_ROLES[target_user_id]["name"]
         
         await call.message.edit_text(
@@ -202,7 +198,6 @@ async def save_new_role_callback(call: types.CallbackQuery, state: FSMContext):
 
 
 # ================= XODIMNI CHETLATIRISH =================
-
 @employees_router.callback_query(F.data.startswith("firestaff_"))
 async def fire_staff_callback(call: types.CallbackQuery, state: FSMContext):
     target_user_id = call.data.split("_")[1]
@@ -210,7 +205,7 @@ async def fire_staff_callback(call: types.CallbackQuery, state: FSMContext):
     if target_user_id in USERS_ROLES:
         staff_name = USERS_ROLES[target_user_id]["name"]
         USERS_ROLES[target_user_id]["role"] = "rejected"
-        save_users(USERS_ROLES)
+        await save_users(USERS_ROLES)  # AWAIT QO'SHILDI
         
         await call.message.edit_text(
             text=f"❌ <b>Xodim botdan chetlashtirildi!</b>\n\n"
@@ -244,7 +239,6 @@ async def cancel_edit_staff_callback(call: types.CallbackQuery, state: FSMContex
 
 
 # ================= ARXIV =================
-
 @employees_router.message(F.text == "🗄 Arxiv")
 async def view_archive_handler(message: types.Message):
     if not check_user_access(USERS_ROLES, message.from_user.id):
@@ -316,7 +310,7 @@ async def save_archive_role_callback(call: types.CallbackQuery, state: FSMContex
     
     if target_user_id in USERS_ROLES:
         USERS_ROLES[target_user_id]["role"] = new_role
-        save_users(USERS_ROLES)
+        await save_users(USERS_ROLES)  # AWAIT QO'SHILDI
         
         has_name = USERS_ROLES[target_user_id].get("name") is not None
         display_name = USERS_ROLES[target_user_id]["name"] if has_name else "Xodim"
@@ -334,7 +328,7 @@ async def save_archive_role_callback(call: types.CallbackQuery, state: FSMContex
                 await call.bot.send_message(
                     chat_id=int(target_user_id),
                     text=f"🎉 <b>Xushxabar!</b> Administrator sizni arxivdan chiqardi va joriy lavozimingizni <b>{new_role}</b> etib belgiladi.\n"
-                         f"Bot imkoniyatlaridan to‘liq foydalanishingiz mumkin!",
+                         f"Bot imkoniyatlaridan toʻliq foydalanishingiz mumkin!",
                     parse_mode="HTML",
                     reply_markup=get_main_menu(new_role)
                 )
