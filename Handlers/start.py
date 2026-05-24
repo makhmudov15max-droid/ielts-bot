@@ -9,7 +9,7 @@ from aiogram.fsm.context import FSMContext
 from Handlers.states import TaskStates
 from Keyboards.main_menu import get_main_menu, get_admin_approval_keyboard, get_task_complete_keyboard
 from utils.users_db import save_users, set_user_busy, set_user_free, is_user_busy, get_user_active_task
-from utils.tasks_db import save_tasks, update_task_status, load_tasks, get_task_by_id
+from utils.tasks_db import save_tasks, update_task_status, load_tasks, get_task_by_id, reset_sent_today_times
 from utils.proofs_db import add_proof
 from utils.access import check_user_access
 from Handlers.tasks import tasks_router, init_tasks_handler
@@ -312,9 +312,9 @@ async def auto_task_scheduler(bot):
             day_of_month = now.day
             
             if current_time_str == "00:00":
+                await reset_sent_today_times()
                 for task in TASKS_DATABASE:
                     task["sent_today_times"] = []
-                await save_tasks(TASKS_DATABASE)  # ASYNC + AWAIT
             
             if current_time_str != last_checked_minute:
                 for task in TASKS_DATABASE:
