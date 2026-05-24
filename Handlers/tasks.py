@@ -52,28 +52,34 @@ async def add_task_handler(message: types.Message, state: FSMContext):
 
 @tasks_router.message(F.text.in_(["Muntazam (Doimiy)", "Kunlik (Bir martalik)"]))
 async def task_type_selected_handler(message: types.Message, state: FSMContext):
-    # BOSH SAHIFA VA ORTGA (ENGL BOSHLIDA - ACCESS TEKSHIRUVIDAN OLDIN)
+    # DEBUG
+    print(f"DEBUG: task_type_selected_handler chaqirildi. Matn: '{message.text}'")
+    
+    # BOSH SAHIFA VA ORTGA
     if message.text == "🏠 Bosh sahifa":
+        print("DEBUG: Bosh sahifa tanlandi")
         await state.clear()
         role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
         await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
         return
     if message.text == "⬅️ Ortga":
+        print("DEBUG: Ortga tanlandi")
         await state.clear()
         role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
         await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
         return
     
     if not check_user_access(USERS_ROLES, message.from_user.id):
+        print("DEBUG: check_user_access FALSE")
         return
     
+    print("DEBUG: Davom etilmoqda...")
     await state.update_data(task_type=message.text)
     await message.answer(
         text="Ushbu vazifa qaysi boʻlim/unvon xodimiga tegishli?",
         reply_markup=assign_role_keyboard
     )
     await state.set_state(TaskStates.waiting_for_target_role)
-
 
 @tasks_router.message(TaskStates.waiting_for_target_role, F.text.in_(["Admin", "Kassir", "Sanitar", "Manager"]))
 async def get_target_role_handler(message: types.Message, state: FSMContext):
