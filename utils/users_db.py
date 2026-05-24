@@ -20,20 +20,6 @@ async def load_users(admin_id: int):
                     "active_task": row["active_task"],
                     "is_waiting_for_proof": row["is_waiting_for_proof"]
                 }
-            
-            # Admin (Owner) mavjudligini tekshirish
-            if str(admin_id) not in users:
-                await conn.execute("""
-                    INSERT INTO users (user_id, role, name, active_task, is_waiting_for_proof)
-                    VALUES ($1, $2, $3, $4, $5)
-                """, str(admin_id), "Owner", "Baxtiyorjon", None, False)
-                users[str(admin_id)] = {
-                    "role": "Owner",
-                    "name": "Baxtiyorjon",
-                    "active_task": None,
-                    "is_waiting_for_proof": False
-                }
-            
             return users
     except Exception as e:
         logging.error(f"Users yuklash xatosi: {e}")
@@ -126,7 +112,7 @@ async def get_user_active_task(user_id: str) -> int:
         return None
 
 async def get_user_role(user_id: str) -> str:
-    """Foydalanuvchining rolini qaytaradi (teachers_sheets, group_report uchun)"""
+    """Foydalanuvchining rolini qaytaradi"""
     pool = get_pool()
     if not pool:
         return None
