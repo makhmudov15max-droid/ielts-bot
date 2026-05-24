@@ -151,6 +151,22 @@ async def insert_task(task: dict):
         logging.error(f"insert_task xatosi: {e}", exc_info=True)
         return None
 
+
+async def delete_task(task_id: int):
+    """Vazifani PostgreSQL dan o'chirish"""
+    pool = get_pool()
+    if not pool:
+        logging.error("delete_task: pool mavjud emas")
+        return False
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute("DELETE FROM tasks WHERE id = $1", task_id)
+            logging.info(f"delete_task: Task ID={task_id} o'chirildi")
+            return True
+    except Exception as e:
+        logging.error(f"delete_task xatosi: {e}", exc_info=True)
+        return False
+
 async def update_task_status(task_id: int, status: str, completed_by: str = None):
     """Vazifa statusini yangilash"""
     pool = get_pool()
