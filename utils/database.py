@@ -16,7 +16,6 @@ async def init_db():
         
         logging.info("🔗 PostgreSQL ga ulanish...")
         
-        # Railway PostgreSQL uchun ulanish
         db_pool = await asyncpg.create_pool(
             DATABASE_URL,
             min_size=1,
@@ -93,7 +92,14 @@ async def init_db():
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_proofs_user ON proofs(user_id)")
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_proofs_date ON proofs(date)")
             
-        logging.info("✅ Barcha jadvallar tayyor!")
+            # Owner (admin) ni qo'shish
+            await conn.execute("""
+                INSERT INTO users (user_id, role, name)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (user_id) DO NOTHING
+            """, "6500594896", "Owner", "Baxtiyorjon")
+            
+        logging.info("✅ Barcha jadvallar tayyor va Owner qo'shildi!")
     except Exception as e:
         logging.error(f"❌ Database xatosi: {e}")
         raise
