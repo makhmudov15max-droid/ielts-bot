@@ -12,26 +12,31 @@ except:
     ADMIN_ID = 6500594896
 
 
-# ================= ADMIN ROLINI TEKSHIRUVCHI FUNKSIYA (JSON fayldan o'qiydi) =================
+# ================= GLOBAL O'ZGARUVCHI =================
+_USERS_ROLES = None
 
-def is_admin(user_id: int) -> bool:
-    """Foydalanuvchi Admin yoki Owner rolida ekanligini tekshiradi"""
-    USERS_FILE = "users.json"
-    try:
-        if os.path.exists(USERS_FILE):
-            with open(USERS_FILE, "r", encoding="utf-8") as f:
-                users = json.load(f)
-                user_info = users.get(str(user_id))
-                if user_info:
-                    role = user_info.get("role")
-                    return role in ["Admin", "Owner", "Manager"]
-    except Exception as e:
-        print(f"is_admin() xatosi: {e}")
-    return False
+def set_users_roles(users_roles):
+    """Global users roles ni o'rnatish"""
+    global _USERS_ROLES
+    _USERS_ROLES = users_roles
+
+
+# ================= ADMIN ROLINI TEKSHIRUVCHI FUNKSIYA (PostgreSQL dan) =================
+async def is_admin(user_id: int) -> bool:
+    """Foydalanuvchi Admin, Owner yoki Manager rolida ekanligini tekshiradi"""
+    if _USERS_ROLES:
+        user_info = _USERS_ROLES.get(str(user_id))
+        if user_info:
+            role = user_info.get("role")
+            if role in ["Admin", "Owner", "Manager"]:
+                return True
+    
+    from utils.users_db import get_user_role
+    role = await get_user_role(str(user_id))
+    return role in ["Admin", "Owner", "Manager"]
 
 
 # ===== GOOGLE ULANISH =====
-
 try:
     creds = json.loads(os.getenv("GOOGLE_CREDS"))
     client = gspread.service_account_from_dict(creds)
@@ -75,7 +80,7 @@ def get_teacher_scores():
 
 @report_router.message(F.text == "📑 Guruh Report")
 async def group_report(message: types.Message):
-    if not is_admin(message.from_user.id):
+    if not await is_admin(message.from_user.id):
         await message.answer("⚠️ Bu buyruq faqat administrator va owner uchun!")
         return
 
