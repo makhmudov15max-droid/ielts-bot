@@ -11,7 +11,7 @@ from Keyboards.main_menu import (
 )
 from utils.access import is_admin
 from utils.users_db import save_users, set_user_busy
-from utils.tasks_db import save_tasks, load_tasks, update_task_status
+from utils.tasks_db import save_tasks, load_tasks, update_task_status, delete_task
 
 callback_router = Router()
 
@@ -175,8 +175,11 @@ async def process_remove_task_callback(call: types.CallbackQuery):
             await call.answer(text="⚠️ Bajarilgan vazifani o'chirib bo'lmaydi!", show_alert=True)
             return
         
+        deleted = await delete_task(task_id)
+        if not deleted:
+            await call.answer(text="⚠️ Bazadan o'chirishda xatolik!", show_alert=True)
+            return
         TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
-        await save_tasks(TASKS_DATABASE)
         
         await call.message.edit_text(
             text=f"🗑 <b>Vazifa muvaffaqiyatli oʻchirildi!</b>\n\n"
