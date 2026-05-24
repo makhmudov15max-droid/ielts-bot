@@ -102,6 +102,21 @@ async def insert_task(task: dict):
         logging.error("insert_task: pool mavjud emas")
         return None
     try:
+        # created_at ni datetime obyektiga o'tkazish
+        created_at = task.get("created_at")
+        if isinstance(created_at, str):
+            try:
+                created_at = datetime.fromisoformat(created_at)
+            except Exception:
+                created_at = datetime.now(timezone(timedelta(hours=5)))
+        elif created_at is None:
+            created_at = datetime.now(timezone(timedelta(hours=5)))
+
+        # task_times list bo'lishi kerak
+        task_times = task.get("task_times", [])
+        if isinstance(task_times, str):
+            task_times = [t.strip() for t in task_times.split(",") if t.strip()]
+
         async with pool.acquire() as conn:
             row = await conn.fetchrow("""
                 INSERT INTO tasks (task_type, task_name, task_description, task_days,
@@ -115,21 +130,19 @@ async def insert_task(task: dict):
                 task.get("task_description"),
                 task.get("task_days"),
                 task.get("task_frequency"),
-                task.get("task_times", []),
+                task_times,
                 task["proof_type"],
                 str(task["assigned_to_id"]),
                 task.get("assigned_to_name"),
                 task.get("sent_today_times", []),
                 task.get("status", "pending"),
-                task.get("created_at")
+                created_at
             )
             new_id = row["id"]
             logging.info(f"insert_task: yangi task ID={new_id} saqlandi")
             return new_id
     except Exception as e:
-        logging.error(f"insert_task xatosi: {e}")
-        import traceback
-        traceback.print_exc()
+        logging.error(f"insert_task xatosi: {e}", exc_info=True)
         return None
 
 async def update_task_status(task_id: int, status: str, completed_by: str = None):
