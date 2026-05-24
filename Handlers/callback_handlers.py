@@ -10,8 +10,8 @@ from Keyboards.main_menu import (
     get_remove_tasks_keyboard
 )
 from utils.access import is_admin
-from utils.users_json import save_users, set_user_busy
-from utils.tasks_json import save_tasks, load_tasks, update_task_status
+from utils.users_db import save_users, set_user_busy
+from utils.tasks_db import save_tasks, load_tasks, update_task_status
 
 callback_router = Router()
 
@@ -58,7 +58,7 @@ async def admin_approve_callback(call: types.CallbackQuery, state: FSMContext):
             "active_task": None,
             "is_waiting_for_proof": False
         }
-        save_users(USERS_ROLES)
+        await save_users(USERS_ROLES)
         
         await call.message.edit_text(
             text=f"{call.message.text}\n\n✅ <b>Tasdiqlandi!</b> Foydalanuvchiga <b>{role}</b> unvoni muvaffaqiyatli berildi.",
@@ -89,7 +89,7 @@ async def admin_reject_callback(call: types.CallbackQuery):
             "active_task": None,
             "is_waiting_for_proof": False
         }
-        save_users(USERS_ROLES)
+        await save_users(USERS_ROLES)
         
         await call.message.edit_text(
             text=f"{call.message.text}\n\n❌ <b>Soʻrov rad etildi!</b> Foydalanuvchi bloklandi.",
@@ -108,7 +108,7 @@ async def employee_complete_task_callback(call: types.CallbackQuery, state: FSMC
     
     # Eng so'nggi ma'lumotlarni yuklash
     global TASKS_DATABASE
-    TASKS_DATABASE = load_tasks()
+    TASKS_DATABASE = await load_tasks()
     
     task = next((t for t in TASKS_DATABASE if t["id"] == task_id), None)
     if not task:
@@ -122,7 +122,7 @@ async def employee_complete_task_callback(call: types.CallbackQuery, state: FSMC
     
     # Foydalanuvchini band qilish
     user_id = str(call.from_user.id)
-    set_user_busy(user_id, task_id)
+    await set_user_busy(user_id, task_id)
     
     await state.update_data(active_task_id=task_id, proof_required=task["proof_type"])
     
@@ -165,7 +165,7 @@ async def process_remove_task_callback(call: types.CallbackQuery):
     global TASKS_DATABASE
     
     # Eng so'nggi ma'lumotlarni yuklash
-    TASKS_DATABASE = load_tasks()
+    TASKS_DATABASE = await load_tasks()
     
     task_to_remove = next((t for t in TASKS_DATABASE if t["id"] == task_id), None)
     
@@ -176,7 +176,7 @@ async def process_remove_task_callback(call: types.CallbackQuery):
             return
         
         TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
-        save_tasks(TASKS_DATABASE)
+        await save_tasks(TASKS_DATABASE)
         
         await call.message.edit_text(
             text=f"🗑 <b>Vazifa muvaffaqiyatli oʻchirildi!</b>\n\n"
