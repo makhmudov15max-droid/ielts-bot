@@ -8,8 +8,8 @@ import os
 
 from config import BOT_TOKEN
 from Handlers.start import start_router, auto_task_scheduler, init_all_handlers
-from Handlers.teachers_sheets import sheets_router
-from Handlers.group_report import report_router
+from Handlers.teachers_sheets import sheets_router, set_users_roles as set_teachers_users_roles
+from Handlers.group_report import report_router, set_users_roles as set_report_users_roles
 from Handlers.tasks import tasks_router
 from Handlers.employees import employees_router
 from Handlers.salaries import salaries_router
@@ -18,12 +18,6 @@ from Handlers.proofs import proofs_router, init_proofs_handler
 from utils.database import init_db, close_db
 from utils.users_db import load_users
 from utils.tasks_db import load_tasks
-from Handlers.teachers_sheets import set_users_roles as set_teachers_users_roles
-from Handlers.group_report import set_users_roles as set_report_users_roles
-
-# ... ma'lumotlar yuklangandan keyin ...
-set_teachers_users_roles(USERS_ROLES)
-set_report_users_roles(USERS_ROLES)
 
 # ================= LOGGING =================
 logging.basicConfig(
@@ -52,6 +46,10 @@ async def main():
         USERS_ROLES = await load_users(ADMIN_ID)
         TASKS_DATABASE = await load_tasks()
         logging.info(f"✅ {len(USERS_ROLES)} ta foydalanuvchi, {len(TASKS_DATABASE)} ta vazifa yuklandi")
+        
+        # Global users roles ni teachers_sheets va group_report ga o'tkazish
+        set_teachers_users_roles(USERS_ROLES)
+        set_report_users_roles(USERS_ROLES)
         
         # Barcha handlerlar uchun global o'zgaruvchilarni o'rnatish
         init_all_handlers(USERS_ROLES, TASKS_DATABASE, ADMIN_ID)
