@@ -65,7 +65,7 @@ async def admin_approve_callback(call: types.CallbackQuery, state: FSMContext):
             parse_mode="HTML"
         )
         
-        await state.set_state(TaskStates.waiting_for_user_name)
+        # Admin state ni o'zgartirishga hojat yo'q - yangi user get_user_real_name_handler orqali qayta ishlaydi
         
         user_text = f"Sizga administrator tomonidan \"{role}\" unvoni berildi. Iltimos, tizimda foydalanish uchun ism va familiyangizni kiriting:"
         await call.bot.send_message(
