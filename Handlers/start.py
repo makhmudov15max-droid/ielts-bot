@@ -8,9 +8,9 @@ from aiogram.fsm.context import FSMContext
 
 from Handlers.states import TaskStates
 from Keyboards.main_menu import get_main_menu, get_admin_approval_keyboard, get_task_complete_keyboard
-from utils.users_json import save_users, set_user_busy, set_user_free, is_user_busy, get_user_active_task
-from utils.tasks_json import save_tasks, update_task_status, load_tasks, get_task_by_id
-from utils.proofs_json import add_proof
+from utils.users_db import save_users, set_user_busy, set_user_free, is_user_busy, get_user_active_task
+from utils.tasks_db import save_tasks, update_task_status, load_tasks, get_task_by_id
+from utils.proofs_db import add_proof
 from utils.access import check_user_access
 from Handlers.tasks import tasks_router, init_tasks_handler
 from Handlers.employees import employees_router, init_employees_handler
@@ -114,7 +114,7 @@ async def get_user_real_name_handler(message: types.Message):
     first_name = input_text.split()[0]
     
     USERS_ROLES[user_id]["name"] = input_text
-    save_users(USERS_ROLES)
+    await save_users(USERS_ROLES)  # ASYNC + AWAIT
 
     await message.answer(
         text=f"Hurmatli {first_name}, siz muvaffaqiyatli roʻyxatdan oʻtdingiz. "
@@ -134,18 +134,18 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     task_id = state_data.get("active_task_id")
     
     global TASKS_DATABASE
-    task = get_task_by_id(task_id) if task_id else None
+    task = await get_task_by_id(task_id) if task_id else None  # ASYNC + AWAIT
     GROUP_CHAT_ID = -5226036627  
     user_id = str(message.from_user.id)
     
     # Foydalanuvchini band qilish
-    set_user_busy(user_id, task_id)
+    await set_user_busy(user_id, task_id)  # ASYNC + AWAIT
     
     # ========== MATN TEKSHIRUVI ==========
     if proof_required == "Text" and message.text and not message.photo and not message.video_note:
         role = USERS_ROLES[user_id]["role"]
         
-        proof = add_proof(
+        proof = await add_proof(  # ASYNC + AWAIT
             user_id=message.from_user.id,
             user_name=USERS_ROLES[user_id].get("name", "Noma'lum"),
             task_id=task["id"] if task else 0,
@@ -158,10 +158,10 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
         )
         
         if task:
-            update_task_status(task_id, "completed", user_id)
-            TASKS_DATABASE = load_tasks()
+            await update_task_status(task_id, "completed", user_id)  # ASYNC + AWAIT
+            TASKS_DATABASE = await load_tasks()  # ASYNC + AWAIT
         
-        set_user_free(user_id)
+        await set_user_free(user_id)  # ASYNC + AWAIT
         
         await message.answer(
             text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
@@ -179,7 +179,6 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
                 f"⏰ <b>Topshirilgan vaqt:</b> {datetime.now(timezone(timedelta(hours=5))).strftime('%H:%M')}"
             )
             await message.bot.send_message(chat_id=GROUP_CHAT_ID, text=group_text, parse_mode="HTML")
-            
         
         await state.clear()
     
@@ -187,7 +186,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     elif proof_required == "Photo" and message.photo:
         role = USERS_ROLES[user_id]["role"]
         
-        proof = add_proof(
+        proof = await add_proof(  # ASYNC + AWAIT
             user_id=message.from_user.id,
             user_name=USERS_ROLES[user_id].get("name", "Noma'lum"),
             task_id=task["id"] if task else 0,
@@ -200,10 +199,10 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
         )
         
         if task:
-            update_task_status(task_id, "completed", user_id)
-            TASKS_DATABASE = load_tasks()
+            await update_task_status(task_id, "completed", user_id)  # ASYNC + AWAIT
+            TASKS_DATABASE = await load_tasks()  # ASYNC + AWAIT
         
-        set_user_free(user_id)
+        await set_user_free(user_id)  # ASYNC + AWAIT
         
         await message.answer(
             text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
@@ -240,7 +239,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
         
         role = USERS_ROLES[user_id]["role"]
         
-        proof = add_proof(
+        proof = await add_proof(  # ASYNC + AWAIT
             user_id=message.from_user.id,
             user_name=USERS_ROLES[user_id].get("name", "Noma'lum"),
             task_id=task["id"] if task else 0,
@@ -253,10 +252,10 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
         )
         
         if task:
-            update_task_status(task_id, "completed", user_id)
-            TASKS_DATABASE = load_tasks()
+            await update_task_status(task_id, "completed", user_id)  # ASYNC + AWAIT
+            TASKS_DATABASE = await load_tasks()  # ASYNC + AWAIT
         
-        set_user_free(user_id)
+        await set_user_free(user_id)  # ASYNC + AWAIT
         
         await message.answer(
             text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
@@ -274,7 +273,6 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             )
             await message.bot.send_message(chat_id=GROUP_CHAT_ID, text=group_text, parse_mode="HTML")
             await message.bot.send_video_note(chat_id=GROUP_CHAT_ID, video_note=message.video_note.file_id)
-            
         
         await state.clear()
     
@@ -316,7 +314,7 @@ async def auto_task_scheduler(bot):
             if current_time_str == "00:00":
                 for task in TASKS_DATABASE:
                     task["sent_today_times"] = []
-                save_tasks(TASKS_DATABASE)
+                await save_tasks(TASKS_DATABASE)  # ASYNC + AWAIT
             
             if current_time_str != last_checked_minute:
                 for task in TASKS_DATABASE:
@@ -350,7 +348,7 @@ async def auto_task_scheduler(bot):
                                 reply_markup=get_task_complete_keyboard(task["id"])
                             )
                             task["sent_today_times"].append(current_time_str)
-                            save_tasks(TASKS_DATABASE)
+                            await save_tasks(TASKS_DATABASE)  # ASYNC + AWAIT
                 last_checked_minute = current_time_str
         except Exception as e:
             print(f"Taymer tizimida xato: {e}")
