@@ -30,29 +30,16 @@ def init_monitoring_handler(users_roles):
 
 # ================= STATES =================
 class MonitoringStates(StatesGroup):
-    # Kech qolish uchun
     waiting_for_late_time = State()
     waiting_for_late_reason = State()
     waiting_for_late_proof = State()
-
-    # Monitoring (ko'rish) uchun
     waiting_for_role = State()
-    waiting_for_admin_choice = State()
+    waiting_for_employee_choice = State()
     waiting_for_period = State()
     waiting_for_custom_dates = State()
 
 
 # ================= KEYBOARDS =================
-def get_monitoring_main_keyboard():
-    return types.ReplyKeyboardMarkup(
-        keyboard=[
-            [types.KeyboardButton(text="⏰ Kech qolish")],
-            [types.KeyboardButton(text="🏠 Bosh sahifa"), types.KeyboardButton(text="⬅️ Ortga")],
-        ],
-        resize_keyboard=True
-    )
-
-
 def get_role_keyboard():
     return types.ReplyKeyboardMarkup(
         keyboard=[
@@ -67,11 +54,10 @@ def get_role_keyboard():
 
 
 def get_employee_list_keyboard(role: str):
-    """Berilgan roldagi xodimlar ro'yxati"""
     keyboard = []
     employees = []
     
-    for u_id, u_info in (USERS_ROLES or {}).items():
+    for u_id, u_info in USERS_ROLES.items():
         if isinstance(u_info, dict) and u_info.get("role") == role and u_info.get("name"):
             employees.append((u_id, u_info["name"]))
     
@@ -112,18 +98,16 @@ def get_late_proof_keyboard():
 
 # ================= HELPERS =================
 def get_user_id_by_name(name: str):
-    """Ism bo'yicha user_id topish"""
     clean = name.replace("👤 ", "").strip()
-    for u_id, u_info in (USERS_ROLES or {}).items():
+    for u_id, u_info in USERS_ROLES.items():
         if isinstance(u_info, dict) and u_info.get("name") == clean:
             return u_id
     return None
 
 
 def get_all_users_by_role(role: str):
-    """Berilgan roldagi barcha user_id larni qaytaradi"""
     users = []
-    for u_id, u_info in (USERS_ROLES or {}).items():
+    for u_id, u_info in USERS_ROLES.items():
         if isinstance(u_info, dict) and u_info.get("role") == role and u_info.get("name"):
             users.append((u_id, u_info["name"]))
     return users
@@ -164,9 +148,7 @@ def get_all_days_in_current_month():
     return dates
 
 
-# ============================================================
-#  🎯 MONITORING TUGMASI — ASOSIY MENU
-# ============================================================
+# ================= MONITORING ASOSIY MENU =================
 @monitoring_router.message(F.text == "🎯 Monitoring")
 async def monitoring_main_handler(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
@@ -180,9 +162,7 @@ async def monitoring_main_handler(message: types.Message, state: FSMContext):
     )
 
 
-# ============================================================
-#  ROLE TANLASH
-# ============================================================
+# ================= ROLE TANLASH =================
 @monitoring_router.message(MonitoringStates.waiting_for_role, F.text == "🏠 Bosh sahifa")
 async def monitoring_role_home(message: types.Message, state: FSMContext):
     await state.clear()
@@ -203,14 +183,11 @@ async def monitoring_role_selected(message: types.Message, state: FSMContext):
     employees = get_all_users_by_role(role)
     
     if not employees:
-        await message.answer(
-            f"📭 Tizimda {role} rolidagi xodimlar topilmadi.",
-            reply_markup=get_role_keyboard()
-        )
+        await message.answer(f"📭 Tizimda {role} rolidagi xodimlar topilmadi.", reply_markup=get_role_keyboard())
         return
     
     await state.update_data(selected_role=role)
-    await state.set_state(MonitoringStates.waiting_for_admin_choice)
+    await state.set_state(MonitoringStates.waiting_for_employee_choice)
     
     keyboard = get_employee_list_keyboard(role)
     await message.answer(
@@ -225,30 +202,24 @@ async def invalid_role_selected(message: types.Message):
     await message.answer("❌ Iltimos, tugmalardan birini tanlang!", reply_markup=get_role_keyboard())
 
 
-# ============================================================
-#  XODIM TANLASH
-# ============================================================
-@monitoring_router.message(MonitoringStates.waiting_for_admin_choice, F.text == "🏠 Bosh sahifa")
+# ================= XODIM TANLASH =================
+@monitoring_router.message(MonitoringStates.waiting_for_employee_choice, F.text == "🏠 Bosh sahifa")
 async def monitoring_employee_home(message: types.Message, state: FSMContext):
     await state.clear()
     role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
     await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
 
 
-@monitoring_router.message(MonitoringStates.waiting_for_admin_choice, F.text == "⬅️ Ortga")
+@monitoring_router.message(MonitoringStates.waiting_for_employee_choice, F.text == "⬅️ Ortga")
 async def monitoring_employee_back(message: types.Message, state: FSMContext):
     await state.set_state(MonitoringStates.waiting_for_role)
-    await message.answer(
-        "Qaysi bo'lim xodimlarini ko'rmoqchisiz?",
-        reply_markup=get_role_keyboard()
-    )
+    await message.answer("Qaysi bo'lim xodimlarini ko'rmoqchisiz?", reply_markup=get_role_keyboard())
 
 
-@monitoring_router.message(MonitoringStates.waiting_for_admin_choice, F.text == "👥 Barcha xodimlar")
+@monitoring_router.message(MonitoringStates.waiting_for_employee_choice, F.text == "👥 Barcha xodimlar")
 async def monitoring_all_employees_selected(message: types.Message, state: FSMContext):
     data = await state.get_data()
     role = data.get("selected_role")
-    
     await state.update_data(selected_user_id="ALL", selected_name=f"Barcha {role}lar")
     await state.set_state(MonitoringStates.waiting_for_period)
     await message.answer(
@@ -258,15 +229,15 @@ async def monitoring_all_employees_selected(message: types.Message, state: FSMCo
     )
 
 
-@monitoring_router.message(MonitoringStates.waiting_for_admin_choice, F.text.startswith("👤 "))
+@monitoring_router.message(MonitoringStates.waiting_for_employee_choice, F.text.startswith("👤 "))
 async def monitoring_employee_selected(message: types.Message, state: FSMContext):
     text = message.text.strip()
     uid = get_user_id_by_name(text)
     
     if not uid:
-        await message.answer("❌ Xodim topilmadi.", reply_markup=get_employee_list_keyboard(
-            (await state.get_data()).get("selected_role", "Admin")
-        ))
+        data = await state.get_data()
+        role = data.get("selected_role", "Admin")
+        await message.answer("❌ Xodim topilmadi.", reply_markup=get_employee_list_keyboard(role))
         return
     
     name = text.replace("👤 ", "").strip()
@@ -279,19 +250,14 @@ async def monitoring_employee_selected(message: types.Message, state: FSMContext
     )
 
 
-@monitoring_router.message(MonitoringStates.waiting_for_admin_choice)
+@monitoring_router.message(MonitoringStates.waiting_for_employee_choice)
 async def invalid_employee_selected(message: types.Message, state: FSMContext):
     data = await state.get_data()
     role = data.get("selected_role", "Admin")
-    await message.answer(
-        "❌ Iltimos, ro'yxatdan tanlang!",
-        reply_markup=get_employee_list_keyboard(role)
-    )
+    await message.answer("❌ Iltimos, ro'yxatdan tanlang!", reply_markup=get_employee_list_keyboard(role))
 
 
-# ============================================================
-#  DAVR TANLASH
-# ============================================================
+# ================= DAVR TANLASH =================
 @monitoring_router.message(MonitoringStates.waiting_for_period, F.text == "🏠 Bosh sahifa")
 async def monitoring_period_home(message: types.Message, state: FSMContext):
     await state.clear()
@@ -303,11 +269,8 @@ async def monitoring_period_home(message: types.Message, state: FSMContext):
 async def monitoring_period_back(message: types.Message, state: FSMContext):
     data = await state.get_data()
     role = data.get("selected_role", "Admin")
-    await state.set_state(MonitoringStates.waiting_for_admin_choice)
-    await message.answer(
-        f"👤 {role}lardan birini tanlang:",
-        reply_markup=get_employee_list_keyboard(role)
-    )
+    await state.set_state(MonitoringStates.waiting_for_employee_choice)
+    await message.answer(f"👤 {role}lardan birini tanlang:", reply_markup=get_employee_list_keyboard(role))
 
 
 @monitoring_router.message(MonitoringStates.waiting_for_period, F.text == "📅 Bugun")
@@ -318,7 +281,7 @@ async def monitoring_period_today(message: types.Message, state: FSMContext):
     today = datetime.now(TASHKENT_TZ).strftime("%Y-%m-%d")
 
     if uid == "ALL":
-        await _send_all_employees_report(message, today, today, f"📅 Bugungi ({today}) hisobot")
+        await send_all_employees_report(message, today, today, f"📅 Bugungi ({today}) hisobot")
     else:
         records = await get_attendance_by_user_today(uid)
         report = format_attendance_report(records, f"📅 <b>{name} — Bugungi ({today}) hisobot</b>")
@@ -334,7 +297,7 @@ async def monitoring_period_this_month(message: types.Message, state: FSMContext
 
     if uid == "ALL":
         dates = get_all_days_in_current_month()
-        await _send_all_employees_report(message, dates[0], dates[-1], f"📅 {now.year}-{now.month:02d} oylik hisobot")
+        await send_all_employees_report(message, dates[0], dates[-1], f"📅 {now.year}-{now.month:02d} oylik hisobot")
     else:
         records = await get_attendance_by_user_and_month(uid, now.year, now.month)
         title = f"📅 <b>{name} — {now.year}-{now.month:02d} oylik hisobot</b>"
@@ -361,9 +324,7 @@ async def invalid_period_selected(message: types.Message):
     await message.answer("❌ Iltimos, tugmalardan birini tanlang!", reply_markup=get_period_keyboard())
 
 
-# ============================================================
-#  CUSTOM SANALAR
-# ============================================================
+# ================= CUSTOM SANALAR =================
 @monitoring_router.message(MonitoringStates.waiting_for_custom_dates, F.text == "🏠 Bosh sahifa")
 async def monitoring_custom_dates_home(message: types.Message, state: FSMContext):
     await state.clear()
@@ -396,7 +357,7 @@ async def monitoring_custom_dates_entered(message: types.Message, state: FSMCont
     dates_str = ", ".join(dates)
 
     if uid == "ALL":
-        await _send_all_employees_report(message, dates[0], dates[-1], f"📆 Tanlangan sanalar: {dates_str}")
+        await send_all_employees_report(message, dates[0], dates[-1], f"📆 Tanlangan sanalar: {dates_str}")
     else:
         records = await get_attendance_by_dates(uid, dates)
         title = f"📆 <b>{name} — {dates_str}</b>"
@@ -406,14 +367,12 @@ async def monitoring_custom_dates_entered(message: types.Message, state: FSMCont
     await state.set_state(MonitoringStates.waiting_for_period)
 
 
-# ============================================================
-#  BARCHA XODIMLAR UCHUN HISOBOT
-# ============================================================
-async def _send_all_employees_report(message: types.Message, start_date: str, end_date: str, title: str):
-    data = await message.bot.get_state(message.from_user.id)
+# ================= BARCHA XODIMLAR UCHUN HISOBOT =================
+async def send_all_employees_report(message: types.Message, start_date: str, end_date: str, title: str):
+    state = await message.bot.get_state(message.from_user.id)
     state_data = {}
-    if data:
-        state_data = data.data or {}
+    if state and state.data:
+        state_data = state.data
     
     role = state_data.get("selected_role", "Admin")
     employees = get_all_users_by_role(role)
@@ -424,32 +383,24 @@ async def _send_all_employees_report(message: types.Message, start_date: str, en
 
     full_text = f"👥 <b>{title}</b>\n\n"
     
+    start = datetime.strptime(start_date, "%Y-%m-%d")
+    end = datetime.strptime(end_date, "%Y-%m-%d")
+    date_list = []
+    current = start
+    while current <= end:
+        date_list.append(current.strftime("%Y-%m-%d"))
+        current += timedelta(days=1)
+    
     for uid, name in employees:
-        # Bir oy oralig'idagi barcha kunlarni olish
-        from datetime import datetime
-        start = datetime.strptime(start_date, "%Y-%m-%d")
-        end = datetime.strptime(end_date, "%Y-%m-%d")
-        date_list = []
-        current = start
-        while current <= end:
-            date_list.append(current.strftime("%Y-%m-%d"))
-            current += timedelta(days=1)
-        
         records = await get_attendance_by_dates(uid, date_list)
         total_min = sum(r.get("late_minutes", 0) for r in records)
         h, m = divmod(total_min, 60)
-        full_text += (
-            f"👤 <b>{name}</b>\n"
-            f"   📌 Kech qolishlar: {len(records)} ta\n"
-            f"   ⏱ Jami: {h} soat {m} daqiqa\n\n"
-        )
+        full_text += f"👤 <b>{name}</b>\n   📌 Kech qolishlar: {len(records)} ta\n   ⏱ Jami: {h} soat {m} daqiqa\n\n"
 
     await message.answer(full_text, parse_mode="HTML", reply_markup=get_period_keyboard())
 
 
-# ============================================================
-#  ⏰ KECH QOLISH — xodim o'zi kiritadi
-# ============================================================
+# ================= KECH QOLISH =================
 @monitoring_router.message(MonitoringStates.waiting_for_role, F.text == "⏰ Kech qolish")
 @monitoring_router.message(F.text == "⏰ Kech qoldim")
 async def late_start_handler(message: types.Message, state: FSMContext):
@@ -484,16 +435,12 @@ async def late_time_entered(message: types.Message, state: FSMContext):
     import re
     time_text = message.text.strip()
     if not re.match(r"^([0-1]?\d|2[0-3]):[0-5]\d$", time_text):
-        await message.answer(
-            "❌ Noto'g'ri format. Masalan: <code>09:25</code>",
-            parse_mode="HTML"
-        )
+        await message.answer("❌ Noto'g'ri format. Masalan: <code>09:25</code>", parse_mode="HTML")
         return
 
     now = datetime.now(TASHKENT_TZ)
     user_id = str(message.from_user.id)
     
-    # Ish vaqtini bazadan olish
     work_start, work_end = await get_user_work_time(user_id)
 
     try:
