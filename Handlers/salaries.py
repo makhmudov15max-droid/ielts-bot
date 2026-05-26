@@ -93,8 +93,13 @@ def get_cashier_yes_no_keyboard():
 
 @salaries_router.message(F.text == "📊 Admin oylik")
 async def start_admin_salary_calc(message: types.Message, state: FSMContext):
+    if USERS_ROLES is None:
+        await message.answer("⚠️ Tizim xatosi: Ma'lumotlar yuklanmagan. Iltimos /start buyrug'ini yuboring.")
+        return
+    
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
+        
     await state.set_state(AdminSalaryStates.status)
     await message.answer("🏅 Status tanlang:", reply_markup=get_status_keyboard())
 
@@ -338,6 +343,10 @@ async def process_actual_active_final(message: types.Message, state: FSMContext)
 
 @salaries_router.message(F.text == "💰 Kassir oylik")
 async def start_cashier_salary(message: types.Message, state: FSMContext):
+    if USERS_ROLES is None:
+        await message.answer("⚠️ Tizim xatosi: Ma'lumotlar yuklanmagan. Iltimos /start buyrug'ini yuboring.")
+        return
+    
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
     await state.set_state(CashierSalaryStates.hours)
