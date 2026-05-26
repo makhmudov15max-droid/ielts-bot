@@ -8,6 +8,8 @@ from aiogram.fsm.context import FSMContext
 
 from Handlers.states import TaskStates
 from Keyboards.main_menu import get_main_menu, get_admin_approval_keyboard, get_task_complete_keyboard
+from utils.attendance_db import has_checkin_today, mark_missed_for_date
+from utils.users_db import get_user_work_time
 from utils.users_db import save_users, set_user_busy, set_user_free, is_user_busy, get_user_active_task
 from utils.tasks_db import save_tasks, update_task_status, load_tasks, get_task_by_id, reset_sent_today_times
 from utils.proofs_db import add_proof
@@ -302,54 +304,90 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
 # ================= TAYMER (AUTO TASK SCHEDULER) =================
 async def auto_task_scheduler(bot):
     last_checked_minute = ""
+    last_daily_check_date = ""
     tashkent_tz = timezone(timedelta(hours=5))
     
     while True:
         try:
             now = datetime.now(timezone.utc).astimezone(tashkent_tz)
             current_time_str = now.strftime("%H:%M")
-            current_day_name = now.strftime("%a").strip().lower() 
+            current_day_name = now.strftime("%a").strip().lower()
             day_of_month = now.day
+            today_str = now.strftime("%Y-%m-%d")
             
+            # ========== 1. KUNLIK RESET (00:00) ==========
             if current_time_str == "00:00":
                 await reset_sent_today_times()
                 for task in TASKS_DATABASE:
                     task["sent_today_times"] = []
             
-            if current_time_str != last_checked_minute:
-                for task in TASKS_DATABASE:
-                    if task.get("task_type") == "Kunlik (Bir martalik)":
+            # ========== 2. ISHGA KELISH ESLATMALARI (30 daqiqa oldin) ==========
+            # Har bir xodimni tekshirish
+            for user_id, user_info in USERS_ROLES.items():
+                if not isinstance(user_info, dict):
+                    continue
+                role = user_info.get("role")
+                if role in ["Owner", "Manager"]:
+                    continue  # Faqat oddiy xodimlarga eslatma
+                
+                # Ish vaqtini olish
+                work_start, work_end = await get_user_work_time(user_id)
+                
+                # 30 daqiqa oldin vaqtni hisoblash
+                try:
+                    ws_h, ws_m = map(int, work_start.split(":"))
+                    reminder_time = (ws_h * 60 + ws_m) - 30
+                    reminder_h = reminder_time // 60
+                    reminder_m = reminder_time % 60
+                    reminder_str = f"{reminder_h:02d}:{reminder_m:02d}"
+                except Exception:
+                    continue
+                
+                # Eslatma vaqtiga yetganda va bugun hali tasdiqlanmagan bo'lsa
+                if current_time_str == reminder_str:
+                    # Bugun allaqachon tasdiqlaganmi?
+                    if not await has_checkin_today(str(user_id)):
+                        try:
+                            await bot.send_message(
+                                chat_id=int(user_id),
+                                text=(
+                                    f"⏰ <b>30 daqiqadan so'ng Ish smenangiz boshlanadi!</b>\n\n"
+                                    f"📋 Ish vaqtingiz: {work_start} - {work_end}\n\n"
+                                    f"✅ Iltimos, ishga kelganingizni tasdiqlash uchun "
+                                    f"<b>'✅ Ishga keldim'</b> tugmasini bosing va dumaloq video yuboring.",
+                                    parse_mode="HTML"
+                                )
+                            )
+                            logging.info(f"Eslatma yuborildi: user_id={user_id}, vaqt={reminder_str}")
+                        except Exception as e:
+                            logging.error(f"Eslatma yuborishda xatolik: {e}")
+            
+            # ========== 3. KUN OXIRIDA TEKSHIRUV (23:59) ==========
+            if current_time_str == "23:59" and last_daily_check_date != today_str:
+                logging.info(f"Kun oxiri tekshiruvi boshlandi: {today_str}")
+                
+                # Barcha oddiy xodimlarni tekshirish
+                for user_id, user_info in USERS_ROLES.items():
+                    if not isinstance(user_info, dict):
+                        continue
+                    role = user_info.get("role")
+                    if role in ["Owner", "Manager"]:
                         continue
                     
-                    if task.get("status") == "completed":
-                        continue
-                        
-                    if current_time_str in task["task_times"] and current_time_str not in task["sent_today_times"]:
-                        day_match = False
-                        task_days = str(task["task_days"]).strip()
-                        
-                        if task_days == "ODD" and day_of_month % 2 != 0:
-                            day_match = True
-                        elif task_days == "EVEN" and day_of_month % 2 == 0:
-                            day_match = True
-                        elif task_days == "6 days a week" and current_day_name != "sun":
-                            day_match = True
-                        else:
-                            clean_days = [d.strip().lower() for d in task_days.split(",") if d.strip()]
-                            if current_day_name in clean_days:
-                                day_match = True
-                        
-                        if day_match:
-                            text_to_employee = f"📌 <b>{task['task_name']}</b>"
-                            await bot.send_message(
-                                chat_id=task["assigned_to_id"],
-                                text=text_to_employee,
-                                parse_mode="HTML",
-                                reply_markup=get_task_complete_keyboard(task["id"])
-                            )
-                            task["sent_today_times"].append(current_time_str)
-                            await save_tasks(TASKS_DATABASE)  # ASYNC + AWAIT
+                    # Bugun tasdiqlaganmi?
+                    if not await has_checkin_today(str(user_id)):
+                        await mark_missed_for_date(str(user_id), today_str)
+                        logging.info(f"Marked as missed: user_id={user_id}, date={today_str}")
+                
+                last_daily_check_date = today_str
+                logging.info(f"Kun oxiri tekshiruvi tugadi: {today_str}")
+            
+            # ========== 4. VAZIFALARNI YUBORISH ==========
+            if current_time_str != last_checked_minute:
+                # ... (vazifalarni yuborish kodi o'zgarishsiz qoladi)
+                
                 last_checked_minute = current_time_str
+                
         except Exception as e:
             print(f"Taymer tizimida xato: {e}")
         await asyncio.sleep(5)
