@@ -95,6 +95,10 @@ async def handle_back_home_in_task_creation(message: types.Message, state: FSMCo
 # ================= VAZIFA YARATISH (ADD) =================
 @tasks_router.message(F.text == "➕ Vazifa qoʻshish")
 async def add_task_handler(message: types.Message, state: FSMContext):
+    if USERS_ROLES is None:
+        await message.answer("⚠️ Tizim xatosi: Ma'lumotlar yuklanmagan. Iltimos /start buyrug'ini yuboring.")
+        return
+    
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
     await state.clear()
@@ -431,6 +435,10 @@ async def finalize_task_creation_handler(message: types.Message, state: FSMConte
 # ================= VAZIFALAR RO'YXATI =================
 @tasks_router.message(F.text == "📋 Vazifalar roʻyxati")
 async def tasks_simple_menu_handler(message: types.Message, state: FSMContext):
+    if USERS_ROLES is None:
+        await message.answer("⚠️ Tizim xatosi: Ma'lumotlar yuklanmagan. Iltimos /start buyrug'ini yuboring.")
+        return
+    
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
     
@@ -631,6 +639,10 @@ async def show_tasks_by_selected_date(message: types.Message, state: FSMContext)
 # ================= VAZIFA O'CHIRISH =================
 @tasks_router.message(F.text == "🗑 Vazifani oʻchirish")
 async def remove_task_menu_handler(message: types.Message):
+    if USERS_ROLES is None:
+        await message.answer("⚠️ Tizim xatosi: Ma'lumotlar yuklanmagan. Iltimos /start buyrug'ini yuboring.")
+        return
+    
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
     
