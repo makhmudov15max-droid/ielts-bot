@@ -24,15 +24,13 @@ async def init_db():
             timeout=60
         )
         
-        # Ulanishni tekshirish
         async with db_pool.acquire() as conn:
             await conn.execute("SELECT 1")
         
         logging.info("✅ PostgreSQL ulandi!")
         
-        # Jadvallarni yaratish
         async with db_pool.acquire() as conn:
-            # Users table
+            # Users table (work_start va work_end qo'shilgan)
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     user_id TEXT PRIMARY KEY,
@@ -40,6 +38,8 @@ async def init_db():
                     name TEXT,
                     active_task INTEGER,
                     is_waiting_for_proof BOOLEAN DEFAULT FALSE,
+                    work_start TEXT DEFAULT '09:00',
+                    work_end TEXT DEFAULT '18:00',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
@@ -85,21 +85,7 @@ async def init_db():
                 )
             """)
             
-            # Indexes
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_users_id ON users(user_id)")
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_tasks_assigned ON tasks(assigned_to_id)")
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)")
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_proofs_user ON proofs(user_id)")
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_proofs_date ON proofs(date)")
-            
-            # Owner (admin) ni qo'shish
-            await conn.execute("""
-                INSERT INTO users (user_id, role, name)
-                VALUES ($1, $2, $3)
-                ON CONFLICT (user_id) DO NOTHING
-            """, "6500594896", "Owner", "Baxtiyorjon")
-            
-        # Attendance table
+            # Attendance table
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS attendance (
                     id SERIAL PRIMARY KEY,
@@ -115,16 +101,29 @@ async def init_db():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            
+            # Indexes
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_users_id ON users(user_id)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_tasks_assigned ON tasks(assigned_to_id)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_proofs_user ON proofs(user_id)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_proofs_date ON proofs(date)")
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_attendance_user ON attendance(user_id)")
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date)")
             
-        logging.info("✅ Barcha jadvallar tayyor va Owner qo'shildi!")
+            # Owner qo'shish
+            await conn.execute("""
+                INSERT INTO users (user_id, role, name, work_start, work_end)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (user_id) DO NOTHING
+            """, "6500594896", "Owner", "Baxtiyorjon", "09:00", "18:00")
+            
+        logging.info("✅ Barcha jadvallar tayyor!")
     except Exception as e:
         logging.error(f"❌ Database xatosi: {e}")
         raise
 
 async def close_db():
-    """Database pool ni yopish"""
     global db_pool
     if db_pool:
         await db_pool.close()
