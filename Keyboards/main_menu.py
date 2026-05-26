@@ -1,7 +1,8 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from datetime import datetime, timedelta, timezone
 
 
-# ========== ASOSIY MENU ==========
+# ================= ASOSIY MENU =================
 def get_main_menu(role: str):
     role = str(role).strip()
     if role in ["Owner", "Manager"]:
@@ -12,7 +13,7 @@ def get_main_menu(role: str):
             [KeyboardButton(text="🗄 Arxiv"), KeyboardButton(text="📑 Guruh Report")],
             [KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball"), KeyboardButton(text="🎯 Monitoring")],
             [KeyboardButton(text="📸 Isbotlar")],
-            [KeyboardButton(text="⚙️ Sozlamalar")]  # YANGI!
+            [KeyboardButton(text="⚙️ Sozlamalar")]
         ]
     elif role == "Admin":
         keyboard = [
@@ -46,7 +47,6 @@ def get_back_home_keyboard():
 
 # ================= SOZLAMALAR UCHUN KEYBOARDS =================
 def get_settings_role_keyboard():
-    """Sozlamalar uchun rol tanlash tugmalari"""
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="Admin"), KeyboardButton(text="Kassir")],
@@ -58,7 +58,6 @@ def get_settings_role_keyboard():
 
 
 def get_work_time_keyboard():
-    """Ish vaqti shablonlari"""
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="1-smena (08:00 - 14:00)")],
@@ -71,7 +70,7 @@ def get_work_time_keyboard():
     )
 
 
-# ================= STATIC KEYBOARDS =================
+# ================= VAZIFA YARATISH KEYBOARDS =================
 task_type_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Muntazam (Doimiy)"), KeyboardButton(text="Kunlik (Bir martalik)")],
@@ -154,7 +153,8 @@ def get_task_complete_keyboard(task_id: int):
 def get_remove_tasks_keyboard(tasks_list: list):
     inline_keyboard = []
     for task in tasks_list:
-        btn_text = f"❌ {task['task_name']} ({task.get('assigned_to_name', 'Noma\'lum')})"
+        assigned_name = task.get("assigned_to_name", "Noma'lum")
+        btn_text = f"❌ {task['task_name']} ({assigned_name})"
         inline_keyboard.append([InlineKeyboardButton(text=btn_text, callback_data=f"removetask_{task['id']}")])
     inline_keyboard.append([InlineKeyboardButton(text="❌ Bekor qilish", callback_data="remove_cancel")])
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
@@ -194,8 +194,6 @@ def get_tasks_simple_keyboard():
 
 
 def get_custom_date_keyboard_simple():
-    from datetime import datetime, timedelta, timezone
-    
     tashkent_tz = timezone(timedelta(hours=5))
     now = datetime.now(tashkent_tz)
     
