@@ -4,7 +4,7 @@ from aiogram.fsm.context import FSMContext
 from Handlers.states import TaskStates
 from Keyboards.main_menu import get_main_menu
 from utils.access import check_user_access
-from utils.users_db import save_users  # USERS_DB ga o'zgartirildi
+from utils.users_db import save_users
 
 employees_router = Router()
 
@@ -18,11 +18,20 @@ def init_employees_handler(users_roles, admin_id):
     global USERS_ROLES, ADMIN_ID
     USERS_ROLES = users_roles
     ADMIN_ID = admin_id
+    # Debug uchun
+    print(f"DEBUG: init_employees_handler called, USERS_ROLES type: {type(USERS_ROLES)}, len: {len(USERS_ROLES) if USERS_ROLES else 0}")
 
 
 # ================= XODIMLAR RO'YXATI =================
 @employees_router.message(F.text == "👥 Xodimlar")
 async def view_employees_handler(message: types.Message):
+    # Debug
+    print(f"DEBUG: view_employees_handler called, USERS_ROLES is None: {USERS_ROLES is None}")
+    
+    if USERS_ROLES is None:
+        await message.answer("⚠️ Tizim xatosi: Ma'lumotlar yuklanmagan. Iltimos /start buyrug'ini yuboring.")
+        return
+    
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
     
@@ -54,6 +63,10 @@ async def view_employees_handler(message: types.Message):
 # ================= XODIM TAHRIRLASH MENYU =================
 @employees_router.callback_query(F.data.startswith("editstaff_"))
 async def process_edit_staff_callback(call: types.CallbackQuery, state: FSMContext):
+    if USERS_ROLES is None:
+        await call.answer("⚠️ Tizim xatosi", show_alert=True)
+        return
+        
     target_user_id = call.data.split("_")[1]
     staff_info = USERS_ROLES.get(target_user_id)
     
@@ -84,6 +97,10 @@ async def process_edit_staff_callback(call: types.CallbackQuery, state: FSMConte
 # ================= ISM O'ZGARTIRISH =================
 @employees_router.callback_query(F.data.startswith("rename_"))
 async def rename_staff_callback(call: types.CallbackQuery, state: FSMContext):
+    if USERS_ROLES is None:
+        await call.answer("⚠️ Tizim xatosi", show_alert=True)
+        return
+        
     target_user_id = call.data.split("_")[1]
     staff_info = USERS_ROLES.get(target_user_id)
     
@@ -104,6 +121,11 @@ async def rename_staff_callback(call: types.CallbackQuery, state: FSMContext):
 
 @employees_router.message(TaskStates.waiting_for_new_name)
 async def process_new_name_handler(message: types.Message, state: FSMContext):
+    if USERS_ROLES is None:
+        await message.answer("⚠️ Tizim xatosi. Iltimos /start buyrug'ini yuboring.")
+        await state.clear()
+        return
+        
     user_data = await state.get_data()
     target_user_id = user_data.get("rename_user_id")
     new_name = message.text.strip()
@@ -111,7 +133,7 @@ async def process_new_name_handler(message: types.Message, state: FSMContext):
     if target_user_id and target_user_id in USERS_ROLES:
         old_name = USERS_ROLES[target_user_id]["name"]
         USERS_ROLES[target_user_id]["name"] = new_name
-        await save_users(USERS_ROLES)  # AWAIT QO'SHILDI
+        await save_users(USERS_ROLES)
         
         await message.answer(
             text=f"✅ <b>Ism muvaffaqiyatli o‘zgartirildi!</b>\n\n"
@@ -141,6 +163,10 @@ async def process_new_name_handler(message: types.Message, state: FSMContext):
 # ================= LAVOZIMNI O'ZGARTIRISH =================
 @employees_router.callback_query(F.data.startswith("rolechange_"))
 async def process_role_change_menu(call: types.CallbackQuery):
+    if USERS_ROLES is None:
+        await call.answer("⚠️ Tizim xatosi", show_alert=True)
+        return
+        
     target_user_id = call.data.split("_")[1]
     
     roles = ["Admin", "Kassir", "Sanitar", "Manager"]
@@ -165,13 +191,17 @@ async def process_role_change_menu(call: types.CallbackQuery):
 
 @employees_router.callback_query(F.data.startswith("setnewrole_"))
 async def save_new_role_callback(call: types.CallbackQuery, state: FSMContext):
+    if USERS_ROLES is None:
+        await call.answer("⚠️ Tizim xatosi", show_alert=True)
+        return
+        
     data_parts = call.data.split("_")
     new_role = data_parts[1]
     target_user_id = data_parts[2]
     
     if target_user_id in USERS_ROLES:
         USERS_ROLES[target_user_id]["role"] = new_role
-        await save_users(USERS_ROLES)  # AWAIT QO'SHILDI
+        await save_users(USERS_ROLES)
         staff_name = USERS_ROLES[target_user_id]["name"]
         
         await call.message.edit_text(
@@ -200,12 +230,16 @@ async def save_new_role_callback(call: types.CallbackQuery, state: FSMContext):
 # ================= XODIMNI CHETLATIRISH =================
 @employees_router.callback_query(F.data.startswith("firestaff_"))
 async def fire_staff_callback(call: types.CallbackQuery, state: FSMContext):
+    if USERS_ROLES is None:
+        await call.answer("⚠️ Tizim xatosi", show_alert=True)
+        return
+        
     target_user_id = call.data.split("_")[1]
     
     if target_user_id in USERS_ROLES:
         staff_name = USERS_ROLES[target_user_id]["name"]
         USERS_ROLES[target_user_id]["role"] = "rejected"
-        await save_users(USERS_ROLES)  # AWAIT QO'SHILDI
+        await save_users(USERS_ROLES)
         
         await call.message.edit_text(
             text=f"❌ <b>Xodim botdan chetlashtirildi!</b>\n\n"
@@ -231,6 +265,9 @@ async def fire_staff_callback(call: types.CallbackQuery, state: FSMContext):
 
 @employees_router.callback_query(F.data == "editstaff_cancel")
 async def cancel_edit_staff_callback(call: types.CallbackQuery, state: FSMContext):
+    if USERS_ROLES is None:
+        await call.answer("⚠️ Tizim xatosi", show_alert=True)
+        return
     await call.message.delete()
     role = USERS_ROLES[str(call.from_user.id)]["role"]
     await call.message.answer(text="Xodimlarni boshqarish paneli yopildi.", reply_markup=get_main_menu(role))
@@ -241,6 +278,10 @@ async def cancel_edit_staff_callback(call: types.CallbackQuery, state: FSMContex
 # ================= ARXIV =================
 @employees_router.message(F.text == "🗄 Arxiv")
 async def view_archive_handler(message: types.Message):
+    if USERS_ROLES is None:
+        await message.answer("⚠️ Tizim xatosi. Iltimos /start buyrug'ini yuboring.")
+        return
+        
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
     
@@ -272,6 +313,10 @@ async def view_archive_handler(message: types.Message):
 
 @employees_router.callback_query(F.data.startswith("restorestaff_"))
 async def process_restore_staff_callback(call: types.CallbackQuery):
+    if USERS_ROLES is None:
+        await call.answer("⚠️ Tizim xatosi", show_alert=True)
+        return
+        
     target_user_id = call.data.split("_")[1]
     user_info = USERS_ROLES.get(target_user_id)
     
@@ -304,13 +349,17 @@ async def process_restore_staff_callback(call: types.CallbackQuery):
 
 @employees_router.callback_query(F.data.startswith("savearchiverole_"))
 async def save_archive_role_callback(call: types.CallbackQuery, state: FSMContext):
+    if USERS_ROLES is None:
+        await call.answer("⚠️ Tizim xatosi", show_alert=True)
+        return
+        
     data_parts = call.data.split("_")
     new_role = data_parts[1]
     target_user_id = data_parts[2]
     
     if target_user_id in USERS_ROLES:
         USERS_ROLES[target_user_id]["role"] = new_role
-        await save_users(USERS_ROLES)  # AWAIT QO'SHILDI
+        await save_users(USERS_ROLES)
         
         has_name = USERS_ROLES[target_user_id].get("name") is not None
         display_name = USERS_ROLES[target_user_id]["name"] if has_name else "Xodim"
