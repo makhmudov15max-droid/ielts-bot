@@ -30,7 +30,6 @@ class SettingsStates(StatesGroup):
 
 # ================= YORDAMCHI FUNKSIYA =================
 def get_employees_by_role(role: str):
-    """Berilgan roldagi xodimlar ro'yxatini qaytaradi"""
     employees = []
     for u_id, u_info in USERS_ROLES.items():
         if isinstance(u_info, dict) and u_info.get("role") == role and u_info.get("name"):
@@ -108,7 +107,6 @@ async def select_employee_for_settings(call: types.CallbackQuery, state: FSMCont
     user_info = USERS_ROLES.get(user_id, {})
     user_name = user_info.get("name", "Noma'lum")
     
-    # Hozirgi ish vaqtini olish
     work_start, work_end = await get_user_work_time(user_id)
     
     await state.update_data(target_user_id=user_id, target_user_name=user_name)
@@ -228,7 +226,6 @@ async def set_custom_worktime(message: types.Message, state: FSMContext):
     
     start_time, end_time = match.groups()
     
-    # Vaqt formatini tekshirish
     time_pattern = re.compile(r"^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$")
     if not time_pattern.match(start_time) or not time_pattern.match(end_time):
         await message.answer("❌ Vaqt noto'g'ri formatda! Masalan: <code>09:00</code>", parse_mode="HTML")
