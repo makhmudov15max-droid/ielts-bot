@@ -1,4 +1,4 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 
 
 # ========== ASOSIY MENU ==========
@@ -10,8 +10,9 @@ def get_main_menu(role: str):
             [KeyboardButton(text="👥 Xodimlar"), KeyboardButton(text="🗑 Vazifani o'chirish")],
             [KeyboardButton(text="📊 Admin oylik"), KeyboardButton(text="💰 Kassir oylik")],
             [KeyboardButton(text="🗄 Arxiv"), KeyboardButton(text="📑 Guruh Report")],
-            [KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball"), KeyboardButton(text="🎯 Monitoring")],  # ✅ yonma-yon
-            [KeyboardButton(text="📸 Isbotlar")]
+            [KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball"), KeyboardButton(text="🎯 Monitoring")],
+            [KeyboardButton(text="📸 Isbotlar")],
+            [KeyboardButton(text="⚙️ Sozlamalar")]  # YANGI!
         ]
     elif role == "Admin":
         keyboard = [
@@ -43,9 +44,34 @@ def get_back_home_keyboard():
     )
 
 
-# ================= STATIC KEYBOARDS (BARCHA STEPLAR UCHUN TUGMALAR) =================
+# ================= SOZLAMALAR UCHUN KEYBOARDS =================
+def get_settings_role_keyboard():
+    """Sozlamalar uchun rol tanlash tugmalari"""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="Admin"), KeyboardButton(text="Kassir")],
+            [KeyboardButton(text="Sanitar"), KeyboardButton(text="Manager")],
+            [KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")]
+        ],
+        resize_keyboard=True
+    )
 
-# Vazifa turi tanlash (1-step)
+
+def get_work_time_keyboard():
+    """Ish vaqti shablonlari"""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="1-smena (08:00 - 14:00)")],
+            [KeyboardButton(text="2-smena (14:00 - 21:00)")],
+            [KeyboardButton(text="3-smena (09:00 - 18:00)")],
+            [KeyboardButton(text="✍️ Boshqa vaqt")],
+            [KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")]
+        ],
+        resize_keyboard=True
+    )
+
+
+# ================= STATIC KEYBOARDS =================
 task_type_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Muntazam (Doimiy)"), KeyboardButton(text="Kunlik (Bir martalik)")],
@@ -54,7 +80,6 @@ task_type_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-# Unvon tanlash (2-step)
 assign_role_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Admin"), KeyboardButton(text="Manager")],
@@ -64,7 +89,6 @@ assign_role_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-# Kunlar tanlash (doimiy vazifa uchun)
 days_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Toq kunlar"), KeyboardButton(text="Juft kunlar")],
@@ -74,7 +98,6 @@ days_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-# Chastota tanlash (kuniga necha marta)
 frequency_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Kuniga 1 marta"), KeyboardButton(text="Bir necha marta")],
@@ -83,7 +106,6 @@ frequency_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-# Isbot turi tanlash
 proof_type_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Dumaloq video"), KeyboardButton(text="Rasm yuborish")],
@@ -132,7 +154,7 @@ def get_task_complete_keyboard(task_id: int):
 def get_remove_tasks_keyboard(tasks_list: list):
     inline_keyboard = []
     for task in tasks_list:
-        btn_text = f"❌ {task['task_name']} ({task.get('assigned_to_name', 'Noma’lum')})"
+        btn_text = f"❌ {task['task_name']} ({task.get('assigned_to_name', 'Noma\'lum')})"
         inline_keyboard.append([InlineKeyboardButton(text=btn_text, callback_data=f"removetask_{task['id']}")])
     inline_keyboard.append([InlineKeyboardButton(text="❌ Bekor qilish", callback_data="remove_cancel")])
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
@@ -161,7 +183,6 @@ def get_proof_date_keyboard():
 
 # ================= VAZIFALAR RO'YXATI KEYBOARDS =================
 def get_tasks_simple_keyboard():
-    """Vazifalar ro'yxati uchun 3 tugma (Bugun, Sana, Bosh sahifa)"""
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="📅 Bugun")],
@@ -173,7 +194,6 @@ def get_tasks_simple_keyboard():
 
 
 def get_custom_date_keyboard_simple():
-    """60 kunlik sanalar ro'yxati (har bir qatorda 2 tadan) + Bosh sahifa va Ortga"""
     from datetime import datetime, timedelta, timezone
     
     tashkent_tz = timezone(timedelta(hours=5))
@@ -197,5 +217,3 @@ def get_custom_date_keyboard_simple():
     keyboard.append([KeyboardButton(text="⬅️ Ortga"), KeyboardButton(text="🏠 Bosh sahifa")])
     
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
-
-# ================= ADMIN HISOBOT KEYBOARDS =================
