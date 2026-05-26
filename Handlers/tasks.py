@@ -1,4 +1,5 @@
 from aiogram import Router, types, F
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from datetime import datetime, timedelta, timezone
 import re
@@ -36,6 +37,22 @@ def init_tasks_handler(users_roles, tasks_database):
     global USERS_ROLES, TASKS_DATABASE
     USERS_ROLES = users_roles
     TASKS_DATABASE = tasks_database
+
+
+# ================= /CANCEL COMMAND =================
+@tasks_router.message(Command("cancel"))
+async def cancel_handler(message: types.Message, state: FSMContext):
+    """Har qanday holatni /cancel buyrug'i bilan bekor qilish"""
+    current_state = await state.get_state()
+    if current_state is None:
+        await message.answer("Hozirda bekor qilinadigan jarayon yo'q.")
+        return
+    await state.clear()
+    role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
+    await message.answer(
+        "❌ Jarayon bekor qilindi. Asosiy menyuga qaytdingiz.",
+        reply_markup=get_main_menu(role)
+    )
 
 
 # ================= UNIVERSAL BACK/HOME HANDLER =================
