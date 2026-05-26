@@ -1,36 +1,36 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 
-# ================= ASOSIY MENU =================
+# ========== ASOSIY MENU ==========
 def get_main_menu(role: str):
     role = str(role).strip()
     if role in ["Owner", "Manager"]:
         keyboard = [
-            [KeyboardButton(text="➕ Vazifa qoʻshish"), KeyboardButton(text="📋 Vazifalar roʻyxati")],
-            [KeyboardButton(text="👥 Xodimlar"), KeyboardButton(text="🗑 Vazifani oʻchirish")],
+            [KeyboardButton(text="➕ Vazifa qo'shish"), KeyboardButton(text="📋 Vazifalar ro'yxati")],
+            [KeyboardButton(text="👥 Xodimlar"), KeyboardButton(text="🗑 Vazifani o'chirish")],
             [KeyboardButton(text="📊 Admin oylik"), KeyboardButton(text="💰 Kassir oylik")],
             [KeyboardButton(text="🗄 Arxiv"), KeyboardButton(text="📑 Guruh Report")],
-            [KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball")], KeyboardButton(text="🎯 Monitoring")],
+            [KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball"), KeyboardButton(text="🎯 Monitoring")],  # ✅ yonma-yon
             [KeyboardButton(text="📸 Isbotlar")]
         ]
     elif role == "Admin":
         keyboard = [
-            [KeyboardButton(text="📋 Vazifalar roʻyxati")],
+            [KeyboardButton(text="📋 Vazifalar ro'yxati")],
             [KeyboardButton(text="📊 Admin oylik")],
             [KeyboardButton(text="📑 Guruh Report")]
         ]
     elif role == "Kassir":
         keyboard = [
-            [KeyboardButton(text="📋 Vazifalar roʻyxati")],
+            [KeyboardButton(text="📋 Vazifalar ro'yxati")],
             [KeyboardButton(text="💰 Kassir oylik")]
         ]
     elif role == "Sanitar":
         keyboard = [
-            [KeyboardButton(text="📋 Vazifalar roʻyxati")]
+            [KeyboardButton(text="📋 Vazifalar ro'yxati")]
         ]
     else:
         keyboard = [
-            [KeyboardButton(text="📋 Vazifalar roʻyxati")]
+            [KeyboardButton(text="📋 Vazifalar ro'yxati")]
         ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
