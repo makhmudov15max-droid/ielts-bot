@@ -667,12 +667,19 @@ async def check_in_video_handler(message: types.Message, state: FSMContext):
     # Ish vaqtini olish
     work_start, work_end = await get_user_work_time(user_id)
     
-    # Kechikishni hisoblash
+    # Kechikishni hisoblash (kechki smena uchun ham to'g'ri ishlashi kerak)
     try:
         ws_h, ws_m = map(int, work_start.split(":"))
         ar_h, ar_m = map(int, current_time.split(":"))
-        late_min = (ar_h * 60 + ar_m) - (ws_h * 60 + ws_m)
-        late_min = max(0, late_min)
+    
+        # Agar kelgan vaqt ertalabki soatlar (00:00 - 05:00) bo'lsa va ish vaqti kechki bo'lsa
+        if ar_h < 5 and ws_h > 20:  # ertalab kelgan, kechki smena
+            ar_time = (ar_h + 24) * 60 + ar_m  # 00:01 = 1441 daqiqa
+        else:
+            ar_time = ar_h * 60 + ar_m
+    
+        ws_time = ws_h * 60 + ws_m
+        late_min = max(0, ar_time - ws_time)
     except Exception:
         late_min = 0
     
