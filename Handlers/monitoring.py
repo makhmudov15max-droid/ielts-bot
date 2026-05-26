@@ -120,12 +120,14 @@ def format_attendance_report(records: list, title: str) -> str:
     text += "─────────────────────\n"
 
     for i, r in enumerate(records, 1):
+        reason = r.get("reason") or "Ko'rsatilmagan"
+        isbot = "Bor" if r.get("proof_file_id") else "Yo'q"
         text += (
-            f"\n{i}. 📅 <b>{r['date']}</b>\n"
-            f"   ⏰ Kelgan vaqt: <b>{r['arrived_at']}</b>\n"
-            f"   ⌛ Kechikish: <b>{r['late_minutes']} daqiqa</b>\n"
-            f"   ✍️ Sabab: {r.get('reason') or 'Ko'rsatilmagan'}\n"
-            f"   📸 Isbot: {'✅ Bor' if r.get('proof_file_id') else '❌ Yo'q'}\n"
+            "\n" + str(i) + ". " + r["date"] + "\n"
+            + "   Kelgan vaqt: " + str(r["arrived_at"]) + "\n"
+            + "   Kechikish: " + str(r["late_minutes"]) + " daqiqa\n"
+            + "   Sabab: " + reason + "\n"
+            + "   Isbot: " + isbot + "\n"
         )
 
     return text
