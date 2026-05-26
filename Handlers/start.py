@@ -8,18 +8,12 @@ from aiogram.fsm.context import FSMContext
 
 from Handlers.states import TaskStates
 from Keyboards.main_menu import get_main_menu, get_admin_approval_keyboard, get_task_complete_keyboard
-from utils.attendance_db import has_checkin_today, mark_missed_for_date
-from utils.users_db import get_user_work_time
 from utils.users_db import save_users, set_user_busy, set_user_free, is_user_busy, get_user_active_task
 from utils.tasks_db import save_tasks, update_task_status, load_tasks, get_task_by_id, reset_sent_today_times
 from utils.proofs_db import add_proof
 from utils.access import check_user_access
-from Handlers.tasks import tasks_router, init_tasks_handler
-from Handlers.employees import employees_router, init_employees_handler
-from Handlers.salaries import salaries_router, init_salaries_handler
-from Handlers.callback_handlers import callback_router, init_callback_handler
-from Handlers.teachers_sheets import sheets_router
-from Handlers.group_report import report_router
+from utils.attendance_db import has_checkin_today, mark_missed_for_date
+from utils.users_db import get_user_work_time
 
 start_router = Router()
 
@@ -36,11 +30,6 @@ def init_all_handlers(users_roles, tasks_database, admin_id):
     USERS_ROLES = users_roles
     TASKS_DATABASE = tasks_database
     ADMIN_ID = admin_id
-    
-    init_tasks_handler(USERS_ROLES, TASKS_DATABASE)
-    init_employees_handler(USERS_ROLES, ADMIN_ID)
-    init_salaries_handler(USERS_ROLES)
-    init_callback_handler(USERS_ROLES, TASKS_DATABASE, ADMIN_ID)
 
 
 # ================= /START COMMAND =================
@@ -94,7 +83,6 @@ async def command_start_handler(message: types.Message):
         text=f"Assalomu alaykum, {saved_name}! "
              f"Tizimga xush kelibsiz.\n"
              f"Quyidagi tugmalar orqali botni boshqarishingiz mumkin 👇",
-
         reply_markup=get_main_menu(role)
     )
 
@@ -116,15 +104,12 @@ async def get_user_real_name_handler(message: types.Message):
     first_name = input_text.split()[0]
     
     USERS_ROLES[user_id]["name"] = input_text
-    await save_users(USERS_ROLES)  # ASYNC + AWAIT
+    await save_users(USERS_ROLES)
 
     await message.answer(
         text=f"Hurmatli {first_name}, siz muvaffaqiyatli roʻyxatdan oʻtdingiz. "
              f"Endi bot imkoniyatlaridan foydalanishingiz mumkin.",
-
-        reply_markup=get_main_menu(
-            USERS_ROLES[user_id]["role"]
-        )
+        reply_markup=get_main_menu(USERS_ROLES[user_id]["role"])
     )
 
 
@@ -136,18 +121,16 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     task_id = state_data.get("active_task_id")
     
     global TASKS_DATABASE
-    task = await get_task_by_id(task_id) if task_id else None  # ASYNC + AWAIT
+    task = await get_task_by_id(task_id) if task_id else None
     GROUP_CHAT_ID = -5226036627  
     user_id = str(message.from_user.id)
     
-    # Foydalanuvchini band qilish
-    await set_user_busy(user_id, task_id)  # ASYNC + AWAIT
+    await set_user_busy(user_id, task_id)
     
-    # ========== MATN TEKSHIRUVI ==========
     if proof_required == "Text" and message.text and not message.photo and not message.video_note:
         role = USERS_ROLES[user_id]["role"]
         
-        proof = await add_proof(  # ASYNC + AWAIT
+        await add_proof(
             user_id=message.from_user.id,
             user_name=USERS_ROLES[user_id].get("name", "Noma'lum"),
             task_id=task["id"] if task else 0,
@@ -160,10 +143,10 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
         )
         
         if task:
-            await update_task_status(task_id, "completed", user_id)  # ASYNC + AWAIT
-            TASKS_DATABASE = await load_tasks()  # ASYNC + AWAIT
+            await update_task_status(task_id, "completed", user_id)
+            TASKS_DATABASE = await load_tasks()
         
-        await set_user_free(user_id)  # ASYNC + AWAIT
+        await set_user_free(user_id)
         
         await message.answer(
             text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
@@ -184,11 +167,10 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
         
         await state.clear()
     
-    # ========== RASM TEKSHIRUVI ==========
     elif proof_required == "Photo" and message.photo:
         role = USERS_ROLES[user_id]["role"]
         
-        proof = await add_proof(  # ASYNC + AWAIT
+        await add_proof(
             user_id=message.from_user.id,
             user_name=USERS_ROLES[user_id].get("name", "Noma'lum"),
             task_id=task["id"] if task else 0,
@@ -201,15 +183,16 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
         )
         
         if task:
-            await update_task_status(task_id, "completed", user_id)  # ASYNC + AWAIT
-            TASKS_DATABASE = await load_tasks()  # ASYNC + AWAIT
+            await update_task_status(task_id, "completed", user_id)
+            TASKS_DATABASE = await load_tasks()
         
-        await set_user_free(user_id)  # ASYNC + AWAIT
+        await set_user_free(user_id)
         
         await message.answer(
             text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
             reply_markup=get_main_menu(role)
         )
+        
         if task:
             group_text = (
                 f"✅ <b>VAZIFA BAJARILDI!</b>\n\n"
@@ -224,9 +207,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             
         await state.clear()
     
-    # ========== VIDEO TEKSHIRUVI ==========
     elif proof_required == "Video message":
-        
         if not message.video_note:
             await message.answer(
                 text="❌ <b>Notoʻgʻri format!</b> Iltimos, dumaloq video (video message) yuboring.\n\n"
@@ -241,7 +222,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
         
         role = USERS_ROLES[user_id]["role"]
         
-        proof = await add_proof(  # ASYNC + AWAIT
+        await add_proof(
             user_id=message.from_user.id,
             user_name=USERS_ROLES[user_id].get("name", "Noma'lum"),
             task_id=task["id"] if task else 0,
@@ -254,10 +235,10 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
         )
         
         if task:
-            await update_task_status(task_id, "completed", user_id)  # ASYNC + AWAIT
-            TASKS_DATABASE = await load_tasks()  # ASYNC + AWAIT
+            await update_task_status(task_id, "completed", user_id)
+            TASKS_DATABASE = await load_tasks()
         
-        await set_user_free(user_id)  # ASYNC + AWAIT
+        await set_user_free(user_id)
         
         await message.answer(
             text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
@@ -311,7 +292,7 @@ async def auto_task_scheduler(bot):
         try:
             now = datetime.now(timezone.utc).astimezone(tashkent_tz)
             current_time_str = now.strftime("%H:%M")
-            current_day_name = now.strftime("%a").strip().lower()
+            current_day_name = now.strftime("%a").strip().lower() 
             day_of_month = now.day
             today_str = now.strftime("%Y-%m-%d")
             
@@ -322,30 +303,27 @@ async def auto_task_scheduler(bot):
                     task["sent_today_times"] = []
             
             # ========== 2. ISHGA KELISH ESLATMALARI (30 daqiqa oldin) ==========
-            # Har bir xodimni tekshirish
             for user_id, user_info in USERS_ROLES.items():
                 if not isinstance(user_info, dict):
                     continue
                 role = user_info.get("role")
                 if role in ["Owner", "Manager"]:
-                    continue  # Faqat oddiy xodimlarga eslatma
+                    continue
                 
-                # Ish vaqtini olish
                 work_start, work_end = await get_user_work_time(user_id)
                 
-                # 30 daqiqa oldin vaqtni hisoblash
                 try:
                     ws_h, ws_m = map(int, work_start.split(":"))
                     reminder_time = (ws_h * 60 + ws_m) - 30
+                    if reminder_time < 0:
+                        reminder_time = 0
                     reminder_h = reminder_time // 60
                     reminder_m = reminder_time % 60
                     reminder_str = f"{reminder_h:02d}:{reminder_m:02d}"
                 except Exception:
                     continue
                 
-                # Eslatma vaqtiga yetganda va bugun hali tasdiqlanmagan bo'lsa
                 if current_time_str == reminder_str:
-                    # Bugun allaqachon tasdiqlaganmi?
                     if not await has_checkin_today(str(user_id)):
                         try:
                             await bot.send_message(
@@ -354,11 +332,10 @@ async def auto_task_scheduler(bot):
                                     f"⏰ <b>30 daqiqadan so'ng Ish smenangiz boshlanadi!</b>\n\n"
                                     f"📋 Ish vaqtingiz: {work_start} - {work_end}\n\n"
                                     f"✅ Iltimos, ishga kelganingizni tasdiqlash uchun "
-                                    f"<b>'✅ Ishga keldim'</b> tugmasini bosing va dumaloq video yuboring.",
-                                    parse_mode="HTML"
-                                )
+                                    f"<b>'✅ Ishga keldim'</b> tugmasini bosing va dumaloq video yuboring."
+                                ),
+                                parse_mode="HTML"
                             )
-                            logging.info(f"Eslatma yuborildi: user_id={user_id}, vaqt={reminder_str}")
                         except Exception as e:
                             logging.error(f"Eslatma yuborishda xatolik: {e}")
             
@@ -366,7 +343,6 @@ async def auto_task_scheduler(bot):
             if current_time_str == "23:59" and last_daily_check_date != today_str:
                 logging.info(f"Kun oxiri tekshiruvi boshlandi: {today_str}")
                 
-                # Barcha oddiy xodimlarni tekshirish
                 for user_id, user_info in USERS_ROLES.items():
                     if not isinstance(user_info, dict):
                         continue
@@ -374,7 +350,6 @@ async def auto_task_scheduler(bot):
                     if role in ["Owner", "Manager"]:
                         continue
                     
-                    # Bugun tasdiqlaganmi?
                     if not await has_checkin_today(str(user_id)):
                         await mark_missed_for_date(str(user_id), today_str)
                         logging.info(f"Marked as missed: user_id={user_id}, date={today_str}")
@@ -384,7 +359,38 @@ async def auto_task_scheduler(bot):
             
             # ========== 4. VAZIFALARNI YUBORISH ==========
             if current_time_str != last_checked_minute:
-                # ... (vazifalarni yuborish kodi o'zgarishsiz qoladi)
+                for task in TASKS_DATABASE:
+                    if task.get("task_type") == "Kunlik (Bir martalik)":
+                        continue
+                    
+                    if task.get("status") == "completed":
+                        continue
+                        
+                    if current_time_str in task["task_times"] and current_time_str not in task["sent_today_times"]:
+                        day_match = False
+                        task_days = str(task["task_days"]).strip()
+                        
+                        if task_days == "ODD" and day_of_month % 2 != 0:
+                            day_match = True
+                        elif task_days == "EVEN" and day_of_month % 2 == 0:
+                            day_match = True
+                        elif task_days == "6 days a week" and current_day_name != "sun":
+                            day_match = True
+                        else:
+                            clean_days = [d.strip().lower() for d in task_days.split(",") if d.strip()]
+                            if current_day_name in clean_days:
+                                day_match = True
+                        
+                        if day_match:
+                            text_to_employee = f"📌 <b>{task['task_name']}</b>"
+                            await bot.send_message(
+                                chat_id=task["assigned_to_id"],
+                                text=text_to_employee,
+                                parse_mode="HTML",
+                                reply_markup=get_task_complete_keyboard(task["id"])
+                            )
+                            task["sent_today_times"].append(current_time_str)
+                            await save_tasks(TASKS_DATABASE)
                 
                 last_checked_minute = current_time_str
                 
