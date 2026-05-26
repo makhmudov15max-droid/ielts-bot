@@ -48,6 +48,7 @@ async def main():
         USERS_ROLES = await load_users()
         TASKS_DATABASE = await load_tasks()
         logging.info(f"✅ {len(USERS_ROLES)} ta foydalanuvchi, {len(TASKS_DATABASE)} ta vazifa yuklandi")
+        logging.info(f"DEBUG: USERS_ROLES type: {type(USERS_ROLES)}, is None: {USERS_ROLES is None}")
         
         # Global users roles ni teachers_sheets va group_report ga o'tkazish
         set_teachers_users_roles(USERS_ROLES)
