@@ -10,9 +10,8 @@ def get_main_menu(role: str):
             [KeyboardButton(text="👥 Xodimlar"), KeyboardButton(text="🗑 Vazifani oʻchirish")],
             [KeyboardButton(text="📊 Admin oylik"), KeyboardButton(text="💰 Kassir oylik")],
             [KeyboardButton(text="🗄 Arxiv"), KeyboardButton(text="📑 Guruh Report")],
-            [KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball")],
-            [KeyboardButton(text="📸 Isbotlar")],
-            [KeyboardButton(text="🎯 Monitoring")]
+            [KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball")], KeyboardButton(text="🎯 Monitoring")],
+            [KeyboardButton(text="📸 Isbotlar")]
         ]
     elif role == "Admin":
         keyboard = [
