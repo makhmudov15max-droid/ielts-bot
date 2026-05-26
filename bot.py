@@ -16,6 +16,7 @@ from Handlers.salaries import salaries_router
 from Handlers.callback_handlers import callback_router
 from Handlers.proofs import proofs_router, init_proofs_handler
 from Handlers.monitoring import monitoring_router, init_monitoring_handler
+from Handlers.settings import settings_router, init_settings_handler  # YANGI!
 from utils.database import init_db, close_db
 from utils.users_db import load_users
 from utils.tasks_db import load_tasks
@@ -35,32 +36,28 @@ async def main():
     try:
         ADMIN_ID = 6500594896
         
-        # PostgreSQL ni ulash
         await init_db()
         
-        # Redis ni ulash (FSM uchun)
         redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
         redis_client = redis.from_url(redis_url)
         storage = RedisStorage(redis=redis_client)
         
         logging.info("📡 Ma'lumotlar yuklanmoqda...")
-        USERS_ROLES = await load_users(ADMIN_ID)
+        USERS_ROLES = await load_users()  # admin_id parametri olib tashlandi
         TASKS_DATABASE = await load_tasks()
         logging.info(f"✅ {len(USERS_ROLES)} ta foydalanuvchi, {len(TASKS_DATABASE)} ta vazifa yuklandi")
         
-        # Global users roles ni teachers_sheets va group_report ga o'tkazish
         set_teachers_users_roles(USERS_ROLES)
         set_report_users_roles(USERS_ROLES)
         
-        # Barcha handlerlar uchun global o'zgaruvchilarni o'rnatish
         init_all_handlers(USERS_ROLES, TASKS_DATABASE, ADMIN_ID)
         init_proofs_handler(USERS_ROLES, ADMIN_ID)
         init_monitoring_handler(USERS_ROLES)
+        init_settings_handler(USERS_ROLES, ADMIN_ID)  # YANGI!
         
         bot = Bot(token=BOT_TOKEN)
         dp = Dispatcher(storage=storage)
         
-        # Routerlarni ulash
         dp.include_router(start_router)
         dp.include_router(tasks_router)
         dp.include_router(employees_router)
@@ -70,10 +67,10 @@ async def main():
         dp.include_router(monitoring_router)
         dp.include_router(sheets_router)
         dp.include_router(report_router)
+        dp.include_router(settings_router)  # YANGI!
         
         logging.info("✅ Barcha routerlar ulandi")
         
-        # Taymerni ishga tushirish
         asyncio.create_task(auto_task_scheduler(bot))
         logging.info("⏰ Task scheduler ishga tushdi")
         
