@@ -112,6 +112,8 @@ async def init_db():
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_proofs_date ON proofs(date)")
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_attendance_user ON attendance(user_id)")
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date)")
+            await conn.execute("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending'")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_attendance_status ON attendance(status)")
             
             # Owner qo'shish
             await conn.execute("""
