@@ -15,6 +15,7 @@ from Handlers.employees import employees_router
 from Handlers.salaries import salaries_router
 from Handlers.callback_handlers import callback_router
 from Handlers.proofs import proofs_router, init_proofs_handler
+from Handlers.monitoring import monitoring_router, init_monitoring_handler
 from utils.database import init_db, close_db
 from utils.users_db import load_users
 from utils.tasks_db import load_tasks
@@ -54,6 +55,7 @@ async def main():
         # Barcha handlerlar uchun global o'zgaruvchilarni o'rnatish
         init_all_handlers(USERS_ROLES, TASKS_DATABASE, ADMIN_ID)
         init_proofs_handler(USERS_ROLES, ADMIN_ID)
+        init_monitoring_handler(USERS_ROLES)
         
         bot = Bot(token=BOT_TOKEN)
         dp = Dispatcher(storage=storage)
@@ -65,6 +67,7 @@ async def main():
         dp.include_router(salaries_router)
         dp.include_router(callback_router)
         dp.include_router(proofs_router)
+        dp.include_router(monitoring_router)
         dp.include_router(sheets_router)
         dp.include_router(report_router)
         
