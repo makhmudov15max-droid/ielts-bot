@@ -99,6 +99,25 @@ async def init_db():
                 ON CONFLICT (user_id) DO NOTHING
             """, "6500594896", "Owner", "Baxtiyorjon")
             
+        # Attendance table
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS attendance (
+                    id SERIAL PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    user_name TEXT,
+                    role TEXT,
+                    date TEXT NOT NULL,
+                    arrived_at TEXT,
+                    late_minutes INTEGER DEFAULT 0,
+                    reason TEXT,
+                    proof_file_id TEXT,
+                    proof_type TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_attendance_user ON attendance(user_id)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date)")
+            
         logging.info("✅ Barcha jadvallar tayyor va Owner qo'shildi!")
     except Exception as e:
         logging.error(f"❌ Database xatosi: {e}")
