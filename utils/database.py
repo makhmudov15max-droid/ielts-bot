@@ -30,7 +30,7 @@ async def init_db():
         logging.info("✅ PostgreSQL ulandi!")
         
         async with db_pool.acquire() as conn:
-            # Users table (work_start va work_end qo'shilgan)
+            # Users table (IF NOT EXISTS bilan)
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     user_id TEXT PRIMARY KEY,
@@ -38,12 +38,14 @@ async def init_db():
                     name TEXT,
                     active_task INTEGER,
                     is_waiting_for_proof BOOLEAN DEFAULT FALSE,
-                    work_start TEXT DEFAULT '09:00',
-                    work_end TEXT DEFAULT '18:00',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            
+            # Yangi ustunlarni qo'shish (agar mavjud bo'lmasa)
+            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS work_start TEXT DEFAULT '09:00'")
+            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS work_end TEXT DEFAULT '18:00'")
             
             # Tasks table
             await conn.execute("""
