@@ -1,7 +1,7 @@
 import logging
 from utils.database import get_pool
 
-async def load_users(admin_id: int):
+async def load_users():
     """PostgreSQL dan foydalanuvchilarni yuklaydi"""
     pool = get_pool()
     if not pool:
@@ -10,7 +10,7 @@ async def load_users(admin_id: int):
     
     try:
         async with pool.acquire() as conn:
-            rows = await conn.fetch("SELECT user_id, role, name, active_task, is_waiting_for_proof FROM users")
+            rows = await conn.fetch("SELECT user_id, role, name, active_task, is_waiting_for_proof, work_start, work_end FROM users")
             
             users = {}
             for row in rows:
@@ -18,7 +18,9 @@ async def load_users(admin_id: int):
                     "role": row["role"],
                     "name": row["name"],
                     "active_task": row["active_task"],
-                    "is_waiting_for_proof": row["is_waiting_for_proof"]
+                    "is_waiting_for_proof": row["is_waiting_for_proof"],
+                    "work_start": row["work_start"] or "09:00",
+                    "work_end": row["work_end"] or "18:00"
                 }
             return users
     except Exception as e:
@@ -36,25 +38,58 @@ async def save_users(data):
         async with pool.acquire() as conn:
             for user_id, user_info in data.items():
                 await conn.execute("""
-                    INSERT INTO users (user_id, role, name, active_task, is_waiting_for_proof, updated_at)
-                    VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+                    INSERT INTO users (user_id, role, name, active_task, is_waiting_for_proof, work_start, work_end, updated_at)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
                     ON CONFLICT (user_id) DO UPDATE SET
                         role = EXCLUDED.role,
                         name = EXCLUDED.name,
                         active_task = EXCLUDED.active_task,
                         is_waiting_for_proof = EXCLUDED.is_waiting_for_proof,
+                        work_start = EXCLUDED.work_start,
+                        work_end = EXCLUDED.work_end,
                         updated_at = CURRENT_TIMESTAMP
                 """, user_id, user_info.get("role"), user_info.get("name"),
-                   user_info.get("active_task"), user_info.get("is_waiting_for_proof", False))
+                   user_info.get("active_task"), user_info.get("is_waiting_for_proof", False),
+                   user_info.get("work_start", "09:00"), user_info.get("work_end", "18:00"))
     except Exception as e:
         logging.error(f"Users saqlash xatosi: {e}")
+
+async def set_user_work_time(user_id: str, start_time: str, end_time: str):
+    """Xodimning ish vaqtini belgilash"""
+    pool = get_pool()
+    if not pool:
+        return False
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute("""
+                UPDATE users SET work_start = $1, work_end = $2, updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = $3
+            """, start_time, end_time, user_id)
+        return True
+    except Exception as e:
+        logging.error(f"set_user_work_time xatosi: {e}")
+        return False
+
+async def get_user_work_time(user_id: str):
+    """Xodimning ish vaqtini olish"""
+    pool = get_pool()
+    if not pool:
+        return ("09:00", "18:00")
+    try:
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow("SELECT work_start, work_end FROM users WHERE user_id = $1", user_id)
+            if row:
+                return (row["work_start"] or "09:00", row["work_end"] or "18:00")
+            return ("09:00", "18:00")
+    except Exception as e:
+        logging.error(f"get_user_work_time xatosi: {e}")
+        return ("09:00", "18:00")
 
 async def set_user_busy(user_id: str, task_id: int):
     """Foydalanuvchini band holatiga o'tkazish"""
     pool = get_pool()
     if not pool:
         return False
-    
     try:
         async with pool.acquire() as conn:
             await conn.execute("""
@@ -71,7 +106,6 @@ async def set_user_free(user_id: str):
     pool = get_pool()
     if not pool:
         return False
-    
     try:
         async with pool.acquire() as conn:
             await conn.execute("""
@@ -88,7 +122,6 @@ async def is_user_busy(user_id: str) -> bool:
     pool = get_pool()
     if not pool:
         return False
-    
     try:
         async with pool.acquire() as conn:
             row = await conn.fetchrow("SELECT is_waiting_for_proof FROM users WHERE user_id = $1", user_id)
@@ -102,7 +135,6 @@ async def get_user_active_task(user_id: str) -> int:
     pool = get_pool()
     if not pool:
         return None
-    
     try:
         async with pool.acquire() as conn:
             row = await conn.fetchrow("SELECT active_task FROM users WHERE user_id = $1", user_id)
@@ -116,7 +148,6 @@ async def get_user_role(user_id: str) -> str:
     pool = get_pool()
     if not pool:
         return None
-    
     try:
         async with pool.acquire() as conn:
             row = await conn.fetchrow("SELECT role FROM users WHERE user_id = $1", user_id)
