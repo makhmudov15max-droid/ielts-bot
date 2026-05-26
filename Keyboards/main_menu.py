@@ -17,21 +17,25 @@ def get_main_menu(role: str):
         ]
     elif role == "Admin":
         keyboard = [
+            [KeyboardButton(text="✅ Ishga keldim")],
             [KeyboardButton(text="📋 Vazifalar ro'yxati")],
             [KeyboardButton(text="📊 Admin oylik")],
             [KeyboardButton(text="📑 Guruh Report")]
         ]
     elif role == "Kassir":
         keyboard = [
+            [KeyboardButton(text="✅ Ishga keldim")],
             [KeyboardButton(text="📋 Vazifalar ro'yxati")],
             [KeyboardButton(text="💰 Kassir oylik")]
         ]
     elif role == "Sanitar":
         keyboard = [
+            [KeyboardButton(text="✅ Ishga keldim")],
             [KeyboardButton(text="📋 Vazifalar ro'yxati")]
         ]
     else:
         keyboard = [
+            [KeyboardButton(text="✅ Ishga keldim")],
             [KeyboardButton(text="📋 Vazifalar ro'yxati")]
         ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
