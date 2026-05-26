@@ -10,10 +10,10 @@ from config import BOT_TOKEN
 from Handlers.start import start_router, auto_task_scheduler, init_all_handlers
 from Handlers.teachers_sheets import sheets_router, set_users_roles as set_teachers_users_roles
 from Handlers.group_report import report_router, set_users_roles as set_report_users_roles
-from Handlers.tasks import tasks_router
-from Handlers.employees import employees_router
-from Handlers.salaries import salaries_router
-from Handlers.callback_handlers import callback_router
+from Handlers.tasks import tasks_router, init_tasks_handler
+from Handlers.employees import employees_router, init_employees_handler
+from Handlers.salaries import salaries_router, init_salaries_handler
+from Handlers.callback_handlers import callback_router, init_callback_handler
 from Handlers.proofs import proofs_router, init_proofs_handler
 from Handlers.monitoring import monitoring_router, init_monitoring_handler
 from Handlers.settings import settings_router, init_settings_handler
@@ -56,6 +56,10 @@ async def main():
         
         # Barcha handlerlar uchun global o'zgaruvchilarni o'rnatish
         init_all_handlers(USERS_ROLES, TASKS_DATABASE, ADMIN_ID)
+        init_tasks_handler(USERS_ROLES, TASKS_DATABASE)
+        init_employees_handler(USERS_ROLES, ADMIN_ID)
+        init_salaries_handler(USERS_ROLES)
+        init_callback_handler(USERS_ROLES, TASKS_DATABASE, ADMIN_ID)
         init_proofs_handler(USERS_ROLES, ADMIN_ID)
         init_monitoring_handler(USERS_ROLES)
         init_settings_handler(USERS_ROLES, ADMIN_ID)
