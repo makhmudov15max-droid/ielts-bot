@@ -7,7 +7,6 @@ import redis.asyncio as redis
 import os
 
 from Handlers.attendance_admin import attendance_admin_router, init_attendance_admin_handler
-dp.include_router(attendance_admin_router)
 from config import BOT_TOKEN
 from Handlers.start import start_router, auto_task_scheduler, init_all_handlers
 from Handlers.teachers_sheets import sheets_router, set_users_roles as set_teachers_users_roles
@@ -87,6 +86,7 @@ async def main():
         dp.include_router(sheets_router)
         dp.include_router(report_router)
         dp.include_router(settings_router)
+        dp.include_router(attendance_admin_router)
 
         logging.info("✅ Barcha routerlar ulandi")
 
