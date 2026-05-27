@@ -283,15 +283,70 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             )
 
 
-# ================= TAYMER (AUTO TASK SCHEDULER) =================
 async def auto_task_scheduler(bot):
     last_checked_minute = ""
     last_daily_check_date = ""
     tashkent_tz = timezone(timedelta(hours=5))
     
-    # Kunlik eslatma yuborilganligini kuzatish (WHILE DAN TASHQARIDA)
-    reminder_sent_today = {}  # {user_id: date}
+    # Kunlik eslatma yuborilganligini kuzatish
+    reminder_sent_today = {}
     
+    # ========== BOT RESTART QILGANDA O'TKAZIB YUBORILGAN ESLATMALARNI QAYTA YUBORISH ==========
+    now = datetime.now(timezone.utc).astimezone(tashkent_tz)
+    current_time_str = now.strftime("%H:%M")
+    today_str = now.strftime("%Y-%m-%d")
+    
+    for user_id, user_info in USERS_ROLES.items():
+        if not isinstance(user_info, dict):
+            continue
+        role = user_info.get("role")
+        if role in ["Owner", "Manager"]:
+            continue
+        
+        if await has_checkin_today(str(user_id)):
+            reminder_sent_today[user_id] = today_str
+            continue
+        
+        work_start, work_end = await get_user_work_time(user_id)
+        
+        try:
+            ws_h, ws_m = map(int, work_start.split(":"))
+            reminder_minutes = (ws_h * 60 + ws_m) - 30
+            if reminder_minutes < 0:
+                reminder_minutes += 24 * 60
+            
+            reminder_h = reminder_minutes // 60
+            reminder_m = reminder_minutes % 60
+            reminder_str = f"{reminder_h:02d}:{reminder_m:02d}"
+            
+            # Agar hozirgi vaqt eslatma vaqtidan keyin va ish vaqtidan oldin bo'lsa
+            current_minutes = int(current_time_str.split(":")[0]) * 60 + int(current_time_str.split(":")[1])
+            ish_minutes = ws_h * 60 + ws_m
+            
+            print(f"🔍 RESTART CHECK: user={user_id}, work_start={work_start}, reminder={reminder_str}, current={current_time_str}, ish={ish_minutes}")
+            
+            if reminder_minutes <= current_minutes < ish_minutes:
+                print(f"✅✅✅ RESTART ESLATMA YUBORILDI! user={user_id}")
+                try:
+                    await bot.send_message(
+                        chat_id=int(user_id),
+                        text=(
+                            f"⏰ <b>30 daqiqadan so'ng ish smenangiz boshlanadi!</b>\n\n"
+                            f"📋 Ish vaqtingiz: {work_start} - {work_end}\n\n"
+                            f"✅ Iltimos, ishga kelganingizni tasdiqlash uchun <b>'✅ Ishga keldim'</b> tugmasini bosing.",
+                        ),
+                        parse_mode="HTML",
+                        reply_markup=get_check_in_reminder_keyboard()
+                    )
+                    reminder_sent_today[user_id] = today_str
+                    logging.info(f"Restartda o'tkazib yuborilgan eslatma yuborildi: user_id={user_id}")
+                except Exception as e:
+                    logging.error(f"Restart eslatmasi yuborishda xatolik: {e}")
+        except Exception as e:
+            logging.error(f"Restart eslatmasi hisoblashda xatolik: {e}")
+            continue
+    
+    # ========== ASOSIY SIKL ==========
     while True:
         try:
             now = datetime.now(timezone.utc).astimezone(tashkent_tz)
@@ -305,7 +360,7 @@ async def auto_task_scheduler(bot):
                 await reset_sent_today_times()
                 for task in TASKS_DATABASE:
                     task["sent_today_times"] = []
-                reminder_sent_today.clear()  # Eslatma ro'yxatini tozalash
+                reminder_sent_today.clear()
             
             # ========== 2. ISHGA KELISH ESLATMALARI (30 daqiqa oldin, kuniga 1 marta) ==========
             for user_id, user_info in USERS_ROLES.items():
@@ -326,25 +381,20 @@ async def auto_task_scheduler(bot):
                 
                 work_start, work_end = await get_user_work_time(user_id)
                 
-                # Debug log (Railway loglarida ko'rinadi)
-                print(f"🔍 DEBUG: user={user_id}, work_start={work_start}, current_time={current_time_str}, today={today_str}")
-                
                 try:
                     ws_h, ws_m = map(int, work_start.split(":"))
                     
                     # 30 daqiqa oldin vaqtni hisoblash (24 soatlik aylanish bilan)
                     reminder_minutes = (ws_h * 60 + ws_m) - 30
                     if reminder_minutes < 0:
-                        reminder_minutes += 24 * 60  # KEChAGI KUNGA O'TKAZISH (0 emas!)
+                        reminder_minutes += 24 * 60
                     
                     reminder_h = reminder_minutes // 60
                     reminder_m = reminder_minutes % 60
                     reminder_str = f"{reminder_h:02d}:{reminder_m:02d}"
                     
-                    print(f"🔍 DEBUG: user={user_id}, reminder_str={reminder_str}, current={current_time_str}")
-                    
                     if current_time_str == reminder_str:
-                        print(f"✅✅✅ ESLATMA YUBORILMOQDA! user={user_id}, time={reminder_str}")
+                        print(f"✅✅✅ ESLATMA YUBORILDI! user={user_id}, time={reminder_str}")
                         try:
                             await bot.send_message(
                                 chat_id=int(user_id),
@@ -360,9 +410,6 @@ async def auto_task_scheduler(bot):
                             logging.info(f"Ishga kelish eslatmasi yuborildi: user_id={user_id}, time={work_start}")
                         except Exception as e:
                             logging.error(f"Eslatma yuborishda xatolik: {e}")
-                    else:
-                        print(f"🔍 DEBUG: user={user_id}, reminder_str={reminder_str} != current={current_time_str}")
-                        
                 except Exception as e:
                     logging.error(f"Eslatma hisoblashda xatolik: user_id={user_id}, work_start={work_start}, error={e}")
                     continue
