@@ -734,7 +734,7 @@ async def check_in_video_handler(message: types.Message, state: FSMContext):
                 f"📅 Sana: {today}\n"
                 f"⏰ Kelgan vaqt: {current_time}\n"
                 f"📋 Ish vaqti: {work_start} - {work_end}\n"
-                f"🎉 <b>Hurmatli {user_name}, siz ishga o'z vaqtida keldingiz. Ishchingizga omad!</b>"
+                f"🎉 <b>Hurmatli {user_name}, siz ishga o'z vaqtida keldingiz. Kuningiz barokatli o'tsin!</b>"
             ),
             parse_mode="HTML",
             reply_markup=get_main_menu(role)
