@@ -35,25 +35,25 @@ logging.info("🚀 Bot ishga tushmoqda...")
 async def main():
     try:
         ADMIN_ID = 6500594896
-        
+
         # PostgreSQL ni ulash
         await init_db()
-        
+
         # Redis ni ulash (FSM uchun)
         redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
         redis_client = redis.from_url(redis_url)
         storage = RedisStorage(redis=redis_client)
-        
+
         logging.info("📡 Ma'lumotlar yuklanmoqda...")
         USERS_ROLES = await load_users()
         TASKS_DATABASE = await load_tasks()
         logging.info(f"✅ {len(USERS_ROLES)} ta foydalanuvchi, {len(TASKS_DATABASE)} ta vazifa yuklandi")
         logging.info(f"DEBUG: USERS_ROLES type: {type(USERS_ROLES)}, is None: {USERS_ROLES is None}")
-        
+
         # Global users roles ni teachers_sheets va group_report ga o'tkazish
         set_teachers_users_roles(USERS_ROLES)
         set_report_users_roles(USERS_ROLES)
-        
+
         # Barcha handlerlar uchun global o'zgaruvchilarni o'rnatish
         init_all_handlers(USERS_ROLES, TASKS_DATABASE, ADMIN_ID)
         init_tasks_handler(USERS_ROLES, TASKS_DATABASE)
@@ -63,10 +63,16 @@ async def main():
         init_proofs_handler(USERS_ROLES, ADMIN_ID)
         init_monitoring_handler(USERS_ROLES)
         init_settings_handler(USERS_ROLES, ADMIN_ID)
-        
+
         bot = Bot(token=BOT_TOKEN)
         dp = Dispatcher(storage=storage)
-        
+
+        # ============================================================
+        # WEBHOOK NI O'CHIRISH (Sherlock yoki boshqa bot qoldirgan)
+        # ============================================================
+        await bot.delete_webhook(drop_pending_updates=True)
+        logging.info("✅ Webhook o'chirildi, eski xabarlar tozalandi")
+
         # Routerlarni ulash
         dp.include_router(start_router)
         dp.include_router(tasks_router)
@@ -78,16 +84,16 @@ async def main():
         dp.include_router(sheets_router)
         dp.include_router(report_router)
         dp.include_router(settings_router)
-        
+
         logging.info("✅ Barcha routerlar ulandi")
-        
+
         # Taymerni ishga tushirish
         asyncio.create_task(auto_task_scheduler(bot))
         logging.info("⏰ Task scheduler ishga tushdi")
-        
+
         logging.info("✅ Bot polling boshlandi")
-        await dp.start_polling(bot)
-        
+        await dp.start_polling(bot, drop_pending_updates=True)
+
     except Exception as e:
         logging.critical(f"Bot ishga tushishda xatolik: {e}", exc_info=True)
     finally:
