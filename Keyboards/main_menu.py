@@ -169,7 +169,7 @@ def get_proof_role_keyboard():
     keyboard = [
         [KeyboardButton(text="Admin"), KeyboardButton(text="Kassir")],
         [KeyboardButton(text="Sanitar"), KeyboardButton(text="Manager")],
-        [KeyboardButton(text="Barcha xodimlar")], KeyboardButton(text="🏠 Bosh sahifa")]
+        [KeyboardButton(text="Barcha xodimlar"), KeyboardButton(text="🏠 Bosh sahifa")]
     ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
