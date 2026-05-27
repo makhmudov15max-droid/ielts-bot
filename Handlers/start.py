@@ -1,12 +1,14 @@
+from Keyboards.main_menu import get_main_menu, get_admin_approval_keyboard, get_task_complete_keyboard, get_check_in_reminder_keyboard
 import asyncio
 from datetime import datetime, timedelta, timezone
+import time
 import logging
 from aiogram import Router, types, F
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 
 from Handlers.states import TaskStates
-from Keyboards.main_menu import get_main_menu, get_admin_approval_keyboard, get_task_complete_keyboard, get_check_in_reminder_keyboard
+from Keyboards.main_menu import get_main_menu, get_admin_approval_keyboard, get_task_complete_keyboard
 from utils.users_db import save_users, set_user_busy, set_user_free, is_user_busy, get_user_active_task
 from utils.tasks_db import save_tasks, update_task_status, load_tasks, get_task_by_id, reset_sent_today_times
 from utils.proofs_db import add_proof
@@ -22,7 +24,9 @@ TASKS_DATABASE = None
 ADMIN_ID = None
 
 
+# ================= INIT FUNKSIYASI =================
 def init_all_handlers(users_roles, tasks_database, admin_id):
+    """Barcha handlerlar uchun global o'zgaruvchilarni o'rnatish"""
     global USERS_ROLES, TASKS_DATABASE, ADMIN_ID
     USERS_ROLES = users_roles
     TASKS_DATABASE = tasks_database
@@ -75,15 +79,25 @@ async def command_start_handler(message: types.Message):
 
     saved_name = user_info.get("name", message.from_user.full_name)
     role = user_info.get("role")
+
     await message.answer(
-        text=f"Assalomu alaykum, {saved_name}! Tizimga xush kelibsiz.\nQuyidagi tugmalar orqali botni boshqarishingiz mumkin 👇",
+        text=f"Assalomu alaykum, {saved_name}! "
+             f"Tizimga xush kelibsiz.\n"
+             f"Quyidagi tugmalar orqali botni boshqarishingiz mumkin 👇",
         reply_markup=get_main_menu(role)
     )
 
 
 # ================= USER NAME HANDLER =================
 @start_router.message(
-    lambda msg: isinstance(USERS_ROLES.get(str(msg.from_user.id)), dict) and USERS_ROLES.get(str(msg.from_user.id)).get("name") is None
+    lambda msg:
+    isinstance(
+        USERS_ROLES.get(str(msg.from_user.id)),
+        dict
+    )
+    and USERS_ROLES.get(
+        str(msg.from_user.id)
+    ).get("name") is None
 )
 async def get_user_real_name_handler(message: types.Message):
     user_id = str(message.from_user.id)
@@ -92,8 +106,10 @@ async def get_user_real_name_handler(message: types.Message):
     
     USERS_ROLES[user_id]["name"] = input_text
     await save_users(USERS_ROLES)
+
     await message.answer(
-        text=f"Hurmatli {first_name}, siz muvaffaqiyatli roʻyxatdan oʻtdingiz. Endi bot imkoniyatlaridan foydalanishingiz mumkin.",
+        text=f"Hurmatli {first_name}, siz muvaffaqiyatli roʻyxatdan oʻtdingiz. "
+             f"Endi bot imkoniyatlaridan foydalanishingiz mumkin.",
         reply_markup=get_main_menu(USERS_ROLES[user_id]["role"])
     )
 
@@ -114,6 +130,7 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
     
     if proof_required == "Text" and message.text and not message.photo and not message.video_note:
         role = USERS_ROLES[user_id]["role"]
+        
         await add_proof(
             user_id=message.from_user.id,
             user_name=USERS_ROLES[user_id].get("name", "Noma'lum"),
@@ -125,18 +142,35 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             group_chat_id=GROUP_CHAT_ID,
             text_content=message.text
         )
+        
         if task:
             await update_task_status(task_id, "completed", user_id)
             TASKS_DATABASE = await load_tasks()
+        
         await set_user_free(user_id)
-        await message.answer("✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.", reply_markup=get_main_menu(role))
+        
+        await message.answer(
+            text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
+            reply_markup=get_main_menu(role)
+        )
+        
         if task:
-            group_text = f"✅ <b>VAZIFA BAJARILDI!</b>\n\n📋 <b>Turi:</b> {task['task_type']}\n📌 <b>Vazifa nomi:</b> {task['task_name']}\n👤 <b>Masʻul xodim:</b> {task['assigned_to_name']}\n✍️ <b>Isbot turi:</b> Matn\n📝 <b>Javob:</b> {message.text}\n⏰ <b>Topshirilgan vaqt:</b> {datetime.now(timezone(timedelta(hours=5))).strftime('%H:%M')}"
+            group_text = (
+                f"✅ <b>VAZIFA BAJARILDI!</b>\n\n"
+                f"📋 <b>Turi:</b> {task['task_type']}\n"
+                f"📌 <b>Vazifa nomi:</b> {task['task_name']}\n"
+                f"👤 <b>Masʻul xodim:</b> {task['assigned_to_name']}\n"
+                f"✍️ <b>Isbot turi:</b> Matn\n"
+                f"📝 <b>Javob:</b> {message.text}\n"
+                f"⏰ <b>Topshirilgan vaqt:</b> {datetime.now(timezone(timedelta(hours=5))).strftime('%H:%M')}"
+            )
             await message.bot.send_message(chat_id=GROUP_CHAT_ID, text=group_text, parse_mode="HTML")
+        
         await state.clear()
     
     elif proof_required == "Photo" and message.photo:
         role = USERS_ROLES[user_id]["role"]
+        
         await add_proof(
             user_id=message.from_user.id,
             user_name=USERS_ROLES[user_id].get("name", "Noma'lum"),
@@ -148,25 +182,47 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             group_chat_id=GROUP_CHAT_ID,
             text_content=None
         )
+        
         if task:
             await update_task_status(task_id, "completed", user_id)
             TASKS_DATABASE = await load_tasks()
+        
         await set_user_free(user_id)
-        await message.answer("✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.", reply_markup=get_main_menu(role))
+        
+        await message.answer(
+            text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
+            reply_markup=get_main_menu(role)
+        )
+        
         if task:
-            group_text = f"✅ <b>VAZIFA BAJARILDI!</b>\n\n📋 <b>Turi:</b> {task['task_type']}\n📌 <b>Vazifa nomi:</b> {task['task_name']}\n👤 <b>Masʻul xodim:</b> {task['assigned_to_name']}\n📸 <b>Isbot turi:</b> Rasm (Photo)\n⏰ <b>Topshirilgan vaqt:</b> {datetime.now(timezone(timedelta(hours=5))).strftime('%H:%M')}"
+            group_text = (
+                f"✅ <b>VAZIFA BAJARILDI!</b>\n\n"
+                f"📋 <b>Turi:</b> {task['task_type']}\n"
+                f"📌 <b>Vazifa nomi:</b> {task['task_name']}\n"
+                f"👤 <b>Masʻul xodim:</b> {task['assigned_to_name']}\n"
+                f"📸 <b>Isbot turi:</b> Rasm (Photo)\n"
+                f"⏰ <b>Topshirilgan vaqt:</b> {datetime.now(timezone(timedelta(hours=5))).strftime('%H:%M')}"
+            )
             await message.bot.send_message(chat_id=GROUP_CHAT_ID, text=group_text, parse_mode="HTML")
             await message.bot.send_photo(chat_id=GROUP_CHAT_ID, photo=message.photo[-1].file_id)
+            
         await state.clear()
     
     elif proof_required == "Video message":
         if not message.video_note:
             await message.answer(
-                text="❌ <b>Notoʻgʻri format!</b> Iltimos, dumaloq video (video message) yuboring.\n\n📹 <b>Qanday yuborish kerak:</b>\n1. Mikrofon tugmasini bosing va ushlab turing\n2. <b>Video</b> tugmasiga o'ting\n3. Yozish tugmasini bosing\n4. Yozib bo'lgach, jo'natish tugmasini bosing",
+                text="❌ <b>Notoʻgʻri format!</b> Iltimos, dumaloq video (video message) yuboring.\n\n"
+                     "📹 <b>Qanday yuborish kerak:</b>\n"
+                     "1. Mikrofon tugmasini bosing va ushlab turing\n"
+                     "2. <b>Video</b> tugmasiga o'ting\n"
+                     "3. Yozish tugmasini bosing\n"
+                     "4. Yozib bo'lgach, jo'natish tugmasini bosing",
                 parse_mode="HTML"
             )
             return
+        
         role = USERS_ROLES[user_id]["role"]
+        
         await add_proof(
             user_id=message.from_user.id,
             user_name=USERS_ROLES[user_id].get("name", "Noma'lum"),
@@ -178,37 +234,64 @@ async def receive_task_proof_handler(message: types.Message, state: FSMContext):
             group_chat_id=GROUP_CHAT_ID,
             text_content=None
         )
+        
         if task:
             await update_task_status(task_id, "completed", user_id)
             TASKS_DATABASE = await load_tasks()
+        
         await set_user_free(user_id)
-        await message.answer("✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.", reply_markup=get_main_menu(role))
+        
+        await message.answer(
+            text="✅ Vazifa muvaffaqiyatli topshirildi va hisobot guruhga yuborildi.",
+            reply_markup=get_main_menu(role)
+        )
+        
         if task:
-            group_text = f"✅ <b>VAZIFA BAJARILDI!</b>\n\n📋 <b>Turi:</b> {task['task_type']}\n📌 <b>Vazifa nomi:</b> {task['task_name']}\n👤 <b>Masʻul xodim:</b> {task['assigned_to_name']}\n📸 <b>Isbot turi:</b> Dumaloq video (Video message)\n⏰ <b>Topshirilgan vaqt:</b> {datetime.now(timezone(timedelta(hours=5))).strftime('%H:%M')}"
+            group_text = (
+                f"✅ <b>VAZIFA BAJARILDI!</b>\n\n"
+                f"📋 <b>Turi:</b> {task['task_type']}\n"
+                f"📌 <b>Vazifa nomi:</b> {task['task_name']}\n"
+                f"👤 <b>Masʻul xodim:</b> {task['assigned_to_name']}\n"
+                f"📸 <b>Isbot turi:</b> Dumaloq video (Video message)\n"
+                f"⏰ <b>Topshirilgan vaqt:</b> {datetime.now(timezone(timedelta(hours=5))).strftime('%H:%M')}"
+            )
             await message.bot.send_message(chat_id=GROUP_CHAT_ID, text=group_text, parse_mode="HTML")
             await message.bot.send_video_note(chat_id=GROUP_CHAT_ID, video_note=message.video_note.file_id)
+        
         await state.clear()
     
     else:
         if proof_required == "Photo":
-            await message.answer("⚠️ Notoʻgʻri format! Iltimos, ushbu vazifa uchun faqat <b>Rasm (Photo)</b> yuboring.", parse_mode="HTML")
+            await message.answer(
+                text="⚠️ Notoʻgʻri format! Iltimos, ushbu vazifa uchun faqat <b>Rasm (Photo)</b> yuboring.", 
+                parse_mode="HTML"
+            )
         elif proof_required == "Text":
-            await message.answer("⚠️ Notoʻgʻri format! Iltimos, ushbu vazifa uchun <b>Matn</b> yuboring.", parse_mode="HTML")
+            await message.answer(
+                text="⚠️ Notoʻgʻri format! Iltimos, ushbu vazifa uchun <b>Matn</b> yuboring.",
+                parse_mode="HTML"
+            )
         else:
             await message.answer(
-                text="⚠️ Notoʻgʻri format! Iltimos, ushbu vazifa uchun faqat <b>Dumaloq video (Video message)</b> yuboring.\n\n📹 <b>Qanday yuborish kerak:</b>\n1. Mikrofon tugmasini bosing va ushlab turing\n2. <b>Video</b> tugmasiga o'ting\n3. Yozish tugmasini bosing\n4. Yozib bo'lgach, jo'natish tugmasini bosing",
+                text="⚠️ Notoʻgʻri format! Iltimos, ushbu vazifa uchun faqat <b>Dumaloq video (Video message)</b> yuboring.\n\n"
+                     "📹 <b>Qanday yuborish kerak:</b>\n"
+                     "1. Mikrofon tugmasini bosing va ushlab turing\n"
+                     "2. <b>Video</b> tugmasiga o'ting\n"
+                     "3. Yozish tugmasini bosing\n"
+                     "4. Yozib bo'lgach, jo'natish tugmasini bosing",
                 parse_mode="HTML"
             )
 
 
-# ================= TAYMER (AUTO TASK SCHEDULER) =================
 async def auto_task_scheduler(bot):
     last_checked_minute = ""
     last_daily_check_date = ""
     tashkent_tz = timezone(timedelta(hours=5))
+    
+    # Kunlik eslatma yuborilganligini kuzatish
     reminder_sent_today = {}
     
-    # Restartda o'tkazib yuborilgan eslatmalarni qayta yuborish
+    # ========== BOT RESTART QILGANDA O'TKAZIB YUBORILGAN ESLATMALARNI QAYTA YUBORISH ==========
     now = datetime.now(timezone.utc).astimezone(tashkent_tz)
     current_time_str = now.strftime("%H:%M")
     today_str = now.strftime("%Y-%m-%d")
@@ -219,22 +302,39 @@ async def auto_task_scheduler(bot):
         role = user_info.get("role")
         if role in ["Owner", "Manager"]:
             continue
+        
         if await has_checkin_today(str(user_id)):
             reminder_sent_today[user_id] = today_str
             continue
+        
         work_start, work_end = await get_user_work_time(user_id)
+        
         try:
             ws_h, ws_m = map(int, work_start.split(":"))
             reminder_minutes = (ws_h * 60 + ws_m) - 30
             if reminder_minutes < 0:
                 reminder_minutes += 24 * 60
+            
+            reminder_h = reminder_minutes // 60
+            reminder_m = reminder_minutes % 60
+            reminder_str = f"{reminder_h:02d}:{reminder_m:02d}"
+            
+            # Agar hozirgi vaqt eslatma vaqtidan keyin va ish vaqtidan oldin bo'lsa
             current_minutes = int(current_time_str.split(":")[0]) * 60 + int(current_time_str.split(":")[1])
             ish_minutes = ws_h * 60 + ws_m
+            
+            print(f"🔍 RESTART CHECK: user={user_id}, work_start={work_start}, reminder={reminder_str}, current={current_time_str}, ish={ish_minutes}")
+            
             if reminder_minutes <= current_minutes < ish_minutes:
+                print(f"✅✅✅ RESTART ESLATMA YUBORILDI! user={user_id}")
                 try:
                     await bot.send_message(
                         chat_id=int(user_id),
-                        text="⏰ <b>30 daqiqadan so'ng ish smenangiz boshlanadi!</b>\n\n📋 Ish vaqtingiz: {} - {}\n\n✅ Iltimos, ishga kelganingizni tasdiqlash uchun <b>'✅ Ishga keldim'</b> tugmasini bosing.".format(work_start, work_end),
+                        text=(
+                            f"⏰ <b>30 daqiqadan so'ng ish smenangiz boshlanadi!</b>\n\n"
+                            f"📋 Ish vaqtingiz: {work_start} - {work_end}\n\n"
+                            f"✅ Iltimos, ishga kelganingizni tasdiqlash uchun <b>'✅ Ishga keldim'</b> tugmasini bosing."
+                        ),
                         parse_mode="HTML",
                         reply_markup=get_check_in_reminder_keyboard()
                     )
@@ -243,78 +343,108 @@ async def auto_task_scheduler(bot):
                 except Exception as e:
                     logging.error(f"Restart eslatmasi yuborishda xatolik: {e}")
         except Exception as e:
+            logging.error(f"Restart eslatmasi hisoblashda xatolik: {e}")
             continue
     
+    # ========== ASOSIY SIKL ==========
     while True:
         try:
             now = datetime.now(timezone.utc).astimezone(tashkent_tz)
             current_time_str = now.strftime("%H:%M")
-            current_day_name = now.strftime("%a").strip().lower()
+            current_day_name = now.strftime("%a").strip().lower() 
             day_of_month = now.day
             today_str = now.strftime("%Y-%m-%d")
             
+            # ========== 1. KUNLIK RESET (00:00) ==========
             if current_time_str == "00:00":
                 await reset_sent_today_times()
                 for task in TASKS_DATABASE:
                     task["sent_today_times"] = []
                 reminder_sent_today.clear()
             
+            # ========== 2. ISHGA KELISH ESLATMALARI (30 daqiqa oldin, kuniga 1 marta) ==========
             for user_id, user_info in USERS_ROLES.items():
                 if not isinstance(user_info, dict):
                     continue
                 role = user_info.get("role")
                 if role in ["Owner", "Manager"]:
                     continue
+                
+                # Bugun eslatma yuborilganmi?
                 if reminder_sent_today.get(user_id) == today_str:
                     continue
+                
+                # Bugun ishga kelganmi?
                 if await has_checkin_today(str(user_id)):
                     reminder_sent_today[user_id] = today_str
                     continue
+                
                 work_start, work_end = await get_user_work_time(user_id)
+                
                 try:
                     ws_h, ws_m = map(int, work_start.split(":"))
+                    
+                    # 30 daqiqa oldin vaqtni hisoblash (24 soatlik aylanish bilan)
                     reminder_minutes = (ws_h * 60 + ws_m) - 30
                     if reminder_minutes < 0:
                         reminder_minutes += 24 * 60
+                    
                     reminder_h = reminder_minutes // 60
                     reminder_m = reminder_minutes % 60
                     reminder_str = f"{reminder_h:02d}:{reminder_m:02d}"
+                    
                     if current_time_str == reminder_str:
+                        print(f"✅✅✅ ESLATMA YUBORILDI! user={user_id}, time={reminder_str}")
                         try:
                             await bot.send_message(
                                 chat_id=int(user_id),
-                                text="⏰ <b>30 daqiqadan so'ng ish smenangiz boshlanadi!</b>\n\n📋 Ish vaqtingiz: {} - {}\n\n✅ Iltimos, ishga kelganingizni tasdiqlash uchun <b>'✅ Ishga keldim'</b> tugmasini bosing.".format(work_start, work_end),
+                                text=(
+                                    f"⏰ <b>30 daqiqadan so'ng ish smenangiz boshlanadi!</b>\n\n"
+                                    f"📋 Ish vaqtingiz: {work_start} - {work_end}\n\n"
+                                    f"✅ Iltimos, ishga kelganingizni tasdiqlash uchun <b>'✅ Ishga keldim'</b> tugmasini bosing.",
+                                ),
                                 parse_mode="HTML",
                                 reply_markup=get_check_in_reminder_keyboard()
                             )
                             reminder_sent_today[user_id] = today_str
-                            logging.info(f"Ishga kelish eslatmasi yuborildi: user_id={user_id}")
+                            logging.info(f"Ishga kelish eslatmasi yuborildi: user_id={user_id}, time={work_start}")
                         except Exception as e:
                             logging.error(f"Eslatma yuborishda xatolik: {e}")
                 except Exception as e:
+                    logging.error(f"Eslatma hisoblashda xatolik: user_id={user_id}, work_start={work_start}, error={e}")
                     continue
             
+            # ========== 3. KUN OXIRIDA TEKSHIRUV (23:59) ==========
             if current_time_str == "23:59" and last_daily_check_date != today_str:
                 logging.info(f"Kun oxiri tekshiruvi boshlandi: {today_str}")
+                
                 for user_id, user_info in USERS_ROLES.items():
                     if not isinstance(user_info, dict):
                         continue
                     role = user_info.get("role")
                     if role in ["Owner", "Manager"]:
                         continue
+                    
                     if not await has_checkin_today(str(user_id)):
                         await mark_missed_for_date(str(user_id), today_str)
+                        logging.info(f"Marked as missed: user_id={user_id}, date={today_str}")
+                
                 last_daily_check_date = today_str
+                logging.info(f"Kun oxiri tekshiruvi tugadi: {today_str}")
             
+            # ========== 4. VAZIFALARNI YUBORISH ==========
             if current_time_str != last_checked_minute:
                 for task in TASKS_DATABASE:
                     if task.get("task_type") == "Kunlik (Bir martalik)":
                         continue
+                    
                     if task.get("status") == "completed":
                         continue
+                        
                     if current_time_str in task["task_times"] and current_time_str not in task["sent_today_times"]:
                         day_match = False
                         task_days = str(task["task_days"]).strip()
+                        
                         if task_days == "ODD" and day_of_month % 2 != 0:
                             day_match = True
                         elif task_days == "EVEN" and day_of_month % 2 == 0:
@@ -325,15 +455,18 @@ async def auto_task_scheduler(bot):
                             clean_days = [d.strip().lower() for d in task_days.split(",") if d.strip()]
                             if current_day_name in clean_days:
                                 day_match = True
+                        
                         if day_match:
+                            text_to_employee = f"📌 <b>{task['task_name']}</b>"
                             await bot.send_message(
                                 chat_id=task["assigned_to_id"],
-                                text=f"📌 <b>{task['task_name']}</b>",
+                                text=text_to_employee,
                                 parse_mode="HTML",
                                 reply_markup=get_task_complete_keyboard(task["id"])
                             )
                             task["sent_today_times"].append(current_time_str)
                             await save_tasks(TASKS_DATABASE)
+                
                 last_checked_minute = current_time_str
                 
         except Exception as e:
