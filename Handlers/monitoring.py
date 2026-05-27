@@ -52,10 +52,8 @@ class MonitoringStates(StatesGroup):
 def get_role_keyboard():
     return types.ReplyKeyboardMarkup(
         keyboard=[
-            [types.KeyboardButton(text="Admin")],
-            [types.KeyboardButton(text="Kassir")],
-            [types.KeyboardButton(text="Sanitar")],
-            [types.KeyboardButton(text="Manager")],
+            [types.KeyboardButton(text="Admin"), types.KeyboardButton(text="Kassir")],
+            [types.KeyboardButton(text="Sanitar"), types.KeyboardButton(text="Manager")],
             [types.KeyboardButton(text="🏠 Bosh sahifa"), types.KeyboardButton(text="⬅️ Ortga")],
         ],
         resize_keyboard=True
