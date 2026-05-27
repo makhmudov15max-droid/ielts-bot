@@ -289,6 +289,9 @@ async def auto_task_scheduler(bot):
     last_daily_check_date = ""
     tashkent_tz = timezone(timedelta(hours=5))
     
+    # Kunlik eslatma yuborilganligini kuzatish (WHILE DAN TASHQARIDA)
+    reminder_sent_today = {}  # {user_id: date}
+    
     while True:
         try:
             now = datetime.now(timezone.utc).astimezone(tashkent_tz)
@@ -302,10 +305,9 @@ async def auto_task_scheduler(bot):
                 await reset_sent_today_times()
                 for task in TASKS_DATABASE:
                     task["sent_today_times"] = []
+                reminder_sent_today.clear()  # Eslatma ro'yxatini tozalash
             
             # ========== 2. ISHGA KELISH ESLATMALARI (30 daqiqa oldin, kuniga 1 marta) ==========
-            reminder_sent_today = {}  # {user_id: date}
-            
             for user_id, user_info in USERS_ROLES.items():
                 if not isinstance(user_info, dict):
                     continue
@@ -345,7 +347,7 @@ async def auto_task_scheduler(bot):
                                 f"✅ Iltimos, ishga kelganingizni tasdiqlash uchun <b>'✅ Ishga keldim'</b> tugmasini bosing.",
                             ),
                             parse_mode="HTML",
-                            reply_markup=get_check_in_reminder_keyboard()  # <-- YANGI TUGMA
+                            reply_markup=get_check_in_reminder_keyboard()
                         )
                         reminder_sent_today[user_id] = today_str
                         logging.info(f"Ishga kelish eslatmasi yuborildi: user_id={user_id}")
