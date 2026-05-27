@@ -728,28 +728,56 @@ async def check_in_video_handler(message: types.Message, state: FSMContext):
             reply_markup=get_main_menu(role)
         )
     else:
-        await message.answer(
-            text=(
-                f"✅ <b>Ishga kelishingiz tasdiqlandi!</b>\n\n"
-                f"📅 Sana: {today}\n"
-                f"⏰ Kelgan vaqt: {current_time}\n"
-                f"📋 Ish vaqti: {work_start} - {work_end}\n"
-                f"🎉 <b>Hurmatli {user_name}, siz ishga o'z vaqtida keldingiz. Kuningiz barokatli o'tsin!</b>"
-            ),
-            parse_mode="HTML",
-            reply_markup=get_main_menu(role)
-        )
-
-
-@monitoring_router.message(CheckInStates.waiting_for_video, F.text == "🏠 Bosh sahifa")
-async def check_in_home(message: types.Message, state: FSMContext):
-    await state.clear()
-    role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-    await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-
-
-@monitoring_router.message(CheckInStates.waiting_for_video, F.text == "⬅️ Ortga")
-async def check_in_back(message: types.Message, state: FSMContext):
-    await state.clear()
-    role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-    await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
+        # Ish vaqtidan necha daqiqa oldin kelganini hisoblash
+        try:
+            ws_h, ws_m = map(int, work_start.split(":"))
+            ar_h, ar_m = map(int, current_time.split(":"))
+            ar_time = ar_h * 60 + ar_m
+            ws_time = ws_h * 60 + ws_m
+            early_min = ws_time - ar_time
+            if early_min < 0:
+                early_min = 0
+        except:
+            early_min = 0
+        
+        if early_min > 0:
+            await message.answer(
+                text=(
+                    f"✅ <b>Ishga kelishingiz tasdiqlandi!</b>\n\n"
+                    f"📅 Sana: {today}\n"
+                    f"⏰ Kelgan vaqt: {current_time}\n"
+                    f"📋 Ish vaqti: {work_start} - {work_end}\n"
+                    f"🌟 <b>Hurmatli {user_name}, siz ishga {early_min} daqiqa oldin keldingiz!</b>\n"
+                    f"🎯 Sizning mas'uliyatingiz va aniqligingiz jamoaga ijobiy namuna.\n"
+                    f"📸 Isbot rahbarga yuborildi."
+                ),
+                parse_mode="HTML",
+                reply_markup=get_main_menu(role)
+            )
+        else:
+            await message.answer(
+                text=(
+                    f"✅ <b>Ishga kelishingiz tasdiqlandi!</b>\n\n"
+                    f"📅 Sana: {today}\n"
+                    f"⏰ Kelgan vaqt: {current_time}\n"
+                    f"📋 Ish vaqti: {work_start} - {work_end}\n"
+                    f"🎉 <b>Hurmatli {user_name}, siz ishga o'z vaqtida keldingiz. Kuningiz barokatli o'tsin!</b>\n"
+                    f"📸 Isbot rahbarga yuborildi."
+                ),
+                parse_mode="HTML",
+                reply_markup=get_main_menu(role)
+            )
+    
+    
+    @monitoring_router.message(CheckInStates.waiting_for_video, F.text == "🏠 Bosh sahifa")
+    async def check_in_home(message: types.Message, state: FSMContext):
+        await state.clear()
+        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
+        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
+    
+    
+    @monitoring_router.message(CheckInStates.waiting_for_video, F.text == "⬅️ Ortga")
+    async def check_in_back(message: types.Message, state: FSMContext):
+        await state.clear()
+        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
+        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
