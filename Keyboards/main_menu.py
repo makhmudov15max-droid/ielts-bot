@@ -202,3 +202,13 @@ def get_custom_date_keyboard_simple():
     keyboard.append([KeyboardButton(text="⬅️ Ortga"), KeyboardButton(text="🏠 Bosh sahifa")])
     
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+
+def get_check_in_reminder_keyboard():
+    """Ishga kelish eslatmasi uchun tugma"""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="✅ Ishga keldim")],
+            [KeyboardButton(text="🏠 Bosh sahifa")]
+        ],
+        resize_keyboard=True
+    )
