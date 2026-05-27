@@ -288,13 +288,16 @@ async def auto_task_scheduler(bot):
     last_daily_check_date = ""
     tashkent_tz = timezone(timedelta(hours=5))
     
-    # Kunlik eslatma yuborilganligini kuzatish
+    # Kunlik eslatma yuborilganligini kuzatish (faqat asosiy sikl uchun)
     reminder_sent_today = {}
     
     # ========== BOT RESTART QILGANDA O'TKAZIB YUBORILGAN ESLATMALARNI QAYTA YUBORISH ==========
     now = datetime.now(timezone.utc).astimezone(tashkent_tz)
     current_time_str = now.strftime("%H:%M")
     today_str = now.strftime("%Y-%m-%d")
+    
+    # RESTART CHECK UCHUN ALOHIDA DICTIONARY
+    restart_reminder_sent = {}
     
     for user_id, user_info in USERS_ROLES.items():
         if not isinstance(user_info, dict):
@@ -304,7 +307,6 @@ async def auto_task_scheduler(bot):
             continue
         
         if await has_checkin_today(str(user_id)):
-            reminder_sent_today[user_id] = today_str
             continue
         
         work_start, work_end = await get_user_work_time(user_id)
@@ -319,26 +321,21 @@ async def auto_task_scheduler(bot):
             reminder_m = reminder_minutes % 60
             reminder_str = f"{reminder_h:02d}:{reminder_m:02d}"
             
-            # Agar hozirgi vaqt eslatma vaqtidan keyin va ish vaqtidan oldin bo'lsa
             current_minutes = int(current_time_str.split(":")[0]) * 60 + int(current_time_str.split(":")[1])
             ish_minutes = ws_h * 60 + ws_m
             
             print(f"🔍 RESTART CHECK: user={user_id}, work_start={work_start}, reminder={reminder_str}, current={current_time_str}, ish={ish_minutes}")
             
-            if reminder_minutes <= current_minutes < ish_minutes:
+            if reminder_minutes <= current_minutes < ish_minutes and restart_reminder_sent.get(user_id) != today_str:
                 print(f"✅✅✅ RESTART ESLATMA YUBORILDI! user={user_id}")
                 try:
                     await bot.send_message(
                         chat_id=int(user_id),
-                        text=(
-                            f"⏰ <b>30 daqiqadan so'ng ish smenangiz boshlanadi!</b>\n\n"
-                            f"📋 Ish vaqtingiz: {work_start} - {work_end}\n\n"
-                            f"✅ Iltimos, ishga kelganingizni tasdiqlash uchun <b>'✅ Ishga keldim'</b> tugmasini bosing."
-                        ),
+                        text=f"⏰ <b>30 daqiqadan so'ng ish smenangiz boshlanadi!</b>\n\n📋 Ish vaqtingiz: {work_start} - {work_end}\n\n✅ Iltimos, ishga kelganingizni tasdiqlash uchun <b>'✅ Ishga keldim'</b> tugmasini bosing.",
                         parse_mode="HTML",
                         reply_markup=get_check_in_reminder_keyboard()
                     )
-                    reminder_sent_today[user_id] = today_str
+                    restart_reminder_sent[user_id] = today_str
                     logging.info(f"Restartda o'tkazib yuborilgan eslatma yuborildi: user_id={user_id}")
                 except Exception as e:
                     logging.error(f"Restart eslatmasi yuborishda xatolik: {e}")
@@ -351,18 +348,16 @@ async def auto_task_scheduler(bot):
         try:
             now = datetime.now(timezone.utc).astimezone(tashkent_tz)
             current_time_str = now.strftime("%H:%M")
-            current_day_name = now.strftime("%a").strip().lower() 
+            current_day_name = now.strftime("%a").strip().lower()
             day_of_month = now.day
             today_str = now.strftime("%Y-%m-%d")
             
-            # ========== 1. KUNLIK RESET (00:00) ==========
             if current_time_str == "00:00":
                 await reset_sent_today_times()
                 for task in TASKS_DATABASE:
                     task["sent_today_times"] = []
                 reminder_sent_today.clear()
             
-            # ========== 2. ISHGA KELISH ESLATMALARI (30 daqiqa oldin, kuniga 1 marta) ==========
             for user_id, user_info in USERS_ROLES.items():
                 if not isinstance(user_info, dict):
                     continue
@@ -370,11 +365,9 @@ async def auto_task_scheduler(bot):
                 if role in ["Owner", "Manager"]:
                     continue
                 
-                # Bugun eslatma yuborilganmi?
                 if reminder_sent_today.get(user_id) == today_str:
                     continue
                 
-                # Bugun ishga kelganmi?
                 if await has_checkin_today(str(user_id)):
                     reminder_sent_today[user_id] = today_str
                     continue
@@ -384,7 +377,6 @@ async def auto_task_scheduler(bot):
                 try:
                     ws_h, ws_m = map(int, work_start.split(":"))
                     
-                    # 30 daqiqa oldin vaqtni hisoblash (24 soatlik aylanish bilan)
                     reminder_minutes = (ws_h * 60 + ws_m) - 30
                     if reminder_minutes < 0:
                         reminder_minutes += 24 * 60
@@ -398,11 +390,7 @@ async def auto_task_scheduler(bot):
                         try:
                             await bot.send_message(
                                 chat_id=int(user_id),
-                                text=(
-                                    f"⏰ <b>30 daqiqadan so'ng ish smenangiz boshlanadi!</b>\n\n"
-                                    f"📋 Ish vaqtingiz: {work_start} - {work_end}\n\n"
-                                    f"✅ Iltimos, ishga kelganingizni tasdiqlash uchun <b>'✅ Ishga keldim'</b> tugmasini bosing."
-                                ),
+                                text=f"⏰ <b>30 daqiqadan so'ng ish smenangiz boshlanadi!</b>\n\n📋 Ish vaqtingiz: {work_start} - {work_end}\n\n✅ Iltimos, ishga kelganingizni tasdiqlash uchun <b>'✅ Ishga keldim'</b> tugmasini bosing.",
                                 parse_mode="HTML",
                                 reply_markup=get_check_in_reminder_keyboard()
                             )
@@ -411,40 +399,29 @@ async def auto_task_scheduler(bot):
                         except Exception as e:
                             logging.error(f"Eslatma yuborishda xatolik: {e}")
                 except Exception as e:
-                    logging.error(f"Eslatma hisoblashda xatolik: user_id={user_id}, work_start={work_start}, error={e}")
                     continue
             
-            # ========== 3. KUN OXIRIDA TEKSHIRUV (23:59) ==========
             if current_time_str == "23:59" and last_daily_check_date != today_str:
                 logging.info(f"Kun oxiri tekshiruvi boshlandi: {today_str}")
-                
                 for user_id, user_info in USERS_ROLES.items():
                     if not isinstance(user_info, dict):
                         continue
                     role = user_info.get("role")
                     if role in ["Owner", "Manager"]:
                         continue
-                    
                     if not await has_checkin_today(str(user_id)):
                         await mark_missed_for_date(str(user_id), today_str)
-                        logging.info(f"Marked as missed: user_id={user_id}, date={today_str}")
-                
                 last_daily_check_date = today_str
-                logging.info(f"Kun oxiri tekshiruvi tugadi: {today_str}")
             
-            # ========== 4. VAZIFALARNI YUBORISH ==========
             if current_time_str != last_checked_minute:
                 for task in TASKS_DATABASE:
                     if task.get("task_type") == "Kunlik (Bir martalik)":
                         continue
-                    
                     if task.get("status") == "completed":
                         continue
-                        
                     if current_time_str in task["task_times"] and current_time_str not in task["sent_today_times"]:
                         day_match = False
                         task_days = str(task["task_days"]).strip()
-                        
                         if task_days == "ODD" and day_of_month % 2 != 0:
                             day_match = True
                         elif task_days == "EVEN" and day_of_month % 2 == 0:
@@ -455,18 +432,15 @@ async def auto_task_scheduler(bot):
                             clean_days = [d.strip().lower() for d in task_days.split(",") if d.strip()]
                             if current_day_name in clean_days:
                                 day_match = True
-                        
                         if day_match:
-                            text_to_employee = f"📌 <b>{task['task_name']}</b>"
                             await bot.send_message(
                                 chat_id=task["assigned_to_id"],
-                                text=text_to_employee,
+                                text=f"📌 <b>{task['task_name']}</b>",
                                 parse_mode="HTML",
                                 reply_markup=get_task_complete_keyboard(task["id"])
                             )
                             task["sent_today_times"].append(current_time_str)
                             await save_tasks(TASKS_DATABASE)
-                
                 last_checked_minute = current_time_str
                 
         except Exception as e:
