@@ -7,8 +7,8 @@ def get_main_menu(role: str):
     role = str(role).strip()
     if role in ["Owner", "Manager"]:
         keyboard = [
-            [KeyboardButton(text="➕ Vazifa qo'shish"), KeyboardButton(text="📋 Vazifalar ro'yxati")],
-            [KeyboardButton(text="👥 Xodimlar"), KeyboardButton(text="🗑 Vazifani o'chirish")],
+            [KeyboardButton(text="➕ Vazifa qoʻshish"), KeyboardButton(text="📋 Vazifalar roʻyxati")],
+            [KeyboardButton(text="👥 Xodimlar"), KeyboardButton(text="🗑 Vazifani oʻchirish")],
             [KeyboardButton(text="📊 Admin oylik"), KeyboardButton(text="💰 Kassir oylik")],
             [KeyboardButton(text="🗄 Arxiv"), KeyboardButton(text="📑 Guruh Report")],
             [KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball"), KeyboardButton(text="🎯 Monitoring")],
@@ -18,25 +18,25 @@ def get_main_menu(role: str):
     elif role == "Admin":
         keyboard = [
             [KeyboardButton(text="✅ Ishga keldim")],
-            [KeyboardButton(text="📋 Vazifalar ro'yxati")],
+            [KeyboardButton(text="📋 Vazifalar roʻyxati")],
             [KeyboardButton(text="📊 Admin oylik")],
             [KeyboardButton(text="📑 Guruh Report")]
         ]
     elif role == "Kassir":
         keyboard = [
             [KeyboardButton(text="✅ Ishga keldim")],
-            [KeyboardButton(text="📋 Vazifalar ro'yxati")],
+            [KeyboardButton(text="📋 Vazifalar roʻyxati")],
             [KeyboardButton(text="💰 Kassir oylik")]
         ]
     elif role == "Sanitar":
         keyboard = [
             [KeyboardButton(text="✅ Ishga keldim")],
-            [KeyboardButton(text="📋 Vazifalar ro'yxati")]
+            [KeyboardButton(text="📋 Vazifalar roʻyxati")]
         ]
     else:
         keyboard = [
             [KeyboardButton(text="✅ Ishga keldim")],
-            [KeyboardButton(text="📋 Vazifalar ro'yxati")]
+            [KeyboardButton(text="📋 Vazifalar roʻyxati")]
         ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
@@ -128,7 +128,7 @@ def get_inline_days_keyboard(selected_days: list = None):
     for day in days:
         text = f"✅ {day}" if day in selected_days else day
         inline_keyboard.append([InlineKeyboardButton(text=text, callback_data=f"day_{day}")])
-    inline_keyboard.append([InlineKeyboardButton(text="✅ Tanlab bo'ldim", callback_data="days_done")])
+    inline_keyboard.append([InlineKeyboardButton(text="✅ Tanlab boʻldim", callback_data="days_done")])
     inline_keyboard.append([InlineKeyboardButton(text="❌ Bekor qilish", callback_data="cancel_task_creation")])
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
