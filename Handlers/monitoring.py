@@ -555,7 +555,6 @@ async def late_reason_entered(message: types.Message, state: FSMContext):
         reply_markup=get_main_menu(role)
     )
     
-    else:
         await message.answer(
             "❌ Saqlashda xatolik yuz berdi. Qayta urinib ko'ring.",
             reply_markup=get_main_menu(role)
