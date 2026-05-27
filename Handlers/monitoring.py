@@ -607,9 +607,8 @@ async def check_in_video_handler(message: types.Message, state: FSMContext):
     today = now.strftime("%Y-%m-%d")
     current_time = now.strftime("%H:%M")
     
-    GROUP_CHAT_ID = -5226036627  # Isbotlar yuboriladigan guruh
+    GROUP_CHAT_ID = -5226036627
     
-    # FAQAT dumaloq video qabul qilinadi
     if not message.video_note:
         await message.answer(
             text="❌ <b>Noto'g'ri format!</b>\n\n"
@@ -623,28 +622,22 @@ async def check_in_video_handler(message: types.Message, state: FSMContext):
         )
         return
     
-    # Ish vaqtini olish
     work_start, work_end = await get_user_work_time(user_id)
     
-    # Kechikishni hisoblash
     try:
         ws_h, ws_m = map(int, work_start.split(":"))
         ar_h, ar_m = map(int, current_time.split(":"))
-    
-        # Agar kelgan vaqt ertalabki soatlar (00:00 - 05:00) bo'lsa va ish vaqti kechki bo'lsa
         if ar_h < 5 and ws_h > 20:
             ar_time = (ar_h + 24) * 60 + ar_m
         else:
             ar_time = ar_h * 60 + ar_m
-    
         ws_time = ws_h * 60 + ws_m
         late_min = max(0, ar_time - ws_time)
     except Exception:
         late_min = 0
     
-    # Kechikish bo'lsa - sabab so'rab, state ga o'tish
+    # ========== KECH KELGAN HOLAT ==========
     if late_min > 0:
-        # Attendance yozuvini saqlash (sababsiz)
         record_id = await add_attendance(
             user_id=user_id,
             user_name=user_name,
@@ -663,7 +656,6 @@ async def check_in_video_handler(message: types.Message, state: FSMContext):
             await state.clear()
             return
         
-        # Isbotni guruhga yuborish
         try:
             await message.bot.send_video_note(
                 chat_id=GROUP_CHAT_ID,
@@ -682,7 +674,6 @@ async def check_in_video_handler(message: types.Message, state: FSMContext):
         except Exception as e:
             logging.error(f"Isbotni guruhga yuborishda xatolik: {e}")
         
-        # Sabab so'rash uchun state ga o'tish
         await state.update_data(
             pending_attendance_id=record_id,
             user_name=user_name,
@@ -704,6 +695,85 @@ async def check_in_video_handler(message: types.Message, state: FSMContext):
             ),
             parse_mode="HTML",
             reply_markup=get_back_home_keyboard()
+        )
+        return
+    
+    # ========== O'Z VAQTIDA YOKI OLDIN KELGAN HOLAT ==========
+    record_id = await add_attendance(
+        user_id=user_id,
+        user_name=user_name,
+        role=role,
+        date=today,
+        arrived_at=current_time,
+        late_minutes=0,
+        reason="Ishga kelish tasdiqlandi",
+        proof_file_id=message.video_note.file_id,
+        proof_type="Video message",
+        status="checked_in"
+    )
+    
+    if not record_id:
+        await message.answer("❌ Saqlashda xatolik yuz berdi. Qayta urinib ko'ring.")
+        await state.clear()
+        return
+    
+    try:
+        await message.bot.send_video_note(
+            chat_id=GROUP_CHAT_ID,
+            video_note=message.video_note.file_id
+        )
+        await message.bot.send_message(
+            chat_id=GROUP_CHAT_ID,
+            text=f"✅ <b>Xodim ishga keldi!</b>\n\n"
+                 f"👤 <b>Xodim:</b> {user_name}\n"
+                 f"📅 <b>Sana:</b> {today}\n"
+                 f"⏰ <b>Kelgan vaqt:</b> {current_time}\n"
+                 f"📋 <b>Ish vaqti:</b> {work_start} - {work_end}",
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        logging.error(f"Isbotni guruhga yuborishda xatolik: {e}")
+    
+    await state.clear()
+    
+    # Ish vaqtidan necha daqiqa oldin kelganini hisoblash
+    try:
+        ws_h, ws_m = map(int, work_start.split(":"))
+        ar_h, ar_m = map(int, current_time.split(":"))
+        ar_time = ar_h * 60 + ar_m
+        ws_time = ws_h * 60 + ws_m
+        early_min = ws_time - ar_time
+        if early_min < 0:
+            early_min = 0
+    except:
+        early_min = 0
+    
+    if early_min > 0:
+        await message.answer(
+            text=(
+                f"✅ <b>Ishga kelishingiz tasdiqlandi!</b>\n\n"
+                f"📅 Sana: {today}\n"
+                f"⏰ Kelgan vaqt: {current_time}\n"
+                f"📋 Ish vaqti: {work_start} - {work_end}\n"
+                f"🌟 <b>Hurmatli {user_name}, siz ishga {early_min} daqiqa oldin keldingiz!</b>\n"
+                f"🎯 Sizning mas'uliyatingiz va aniqligingiz jamoaga ijobiy namuna.\n"
+                f"📸 Isbot rahbarga yuborildi."
+            ),
+            parse_mode="HTML",
+            reply_markup=get_main_menu(role)
+        )
+    else:
+        await message.answer(
+            text=(
+                f"✅ <b>Ishga kelishingiz tasdiqlandi!</b>\n\n"
+                f"📅 Sana: {today}\n"
+                f"⏰ Kelgan vaqt: {current_time}\n"
+                f"📋 Ish vaqti: {work_start} - {work_end}\n"
+                f"🎉 <b>Hurmatli {user_name}, siz ishga o'z vaqtida keldingiz. Kuningiz barokatli o'tsin!</b>\n"
+                f"📸 Isbot rahbarga yuborildi."
+            ),
+            parse_mode="HTML",
+            reply_markup=get_main_menu(role)
         )
         return
     
