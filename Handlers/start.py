@@ -328,31 +328,38 @@ async def auto_task_scheduler(bot):
                 
                 try:
                     ws_h, ws_m = map(int, work_start.split(":"))
-                    reminder_time = (ws_h * 60 + ws_m) - 30
-                    if reminder_time < 0:
-                        reminder_time = 0
-                    reminder_h = reminder_time // 60
-                    reminder_m = reminder_time % 60
+                    
+                    # 30 daqiqa oldin vaqtni hisoblash (24 soatlik aylanish bilan)
+                    reminder_minutes = (ws_h * 60 + ws_m) - 30
+                    if reminder_minutes < 0:
+                        reminder_minutes += 24 * 60  # kechagi kunga o'tish
+                    
+                    reminder_h = reminder_minutes // 60
+                    reminder_m = reminder_minutes % 60
                     reminder_str = f"{reminder_h:02d}:{reminder_m:02d}"
-                except Exception:
+                    
+                    print(f"DEBUG: user={user_id}, work_start={work_start}, reminder_str={reminder_str}, current={current_time_str}")
+                    
+                    if current_time_str == reminder_str:
+                        print(f"DEBUG: ESLATMA YUBORILDI! user={user_id}")
+                        try:
+                            await bot.send_message(
+                                chat_id=int(user_id),
+                                text=(
+                                    f"⏰ <b>30 daqiqadan so'ng ish smenangiz boshlanadi!</b>\n\n"
+                                    f"📋 Ish vaqtingiz: {work_start} - {work_end}\n\n"
+                                    f"✅ Iltimos, ishga kelganingizni tasdiqlash uchun <b>'✅ Ishga keldim'</b> tugmasini bosing.",
+                                ),
+                                parse_mode="HTML",
+                                reply_markup=get_check_in_reminder_keyboard()
+                            )
+                            reminder_sent_today[user_id] = today_str
+                            logging.info(f"Ishga kelish eslatmasi yuborildi: user_id={user_id}, time={work_start}")
+                        except Exception as e:
+                            logging.error(f"Eslatma yuborishda xatolik: {e}")
+                except Exception as e:
+                    logging.error(f"Eslatma hisoblashda xatolik: user_id={user_id}, work_start={work_start}, error={e}")
                     continue
-                
-                if current_time_str == reminder_str:
-                    try:
-                        await bot.send_message(
-                            chat_id=int(user_id),
-                            text=(
-                                f"⏰ <b>30 daqiqadan so'ng ish smenangiz boshlanadi!</b>\n\n"
-                                f"📋 Ish vaqtingiz: {work_start} - {work_end}\n\n"
-                                f"✅ Iltimos, ishga kelganingizni tasdiqlash uchun <b>'✅ Ishga keldim'</b> tugmasini bosing.",
-                            ),
-                            parse_mode="HTML",
-                            reply_markup=get_check_in_reminder_keyboard()
-                        )
-                        reminder_sent_today[user_id] = today_str
-                        logging.info(f"Ishga kelish eslatmasi yuborildi: user_id={user_id}")
-                    except Exception as e:
-                        logging.error(f"Eslatma yuborishda xatolik: {e}")
             
             # ========== 3. KUN OXIRIDA TEKSHIRUV (23:59) ==========
             if current_time_str == "23:59" and last_daily_check_date != today_str:
