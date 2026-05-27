@@ -185,3 +185,21 @@ async def get_missed_days(user_id: str, year: int, month: int) -> list:
     except Exception as e:
         logging.error(f"get_missed_days xatosi: {e}", exc_info=True)
         return []
+
+# DAVOMATLARNI O'CHIRISH
+
+async def clear_all_attendance():
+    """Barcha attendance yozuvlarini o'chirish (faqat admin uchun)"""
+    pool = get_pool()
+    if not pool:
+        return 0
+    try:
+        async with pool.acquire() as conn:
+            result = await conn.execute("DELETE FROM attendance")
+            # DELETE dan keyin qancha qator o'chirilganini olish
+            deleted = result.split()[1] if result else "0"
+            logging.info(f"clear_all_attendance: {deleted} ta yozuv o'chirildi")
+            return int(deleted)
+    except Exception as e:
+        logging.error(f"clear_all_attendance xatosi: {e}")
+        return 0
