@@ -82,10 +82,9 @@ def get_employee_list_keyboard(role: str):
 def get_period_keyboard():
     return types.ReplyKeyboardMarkup(
         keyboard=[
-            [types.KeyboardButton(text="📅 Bugun")],
-            [types.KeyboardButton(text="📅 Bu oy")],
-            [types.KeyboardButton(text="📆 Sana (multiple select)")],
-            [types.KeyboardButton(text="🏠 Bosh sahifa"), types.KeyboardButton(text="⬅️ Ortga")],
+            [types.KeyboardButton(text="📅 Bugun"), types.KeyboardButton(text="📅 Bu oy")], 
+            [types.KeyboardButton(text="📆 Sana (multiple select)"), types.KeyboardButton(text="🏠 Bosh sahifa")],
+            [types.KeyboardButton(text="⬅️ Ortga"),
         ],
         resize_keyboard=True
     )
@@ -94,10 +93,9 @@ def get_period_keyboard():
 def get_late_proof_keyboard():
     return types.ReplyKeyboardMarkup(
         keyboard=[
-            [types.KeyboardButton(text="📸 Rasm yuborish")],
-            [types.KeyboardButton(text="📹 Video yuborish")],
-            [types.KeyboardButton(text="✍️ Isbostsiz davom etish")],
-            [types.KeyboardButton(text="🏠 Bosh sahifa"), types.KeyboardButton(text="⬅️ Ortga")],
+            [types.KeyboardButton(text="📸 Rasm yuborish"), types.KeyboardButton(text="📹 Video yuborish")],
+            [types.KeyboardButton(text="✍️ Isbostsiz davom etish"), types.KeyboardButton(text="🏠 Bosh sahifa")],
+            [types.KeyboardButton(text="⬅️ Ortga"),
         ],
         resize_keyboard=True
     )
@@ -623,13 +621,7 @@ async def check_in_start_handler(message: types.Message, state: FSMContext):
     await state.set_state(CheckInStates.waiting_for_video)
     await message.answer(
         text="📹 <b>Ishga kelganingizni tasdiqlash uchun dumaloq video yuboring!</b>\n\n"
-             "⚠️ Faqat <b>dumaloq video (video message)</b> qabul qilinadi!\n"
-             "❌ Rasm, matn yoki oddiy video yuborilsa rad etiladi.\n\n"
-             "📹 <b>Qanday yuborish kerak:</b>\n"
-             "1. Mikrofon tugmasini bosing va ushlab turing\n"
-             "2. <b>Video</b> tugmasiga o'ting\n"
-             "3. Yozish tugmasini bosing\n"
-             "4. Yozib bo'lgach, jo'natish tugmasini bosing",
+             "⚠️ Faqat <b>dumaloq video (video message)</b> qabul qilinadi!\n",
         parse_mode="HTML",
         reply_markup=get_back_home_keyboard()
     )
