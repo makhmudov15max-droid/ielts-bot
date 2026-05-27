@@ -95,7 +95,7 @@ def get_late_proof_keyboard():
         keyboard=[
             [types.KeyboardButton(text="📸 Rasm yuborish"), types.KeyboardButton(text="📹 Video yuborish")],
             [types.KeyboardButton(text="✍️ Isbostsiz davom etish"), types.KeyboardButton(text="🏠 Bosh sahifa")],
-            [types.KeyboardButton(text="⬅️ Ortga"),
+            [types.KeyboardButton(text="⬅️ Ortga")],
         ],
         resize_keyboard=True
     )
