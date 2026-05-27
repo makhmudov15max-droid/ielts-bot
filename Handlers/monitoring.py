@@ -533,13 +533,10 @@ async def late_reason_entered(message: types.Message, state: FSMContext):
     reason = message.text.strip()
     user_name = data.get("user_name")
     role = data.get("role")
-    work_start = data.get("work_start")
-    work_end = data.get("work_end")
     arrived_at = data.get("arrived_at")
     today = data.get("today")
     late_minutes = data.get("late_minutes")
     
-    # Sababni saqlash
     from utils.attendance_db import update_attendance_reason
     await update_attendance_reason(attendance_id, reason)
     
@@ -549,10 +546,8 @@ async def late_reason_entered(message: types.Message, state: FSMContext):
             f"✅ <b>Kech qolish sababi qabul qilindi!</b>\n\n"
             f"📅 Sana: {today}\n"
             f"⏰ Kelgan vaqt: {arrived_at}\n"
-            f"📋 Ish vaqti: {work_start} - {work_end}\n"
             f"⚠️ Kechikish: {late_minutes} daqiqa\n"
             f"✍️ Sabab: {reason}\n\n"
-            f"📸 Isbot rahbarga yuborildi.\n\n"
             f"🌟 <b>E'tiboringiz uchun rahmat, {user_name}!</b>\n"
             f"Kelajakda o'z vaqtida kelishingizni tavsiya qilamiz."
         ),
