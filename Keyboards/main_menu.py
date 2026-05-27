@@ -7,36 +7,28 @@ def get_main_menu(role: str):
     role = str(role).strip()
     if role in ["Owner", "Manager"]:
         keyboard = [
-            [KeyboardButton(text="➕ Vazifa qoʻshish"), KeyboardButton(text="📋 Vazifalar roʻyxati")],
-            [KeyboardButton(text="👥 Xodimlar"), KeyboardButton(text="🗑 Vazifani oʻchirish")],
-            [KeyboardButton(text="📊 Admin oylik"), KeyboardButton(text="💰 Kassir oylik")],
-            [KeyboardButton(text="🗄 Arxiv"), KeyboardButton(text="📑 Guruh Report")],
-            [KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball"), KeyboardButton(text="🎯 Monitoring")],
-            [KeyboardButton(text="📸 Isbotlar")],
-            [KeyboardButton(text="⚙️ Sozlamalar")]
+            [KeyboardButton(text="➕ Add Tasks"), KeyboardButton(text="📋 Tasks Lists"), KeyboardButton(text="🗑 Delete Task")],
+            [KeyboardButton(text="👥 Staff"), KeyboardButton(text="👨🏻‍🏫 Teacher/Score"), KeyboardButton(text="🎯 Monitoring")],
+            [KeyboardButton(text="📊 Admin Salary"), KeyboardButton(text="💰 Cashier Salary"), KeyboardButton(text="📸 Proofs")],
+            [KeyboardButton(text="🗄 Archive"), KeyboardButton(text="📑 GR Reports"), KeyboardButton(text="⚙️ Settings")]
         ]
     elif role == "Admin":
         keyboard = [
-            [KeyboardButton(text="✅ Ishga keldim")],
-            [KeyboardButton(text="📋 Vazifalar roʻyxati")],
-            [KeyboardButton(text="📊 Admin oylik")],
-            [KeyboardButton(text="📑 Guruh Report")]
+            [KeyboardButton(text="📍 Arrived"), KeyboardButton(text="📋 Tasks Lists")],
+            [KeyboardButton(text="📊 Admin Salary"), KeyboardButton(text="📑 GR Reports")]   
         ]
     elif role == "Kassir":
         keyboard = [
-            [KeyboardButton(text="✅ Ishga keldim")],
-            [KeyboardButton(text="📋 Vazifalar roʻyxati")],
-            [KeyboardButton(text="💰 Kassir oylik")]
+            [KeyboardButton(text="📍 Arrived"), KeyboardButton(text="📋 Vazifalar roʻyxati")],
+            [KeyboardButton(text="💰 Cashier Salary")]
         ]
     elif role == "Sanitar":
         keyboard = [
-            [KeyboardButton(text="✅ Ishga keldim")],
-            [KeyboardButton(text="📋 Vazifalar roʻyxati")]
+            [KeyboardButton(text="📍 Arrived"), KeyboardButton(text="📋 Tasks Lists")]
         ]
     else:
         keyboard = [
-            [KeyboardButton(text="✅ Ishga keldim")],
-            [KeyboardButton(text="📋 Vazifalar roʻyxati")]
+            [KeyboardButton(text="📍 Arrived"), KeyboardButton(text="📋 Tasks Lists")]  
         ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
