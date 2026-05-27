@@ -16,13 +16,6 @@ import logging
 
 from Keyboards.main_menu import get_main_menu, get_back_home_keyboard
 from utils.access import check_user_access
-from utils.attendance_db import (
-    add_attendance,
-    get_attendance_by_user_and_month,
-    get_attendance_by_user_today,
-    get_attendance_by_dates,
-)
-from utils.users_db import get_user_work_time
 
 monitoring_router = Router()
 
@@ -119,13 +112,11 @@ def get_all_users_by_role(role: str):
 
 
 def format_attendance_report(records: list, title: str) -> str:
-    """Hisobotni formatlash - ishga kelgan va kelmagan kunlar"""
     if not records:
         return f"{title}\n\n📭 Bu davr uchun ma'lumotlar topilmadi."
     
-    # Guruhlash
-    checked_in_days = []   # ishga kelganlar
-    missed_days = []       # kelmaganlar
+    checked_in_days = []
+    missed_days = []
     
     for r in records:
         date = r.get("date", "Noma'lum")
@@ -140,11 +131,9 @@ def format_attendance_report(records: list, title: str) -> str:
                 checked_in_days.append(f"   {date} - {arrived_at} (vaqtida)")
         elif status == "missed":
             missed_days.append(f"   {date} - ❌ Tasdiqlanmagan")
-        # pending holatidagilar (kun oxirida missed ga o'zgaradi)
         elif status == "pending":
             missed_days.append(f"   {date} - ⏳ Tasdiqlanmagan")
     
-    # Hisobot matnini tuzish
     text = f"{title}\n\n"
     
     if checked_in_days:
@@ -157,7 +146,6 @@ def format_attendance_report(records: list, title: str) -> str:
         text += "⚠️ <b>Ishga kelmagan / tasdiqlamagan kunlar:</b>\n"
         text += "\n".join(missed_days) + "\n\n"
     
-    # Statistika - faqat ishlagan kunlar soni
     total_work_days = len(checked_in_days)
     total_days_in_month = len(set(r.get("date") for r in records))
     
@@ -190,7 +178,6 @@ async def monitoring_main_handler(message: types.Message, state: FSMContext):
     )
 
 
-# ================= ROLE TANLASH =================
 @monitoring_router.message(MonitoringStates.waiting_for_role, F.text == "🏠 Bosh sahifa")
 async def monitoring_role_home(message: types.Message, state: FSMContext):
     await state.clear()
@@ -516,18 +503,6 @@ async def late_reason_back(message: types.Message, state: FSMContext):
 
 @monitoring_router.message(MonitoringStates.waiting_for_late_reason)
 async def late_reason_entered(message: types.Message, state: FSMContext):
-    if message.text == "🏠 Bosh sahifa":
-        await state.clear()
-        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-        return
-    
-    if message.text == "⬅️ Ortga":
-        await state.clear()
-        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-        return
-    
     data = await state.get_data()
     attendance_id = data.get("pending_attendance_id")
     reason = message.text.strip()
@@ -554,11 +529,7 @@ async def late_reason_entered(message: types.Message, state: FSMContext):
         parse_mode="HTML",
         reply_markup=get_main_menu(role)
     )
-    
-        await message.answer(
-            "❌ Saqlashda xatolik yuz berdi. Qayta urinib ko'ring.",
-            reply_markup=get_main_menu(role)
-        )
+
 
 # ============================================================
 #  ✅ ISHGA KELDIM — xodim ishga kelganini tasdiqlaydi
@@ -569,11 +540,9 @@ class CheckInStates(StatesGroup):
 
 @monitoring_router.message(F.text == "✅ Ishga keldim")
 async def check_in_start_handler(message: types.Message, state: FSMContext):
-    """Xodim ishga kelganini tasdiqlash"""
     user_id = str(message.from_user.id)
     today = datetime.now(TASHKENT_TZ).strftime("%Y-%m-%d")
     
-    # Bugun allaqachon tasdiqlaganmi?
     if await has_checkin_today(user_id):
         await message.answer(
             f"⚠️ Siz bugun ({today}) allaqachon ishga kelganingizni tasdiqlagansiz!",
@@ -592,7 +561,6 @@ async def check_in_start_handler(message: types.Message, state: FSMContext):
 
 @monitoring_router.message(CheckInStates.waiting_for_video)
 async def check_in_video_handler(message: types.Message, state: FSMContext):
-    """Dumaloq videoni qabul qilish va tekshirish"""
     user_id = str(message.from_user.id)
     user_info = USERS_ROLES.get(user_id, {})
     user_name = user_info.get("name", message.from_user.full_name)
@@ -630,7 +598,6 @@ async def check_in_video_handler(message: types.Message, state: FSMContext):
     except Exception:
         late_min = 0
     
-    # ========== KECH KELGAN HOLAT ==========
     if late_min > 0:
         record_id = await add_attendance(
             user_id=user_id,
@@ -692,7 +659,6 @@ async def check_in_video_handler(message: types.Message, state: FSMContext):
         )
         return
     
-    # ========== O'Z VAQTIDA YOKI OLDIN KELGAN HOLAT ==========
     record_id = await add_attendance(
         user_id=user_id,
         user_name=user_name,
@@ -730,7 +696,6 @@ async def check_in_video_handler(message: types.Message, state: FSMContext):
     
     await state.clear()
     
-    # Ish vaqtidan necha daqiqa oldin kelganini hisoblash
     try:
         ws_h, ws_m = map(int, work_start.split(":"))
         ar_h, ar_m = map(int, current_time.split(":"))
@@ -769,100 +734,17 @@ async def check_in_video_handler(message: types.Message, state: FSMContext):
             parse_mode="HTML",
             reply_markup=get_main_menu(role)
         )
-        return
-    
-    # Kechikish bo'lmasa (o'z vaqtida yoki oldin)
-    else:
-        # O'z vaqtida yoki oldin kelganda attendance yozuvini saqlash
-        record_id = await add_attendance(
-            user_id=user_id,
-            user_name=user_name,
-            role=role,
-            date=today,
-            arrived_at=current_time,
-            late_minutes=0,
-            reason="Ishga kelish tasdiqlandi",
-            proof_file_id=message.video_note.file_id,
-            proof_type="Video message",
-            status="checked_in"
-        )
-        
-        if not record_id:
-            await message.answer("❌ Saqlashda xatolik yuz berdi. Qayta urinib ko'ring.")
-            await state.clear()
-            return
-        
-        # Isbotni guruhga yuborish
-        try:
-            await message.bot.send_video_note(
-                chat_id=GROUP_CHAT_ID,
-                video_note=message.video_note.file_id
-            )
-            await message.bot.send_message(
-                chat_id=GROUP_CHAT_ID,
-                text=f"✅ <b>Xodim ishga keldi!</b>\n\n"
-                     f"👤 <b>Xodim:</b> {user_name}\n"
-                     f"📅 <b>Sana:</b> {today}\n"
-                     f"⏰ <b>Kelgan vaqt:</b> {current_time}\n"
-                     f"📋 <b>Ish vaqti:</b> {work_start} - {work_end}",
-                parse_mode="HTML"
-            )
-        except Exception as e:
-            logging.error(f"Isbotni guruhga yuborishda xatolik: {e}")
-        
-        # Xodimga javob
-        await state.clear()
-        
-        # Ish vaqtidan necha daqiqa oldin kelganini hisoblash
-        try:
-            ws_h, ws_m = map(int, work_start.split(":"))
-            ar_h, ar_m = map(int, current_time.split(":"))
-            ar_time = ar_h * 60 + ar_m
-            ws_time = ws_h * 60 + ws_m
-            early_min = ws_time - ar_time
-            if early_min < 0:
-                early_min = 0
-        except:
-            early_min = 0
-        
-        if early_min > 0:
-            await message.answer(
-                text=(
-                    f"✅ <b>Ishga kelishingiz tasdiqlandi!</b>\n\n"
-                    f"📅 Sana: {today}\n"
-                    f"⏰ Kelgan vaqt: {current_time}\n"
-                    f"📋 Ish vaqti: {work_start} - {work_end}\n"
-                    f"🌟 <b>Hurmatli {user_name}, siz ishga {early_min} daqiqa oldin keldingiz!</b>\n"
-                    f"🎯 Sizning mas'uliyatingiz va aniqligingiz jamoaga ijobiy namuna.\n"
-                    f"📸 Isbot rahbarga yuborildi."
-                ),
-                parse_mode="HTML",
-                reply_markup=get_main_menu(role)
-            )
-        else:
-            await message.answer(
-                text=(
-                    f"✅ <b>Ishga kelishingiz tasdiqlandi!</b>\n\n"
-                    f"📅 Sana: {today}\n"
-                    f"⏰ Kelgan vaqt: {current_time}\n"
-                    f"📋 Ish vaqti: {work_start} - {work_end}\n"
-                    f"🎉 <b>Hurmatli {user_name}, siz ishga o'z vaqtida keldingiz. Kuningiz barokatli o'tsin!</b>\n"
-                    f"📸 Isbot rahbarga yuborildi."
-                ),
-                parse_mode="HTML",
-                reply_markup=get_main_menu(role)
-            )
-    
-    
-    @monitoring_router.message(CheckInStates.waiting_for_video, F.text == "🏠 Bosh sahifa")
-    async def check_in_home(message: types.Message, state: FSMContext):
-        await state.clear()
-        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-    
-    
-    @monitoring_router.message(CheckInStates.waiting_for_video, F.text == "⬅️ Ortga")
-    async def check_in_back(message: types.Message, state: FSMContext):
-        await state.clear()
-        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
+
+
+@monitoring_router.message(CheckInStates.waiting_for_video, F.text == "🏠 Bosh sahifa")
+async def check_in_home(message: types.Message, state: FSMContext):
+    await state.clear()
+    role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
+    await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
+
+
+@monitoring_router.message(CheckInStates.waiting_for_video, F.text == "⬅️ Ortga")
+async def check_in_back(message: types.Message, state: FSMContext):
+    await state.clear()
+    role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
+    await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
