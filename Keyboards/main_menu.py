@@ -7,12 +7,10 @@ def get_main_menu(role: str):
     role = str(role).strip()
     if role in ["Owner", "Manager"]:
         keyboard = [
-            [KeyboardButton(text="➕ Vazifa qoʻshish"), KeyboardButton(text="📋 Vazifalar roʻyxati")],
-            [KeyboardButton(text="👥 Xodimlar"), KeyboardButton(text="🗑 Vazifani oʻchirish")],
-            [KeyboardButton(text="📊 Admin oylik"), KeyboardButton(text="💰 Kassir oylik")],
-            [KeyboardButton(text="🗄 Arxiv"), KeyboardButton(text="📑 Guruh Report")],
-            [KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball"), KeyboardButton(text="🎯 Monitoring")],
-            [KeyboardButton(text="📸 Isbotlar"), KeyboardButton(text="⚙️ Sozlamalar")]
+            [KeyboardButton(text="➕ Vazifa qoʻshish"), KeyboardButton(text="📋 Vazifalar roʻyxati"), KeyboardButton(text="🗑 Vazifani oʻchirish")],
+            [KeyboardButton(text="👥 Xodimlar"), KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball"), KeyboardButton(text="🎯 Monitoring")],
+            [KeyboardButton(text="📊 Admin oylik"), KeyboardButton(text="💰 Kassir oylik"), KeyboardButton(text="📸 Isbotlar"),
+            [KeyboardButton(text="🗄 Arxiv"), KeyboardButton(text="📑 Guruh Report"), KeyboardButton(text="⚙️ Sozlamalar")]
         ]
     elif role == "Admin":
         keyboard = [
@@ -21,19 +19,16 @@ def get_main_menu(role: str):
         ]
     elif role == "Kassir":
         keyboard = [
-            [KeyboardButton(text="✅ Ishga keldim")],
-            [KeyboardButton(text="📋 Vazifalar roʻyxati")],
+            [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="📋 Vazifalar roʻyxati")],
             [KeyboardButton(text="💰 Kassir oylik")]
         ]
     elif role == "Sanitar":
         keyboard = [
-            [KeyboardButton(text="✅ Ishga keldim")],
-            [KeyboardButton(text="📋 Vazifalar roʻyxati")]
+            [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="📋 Vazifalar roʻyxati")]
         ]
     else:
         keyboard = [
-            [KeyboardButton(text="✅ Ishga keldim")],
-            [KeyboardButton(text="📋 Vazifalar roʻyxati")]
+            [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="📋 Vazifalar roʻyxati")]  
         ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
@@ -61,10 +56,8 @@ def get_settings_role_keyboard():
 def get_work_time_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="1-smena (08:00 - 14:00)")],
-            [KeyboardButton(text="2-smena (14:00 - 21:00)")],
-            [KeyboardButton(text="3-smena (09:00 - 18:00)")],
-            [KeyboardButton(text="✍️ Boshqa vaqt")],
+            [KeyboardButton(text="1-smena (08:00 - 14:00)"), KeyboardButton(text="2-smena (14:00 - 21:00)")],
+            [KeyboardButton(text="3-smena (08:00 - 17:00)"), KeyboardButton(text="✍️ Boshqa vaqt")],
             [KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")]
         ],
         resize_keyboard=True
