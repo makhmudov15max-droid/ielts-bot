@@ -516,81 +516,50 @@ async def late_reason_back(message: types.Message, state: FSMContext):
 
 @monitoring_router.message(MonitoringStates.waiting_for_late_reason)
 async def late_reason_entered(message: types.Message, state: FSMContext):
-    await state.update_data(reason=message.text.strip())
-    await state.set_state(MonitoringStates.waiting_for_late_proof)
-    await message.answer(
-        text="📸 <b>Isbot yuborish (ixtiyoriy)</b>\n\nRasm yoki video yuboring, yoki isbotsiz davom eting:",
-        parse_mode="HTML",
-        reply_markup=get_late_proof_keyboard()
-    )
-
-
-@monitoring_router.message(MonitoringStates.waiting_for_late_proof, F.text == "🏠 Bosh sahifa")
-async def late_proof_home(message: types.Message, state: FSMContext):
-    await state.clear()
-    role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-    await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-
-
-@monitoring_router.message(MonitoringStates.waiting_for_late_proof, F.text == "⬅️ Ortga")
-async def late_proof_back(message: types.Message, state: FSMContext):
-    await state.set_state(MonitoringStates.waiting_for_late_reason)
-    await message.answer("Sababni qayta kiriting:", reply_markup=get_back_home_keyboard())
-
-
-@monitoring_router.message(MonitoringStates.waiting_for_late_proof)
-async def late_proof_received(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    user_id = str(message.from_user.id)
-    user_info = USERS_ROLES.get(user_id, {})
-    user_name = user_info.get("name", message.from_user.full_name)
-    role = user_info.get("role", "")
-
-    proof_file_id = None
-    proof_type = None
-
-    if message.text == "✍️ Isbostsiz davom etish":
-        pass
-    elif message.photo:
-        proof_file_id = message.photo[-1].file_id
-        proof_type = "Photo"
-    elif message.video_note:
-        proof_file_id = message.video_note.file_id
-        proof_type = "Video message"
-    elif message.text in ("📸 Rasm yuborish", "📹 Video yuborish"):
-        await message.answer(
-            "Iltimos, rasm yoki video faylni to'g'ridan-to'g'ri yuboring:",
-            reply_markup=get_late_proof_keyboard()
-        )
+    if message.text == "🏠 Bosh sahifa":
+        await state.clear()
+        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
+        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
         return
-
-    record_id = await add_attendance(
-        user_id=user_id,
-        user_name=user_name,
-        role=role,
-        date=data.get("late_date"),
-        arrived_at=data.get("arrived_at"),
-        late_minutes=data.get("late_minutes", 0),
-        reason=data.get("reason"),
-        proof_file_id=proof_file_id,
-        proof_type=proof_type,
-    )
-
+    
+    if message.text == "⬅️ Ortga":
+        await state.clear()
+        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
+        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
+        return
+    
+    data = await state.get_data()
+    attendance_id = data.get("pending_attendance_id")
+    reason = message.text.strip()
+    user_name = data.get("user_name")
+    role = data.get("role")
+    work_start = data.get("work_start")
+    work_end = data.get("work_end")
+    arrived_at = data.get("arrived_at")
+    today = data.get("today")
+    late_minutes = data.get("late_minutes")
+    
+    # Sababni saqlash
+    from utils.attendance_db import update_attendance_reason
+    await update_attendance_reason(attendance_id, reason)
+    
     await state.clear()
-
-    if record_id:
-        await message.answer(
-            text=(
-                f"✅ <b>Kech qolish ma'lumoti saqlandi!</b>\n\n"
-                f"📅 Sana: <b>{data.get('late_date')}</b>\n"
-                f"⏰ Kelgan vaqt: <b>{data.get('arrived_at')}</b>\n"
-                f"⌛ Kechikish: <b>{data.get('late_minutes', 0)} daqiqa</b>\n"
-                f"✍️ Sabab: {data.get('reason')}\n"
-                f"📸 Isbot: {'✅ Yuborildi' if proof_file_id else '—'}"
-            ),
-            parse_mode="HTML",
-            reply_markup=get_main_menu(role)
-        )
+    await message.answer(
+        text=(
+            f"✅ <b>Kech qolish sababi qabul qilindi!</b>\n\n"
+            f"📅 Sana: {today}\n"
+            f"⏰ Kelgan vaqt: {arrived_at}\n"
+            f"📋 Ish vaqti: {work_start} - {work_end}\n"
+            f"⚠️ Kechikish: {late_minutes} daqiqa\n"
+            f"✍️ Sabab: {reason}\n\n"
+            f"📸 Isbot rahbarga yuborildi.\n\n"
+            f"🌟 <b>E'tiboringiz uchun rahmat, {user_name}!</b>\n"
+            f"Kelajakda o'z vaqtida kelishingizni tavsiya qilamiz."
+        ),
+        parse_mode="HTML",
+        reply_markup=get_main_menu(role)
+    )
+    
     else:
         await message.answer(
             "❌ Saqlashda xatolik yuz berdi. Qayta urinib ko'ring.",
