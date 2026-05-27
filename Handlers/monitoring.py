@@ -84,7 +84,7 @@ def get_period_keyboard():
         keyboard=[
             [types.KeyboardButton(text="📅 Bugun"), types.KeyboardButton(text="📅 Bu oy")], 
             [types.KeyboardButton(text="📆 Sana (multiple select)"), types.KeyboardButton(text="🏠 Bosh sahifa")],
-            [types.KeyboardButton(text="⬅️ Ortga"),
+            [types.KeyboardButton(text="⬅️ Ortga")],
         ],
         resize_keyboard=True
     )
