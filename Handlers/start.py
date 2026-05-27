@@ -326,22 +326,25 @@ async def auto_task_scheduler(bot):
                 
                 work_start, work_end = await get_user_work_time(user_id)
                 
+                # Debug log (Railway loglarida ko'rinadi)
+                print(f"🔍 DEBUG: user={user_id}, work_start={work_start}, current_time={current_time_str}, today={today_str}")
+                
                 try:
                     ws_h, ws_m = map(int, work_start.split(":"))
                     
                     # 30 daqiqa oldin vaqtni hisoblash (24 soatlik aylanish bilan)
                     reminder_minutes = (ws_h * 60 + ws_m) - 30
                     if reminder_minutes < 0:
-                        reminder_minutes += 24 * 60  # kechagi kunga o'tish
+                        reminder_minutes += 24 * 60  # KEChAGI KUNGA O'TKAZISH (0 emas!)
                     
                     reminder_h = reminder_minutes // 60
                     reminder_m = reminder_minutes % 60
                     reminder_str = f"{reminder_h:02d}:{reminder_m:02d}"
                     
-                    print(f"DEBUG: user={user_id}, work_start={work_start}, reminder_str={reminder_str}, current={current_time_str}")
+                    print(f"🔍 DEBUG: user={user_id}, reminder_str={reminder_str}, current={current_time_str}")
                     
                     if current_time_str == reminder_str:
-                        print(f"DEBUG: ESLATMA YUBORILDI! user={user_id}")
+                        print(f"✅✅✅ ESLATMA YUBORILMOQDA! user={user_id}, time={reminder_str}")
                         try:
                             await bot.send_message(
                                 chat_id=int(user_id),
@@ -357,6 +360,9 @@ async def auto_task_scheduler(bot):
                             logging.info(f"Ishga kelish eslatmasi yuborildi: user_id={user_id}, time={work_start}")
                         except Exception as e:
                             logging.error(f"Eslatma yuborishda xatolik: {e}")
+                    else:
+                        print(f"🔍 DEBUG: user={user_id}, reminder_str={reminder_str} != current={current_time_str}")
+                        
                 except Exception as e:
                     logging.error(f"Eslatma hisoblashda xatolik: user_id={user_id}, work_start={work_start}, error={e}")
                     continue
