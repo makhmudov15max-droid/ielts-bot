@@ -334,7 +334,7 @@ async def auto_task_scheduler(bot):
                             f"⏰ <b>30 daqiqadan so'ng ish smenangiz boshlanadi!</b>\n\n"
                             f"📋 Ish vaqtingiz: {work_start} - {work_end}\n\n"
                             f"✅ Iltimos, ishga kelganingizni tasdiqlash uchun <b>'✅ Ishga keldim'</b> tugmasini bosing.",
-                        )
+                        ),
                         parse_mode="HTML",
                         reply_markup=get_check_in_reminder_keyboard()
                     )
