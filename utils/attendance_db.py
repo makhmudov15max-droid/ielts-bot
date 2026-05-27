@@ -203,3 +203,18 @@ async def clear_all_attendance():
     except Exception as e:
         logging.error(f"clear_all_attendance xatosi: {e}")
         return 0
+
+async def update_attendance_reason(attendance_id: int, reason: str):
+    """Kech qolish sababini yangilash"""
+    pool = get_pool()
+    if not pool:
+        return False
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute("""
+                UPDATE attendance SET reason = $1 WHERE id = $2
+            """, reason, attendance_id)
+        return True
+    except Exception as e:
+        logging.error(f"update_attendance_reason xatosi: {e}")
+        return False
