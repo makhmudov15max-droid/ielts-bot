@@ -123,10 +123,14 @@ def format_attendance_report(records: list, title: str) -> str:
         status = r.get("status", "pending")
         arrived_at = r.get("arrived_at", "Noma'lum")
         late_min = r.get("late_minutes", 0)
+        reason = r.get("reason", "")
         
         if status == "checked_in":
             if late_min > 0:
-                checked_in_days.append(f"   {date} - {arrived_at} ({late_min} daqiqa kech)")
+                if reason:
+                    checked_in_days.append(f"   {date} - {arrived_at} ({late_min} daqiqa kech) - {reason}")
+                else:
+                    checked_in_days.append(f"   {date} - {arrived_at} ({late_min} daqiqa kech)")
             else:
                 checked_in_days.append(f"   {date} - {arrived_at} (vaqtida)")
         elif status == "missed":
@@ -153,7 +157,6 @@ def format_attendance_report(records: list, title: str) -> str:
     text += f"   ✅ Ishlagan kunlar: {total_work_days}/{total_days_in_month}"
     
     return text
-
 
 def get_all_days_in_current_month():
     now = datetime.now(TASHKENT_TZ)
