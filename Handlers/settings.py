@@ -22,7 +22,7 @@ def init_settings_handler(users_roles, admin_id):
 
 # ================= STATES =================
 class SettingsStates(StatesGroup):
-    waiting_for_main_choice = State()   # <-- YANGI STATE (Ta'tillar / Ish smena)
+    waiting_for_main_choice = State()   # Ta'tillar / Ish smena
     waiting_for_role = State()
     waiting_for_employee = State()
     waiting_for_work_time = State()
@@ -60,17 +60,15 @@ async def settings_menu_handler(message: types.Message, state: FSMContext):
 # ================= TA'TIL VA ISH SMENA TANLASH =================
 @settings_router.message(SettingsStates.waiting_for_main_choice, F.text == "🌴 Ta'tillar")
 async def settings_holidays_choice(message: types.Message, state: FSMContext):
-    # Ta'tillar handleriga o'tkazish
-    from Handlers.holidays import holidays_router
+    # To'g'ridan-to'g'ri holidays handleriga o'tish
+    from Handlers.holidays import HolidayStates, get_holiday_action_keyboard
     await state.clear()
-    # Ta'tillar handlerini chaqirish
+    await state.set_state(HolidayStates.waiting_for_action)
     await message.answer(
-        text="🌴 <b>Ta'tillar boshqaruvi</b>\n\nQaysi bo'lim xodimlarining ta'tillarini ko'rmoqchisiz?",
+        text="🌴 <b>Ta'tillarni boshqarish</b>\n\nQanday amalni bajarmoqchisiz?",
         parse_mode="HTML",
-        reply_markup=get_holiday_role_keyboard()
+        reply_markup=get_holiday_action_keyboard()
     )
-    # State ni holidays handleriga o'tkazish
-    await state.set_state(HolidayStates.waiting_for_role)
 
 
 @settings_router.message(SettingsStates.waiting_for_main_choice, F.text == "🏢 Ish smena")
@@ -296,15 +294,12 @@ async def set_custom_worktime(message: types.Message, state: FSMContext):
 
 
 # ================= YORDAMCHI FUNKSIYALAR (HOLIDAYS UCHUN) =================
-def get_holiday_role_keyboard():
-    return types.ReplyKeyboardMarkup(
+def get_holiday_action_keyboard():
+    from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+    return ReplyKeyboardMarkup(
         keyboard=[
-            [types.KeyboardButton(text="Admin"), types.KeyboardButton(text="Kassir")],
-            [types.KeyboardButton(text="Sanitar"), types.KeyboardButton(text="Manager")],
-            [types.KeyboardButton(text="🏠 Bosh sahifa"), types.KeyboardButton(text="⬅️ Ortga")],
+            [KeyboardButton(text="📝 Ta'til kiritish"), KeyboardButton(text="✏️ Ta'til o'zgartirish")],
+            [KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")],
         ],
         resize_keyboard=True
     )
-
-
-from Handlers.holidays import HolidayStates
