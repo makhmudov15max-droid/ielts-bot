@@ -18,10 +18,10 @@ from Handlers.callback_handlers import callback_router, init_callback_handler
 from Handlers.proofs import proofs_router, init_proofs_handler
 from Handlers.monitoring import monitoring_router, init_monitoring_handler
 from Handlers.settings import settings_router, init_settings_handler
+from Handlers.holidays import holidays_router, init_holidays_handler
 from utils.database import init_db, close_db
 from utils.users_db import load_users
 from utils.tasks_db import load_tasks
-from Handlers.holidays import holidays_router, init_holidays_handler
 
 # ================= LOGGING =================
 logging.basicConfig(
