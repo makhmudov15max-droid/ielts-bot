@@ -150,6 +150,7 @@ async def init_db():
                     role TEXT,
                     name TEXT NOT NULL,
                     date TEXT NOT NULL,
+                    is_repeat BOOLEAN DEFAULT FALSE,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
