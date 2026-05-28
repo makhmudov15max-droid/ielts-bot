@@ -48,11 +48,11 @@ async def settings_menu_handler(message: types.Message, state: FSMContext):
         await message.answer("⚠️ Bu bo'lim faqat Owner va Manager uchun!")
         return
     
-    await state.set_state(SettingsStates.waiting_for_role)
+    await state.set_state(SettingsStates.waiting_for_main_choice)
     await message.answer(
-        text="⚙️ <b>Sozlamalar</b>\n\nQaysi bo'lim xodimlarining ish vaqtini o'zgartirmoqchisiz?",
+        text="⚙️ <b>Sozlamalar</b>\n\nQaysi bo'limni sozlamoqchisiz?",
         parse_mode="HTML",
-        reply_markup=get_settings_role_keyboard()
+        reply_markup=get_settings_main_keyboard()
     )
 
 
