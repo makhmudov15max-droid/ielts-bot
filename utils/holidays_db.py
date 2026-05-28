@@ -51,6 +51,23 @@ async def add_holidays_bulk(holidays: list) -> tuple:
     return saved, skipped
 
 
+
+async def delete_all_holidays():
+    """Barcha global ta'tillarni o'chirish"""
+    pool = get_pool()
+    if not pool:
+        return 0
+    try:
+        async with pool.acquire() as conn:
+            result = await conn.execute("DELETE FROM holidays WHERE user_id = 'global'")
+            # "DELETE N" formatidan N ni olish
+            count = int(result.split()[-1]) if result else 0
+            logging.info(f"delete_all_holidays: {count} ta ta'til o'chirildi")
+            return count
+    except Exception as e:
+        logging.error(f"delete_all_holidays xatosi: {e}")
+        return 0
+
 # Eski nom — orqaga moslik uchun (boshqa joyda ishlatilsa)
 async def add_holiday_for_all(name: str, date: str, is_repeat: bool = False):
     saved, _ = await add_holidays_bulk([(name, date, is_repeat)])
