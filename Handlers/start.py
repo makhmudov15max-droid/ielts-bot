@@ -15,6 +15,7 @@ from utils.proofs_db import add_proof
 from utils.access import check_user_access
 from utils.attendance_db import has_checkin_today, mark_missed_for_date
 from utils.users_db import get_user_work_time
+from utils.holidays_db import is_today_global_holiday
 
 start_router = Router()
 
@@ -352,66 +353,73 @@ async def auto_task_scheduler(bot):
             day_of_month = now.day
             today_str = now.strftime("%Y-%m-%d")
             
+            # ===== BUGUN BAYRAM KUNI EKANLIGINI TEKSHIRISH =====
+            is_holiday = await is_today_global_holiday()
+            
             if current_time_str == "00:00":
                 await reset_sent_today_times()
                 for task in TASKS_DATABASE:
                     task["sent_today_times"] = []
                 reminder_sent_today.clear()
             
-            for user_id, user_info in USERS_ROLES.items():
-                if not isinstance(user_info, dict):
-                    continue
-                role = user_info.get("role")
-                if role in ["Owner", "Manager"]:
-                    continue
-                
-                if reminder_sent_today.get(user_id) == today_str:
-                    continue
-                
-                if await has_checkin_today(str(user_id)):
-                    reminder_sent_today[user_id] = today_str
-                    continue
-                
-                work_start, work_end = await get_user_work_time(user_id)
-                
-                try:
-                    ws_h, ws_m = map(int, work_start.split(":"))
-                    
-                    reminder_minutes = (ws_h * 60 + ws_m) - 30
-                    if reminder_minutes < 0:
-                        reminder_minutes += 24 * 60
-                    
-                    reminder_h = reminder_minutes // 60
-                    reminder_m = reminder_minutes % 60
-                    reminder_str = f"{reminder_h:02d}:{reminder_m:02d}"
-                    
-                    if current_time_str == reminder_str:
-                        print(f"✅✅✅ ESLATMA YUBORILDI! user={user_id}, time={reminder_str}")
-                        try:
-                            await bot.send_message(
-                                chat_id=int(user_id),
-                                text=f"⏰ <b>30 daqiqadan so'ng ish smenangiz boshlanadi!</b>\n\n📋 Ish vaqtingiz: {work_start} - {work_end}\n\n✅ Iltimos, ishga kelganingizni tasdiqlash uchun <b>'✅ Ishga keldim'</b> tugmasini bosing.",
-                                parse_mode="HTML",
-                                reply_markup=get_check_in_reminder_keyboard()
-                            )
-                            reminder_sent_today[user_id] = today_str
-                            logging.info(f"Ishga kelish eslatmasi yuborildi: user_id={user_id}, time={work_start}")
-                        except Exception as e:
-                            logging.error(f"Eslatma yuborishda xatolik: {e}")
-                except Exception as e:
-                    continue
-            
-            if current_time_str == "23:59" and last_daily_check_date != today_str:
-                logging.info(f"Kun oxiri tekshiruvi boshlandi: {today_str}")
+            # Agar bayram kuni bo'lsa, ishga kelish eslatmalarini YUBORMA
+            if not is_holiday:
                 for user_id, user_info in USERS_ROLES.items():
                     if not isinstance(user_info, dict):
                         continue
                     role = user_info.get("role")
                     if role in ["Owner", "Manager"]:
                         continue
-                    if not await has_checkin_today(str(user_id)):
-                        await mark_missed_for_date(str(user_id), today_str)
-                last_daily_check_date = today_str
+                    
+                    if reminder_sent_today.get(user_id) == today_str:
+                        continue
+                    
+                    if await has_checkin_today(str(user_id)):
+                        reminder_sent_today[user_id] = today_str
+                        continue
+                    
+                    work_start, work_end = await get_user_work_time(user_id)
+                    
+                    try:
+                        ws_h, ws_m = map(int, work_start.split(":"))
+                        
+                        reminder_minutes = (ws_h * 60 + ws_m) - 30
+                        if reminder_minutes < 0:
+                            reminder_minutes += 24 * 60
+                        
+                        reminder_h = reminder_minutes // 60
+                        reminder_m = reminder_minutes % 60
+                        reminder_str = f"{reminder_h:02d}:{reminder_m:02d}"
+                        
+                        if current_time_str == reminder_str:
+                            print(f"✅✅✅ ESLATMA YUBORILDI! user={user_id}, time={reminder_str}")
+                            try:
+                                await bot.send_message(
+                                    chat_id=int(user_id),
+                                    text=f"⏰ <b>30 daqiqadan so'ng ish smenangiz boshlanadi!</b>\n\n📋 Ish vaqtingiz: {work_start} - {work_end}\n\n✅ Iltimos, ishga kelganingizni tasdiqlash uchun <b>'✅ Ishga keldim'</b> tugmasini bosing.",
+                                    parse_mode="HTML",
+                                    reply_markup=get_check_in_reminder_keyboard()
+                                )
+                                reminder_sent_today[user_id] = today_str
+                                logging.info(f"Ishga kelish eslatmasi yuborildi: user_id={user_id}, time={work_start}")
+                            except Exception as e:
+                                logging.error(f"Eslatma yuborishda xatolik: {e}")
+                    except Exception as e:
+                        continue
+            
+            # Kun oxiri tekshiruvi (bayram kunida missed deb belgilama)
+            if not is_holiday:
+                if current_time_str == "23:59" and last_daily_check_date != today_str:
+                    logging.info(f"Kun oxiri tekshiruvi boshlandi: {today_str}")
+                    for user_id, user_info in USERS_ROLES.items():
+                        if not isinstance(user_info, dict):
+                            continue
+                        role = user_info.get("role")
+                        if role in ["Owner", "Manager"]:
+                            continue
+                        if not await has_checkin_today(str(user_id)):
+                            await mark_missed_for_date(str(user_id), today_str)
+                    last_daily_check_date = today_str
             
             if current_time_str != last_checked_minute:
                 for task in TASKS_DATABASE:
