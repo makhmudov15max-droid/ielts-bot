@@ -154,10 +154,10 @@ async def add_holiday_for_all(name: str, date: str):
     users = await load_users()
     count = 0
     for user_id, user_info in users.items():
-        if user_info.get("role") in ["Owner", "Manager", "Admin", "Kassir", "Sanitar"]:
-            result = await add_holiday(user_id, user_info.get("name", ""), user_info.get("role", ""), name, date)
-            if result:
-                count += 1
+        # Owner, Manager, Admin, Kassir, Sanitar larning barchasiga qo'shamiz
+        result = await add_holiday(user_id, user_info.get("name", ""), user_info.get("role", ""), name, date)
+        if result:
+            count += 1
     return count
 
 
