@@ -45,15 +45,6 @@ def get_holiday_action_keyboard():
     )
 
 
-def get_holiday_edit_keyboard(holiday_id: int):
-    return types.InlineKeyboardMarkup(
-        inline_keyboard=[
-            [types.InlineKeyboardButton(text="✏️ O'zgartirish", callback_data=f"holiday_edit_{holiday_id}"),
-             types.InlineKeyboardButton(text="❌ O'chirish", callback_data=f"holiday_delete_{holiday_id}")]
-        ]
-    )
-
-
 # ================= TA'TILLAR ASOSIY HANDLER =================
 @holidays_router.message(F.text == "🌴 Ta'tillar")
 async def holidays_main_handler(message: types.Message, state: FSMContext):
@@ -67,6 +58,7 @@ async def holidays_main_handler(message: types.Message, state: FSMContext):
     )
 
 
+# ================= ASOSIY MENU TUGMALARI (waiting_for_action) =================
 @holidays_router.message(HolidayStates.waiting_for_action, F.text == "🏠 Bosh sahifa")
 async def holidays_action_home(message: types.Message, state: FSMContext):
     await state.clear()
@@ -81,12 +73,6 @@ async def holidays_action_back(message: types.Message, state: FSMContext):
     await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
 
 
-@holidays_router.message(HolidayStates.waiting_for_action)
-async def invalid_action_selected(message: types.Message):
-    await message.answer("❌ Iltimos, tugmalardan birini tanlang!", reply_markup=get_holiday_action_keyboard())
-
-
-# ================= TA'TIL KIRITISH =================
 @holidays_router.message(HolidayStates.waiting_for_action, F.text == "📝 Ta'til kiritish")
 async def holiday_add_start(message: types.Message, state: FSMContext):
     await state.set_state(HolidayStates.waiting_for_holiday_name)
@@ -99,6 +85,39 @@ async def holiday_add_start(message: types.Message, state: FSMContext):
     )
 
 
+@holidays_router.message(HolidayStates.waiting_for_action, F.text == "✏️ Ta'til o'zgartirish")
+async def holiday_edit_start(message: types.Message, state: FSMContext):
+    holidays = await get_all_holidays()
+    
+    if not holidays:
+        await message.answer(
+            text="📭 Hech qanday ta'til topilmadi.\n\n🆕 Yangi ta'til qo'shish uchun '📝 Ta'til kiritish' tugmasini bosing.",
+            reply_markup=get_holiday_action_keyboard()
+        )
+        return
+    
+    await state.update_data(holidays_list=holidays)
+    await state.set_state(HolidayStates.waiting_for_holiday_edit_select)
+    
+    text = "📅 <b>Joriy ta'tillar ro'yxati:</b>\n\n"
+    for idx, h in enumerate(holidays, 1):
+        text += f"{idx}. {h['name']} - {h['date']}\n"
+    
+    text += "\n✏️ O'zgartirmoqchi bo'lgan ta'tilning raqamini yuboring:"
+    
+    await message.answer(
+        text=text,
+        parse_mode="HTML",
+        reply_markup=get_back_home_keyboard()
+    )
+
+
+@holidays_router.message(HolidayStates.waiting_for_action)
+async def invalid_action_selected(message: types.Message):
+    await message.answer("❌ Iltimos, tugmalardan birini tanlang!", reply_markup=get_holiday_action_keyboard())
+
+
+# ================= TA'TIL KIRITISH (waiting_for_holiday_name) =================
 @holidays_router.message(HolidayStates.waiting_for_holiday_name, F.text == "🏠 Bosh sahifa")
 async def holiday_add_name_home(message: types.Message, state: FSMContext):
     await state.clear()
@@ -133,6 +152,7 @@ async def holiday_add_name_entered(message: types.Message, state: FSMContext):
     )
 
 
+# ================= TA'TIL KIRITISH (waiting_for_holiday_date) =================
 @holidays_router.message(HolidayStates.waiting_for_holiday_date, F.text == "🏠 Bosh sahifa")
 async def holiday_add_date_home(message: types.Message, state: FSMContext):
     await state.clear()
@@ -177,34 +197,7 @@ async def holiday_add_date_entered(message: types.Message, state: FSMContext):
         await message.answer("❌ Saqlashda xatolik yuz berdi. Qayta urinib ko'ring.", reply_markup=get_holiday_action_keyboard())
 
 
-# ================= TA'TIL O'ZGARTIRISH =================
-@holidays_router.message(HolidayStates.waiting_for_action, F.text == "✏️ Ta'til o'zgartirish")
-async def holiday_edit_start(message: types.Message, state: FSMContext):
-    holidays = await get_all_holidays()
-    
-    if not holidays:
-        await message.answer(
-            text="📭 Hech qanday ta'til topilmadi.\n\n🆕 Yangi ta'til qo'shish uchun '📝 Ta'til kiritish' tugmasini bosing.",
-            reply_markup=get_holiday_action_keyboard()
-        )
-        return
-    
-    await state.update_data(holidays_list=holidays)
-    await state.set_state(HolidayStates.waiting_for_holiday_edit_select)
-    
-    text = "📅 <b>Joriy ta'tillar ro'yxati:</b>\n\n"
-    for idx, h in enumerate(holidays, 1):
-        text += f"{idx}. {h['name']} - {h['date']}\n"
-    
-    text += "\n✏️ O'zgartirmoqchi bo'lgan ta'tilning raqamini yuboring:"
-    
-    await message.answer(
-        text=text,
-        parse_mode="HTML",
-        reply_markup=get_back_home_keyboard()
-    )
-
-
+# ================= TA'TIL O'ZGARTIRISH (waiting_for_holiday_edit_select) =================
 @holidays_router.message(HolidayStates.waiting_for_holiday_edit_select, F.text == "🏠 Bosh sahifa")
 async def holiday_edit_select_home(message: types.Message, state: FSMContext):
     await state.clear()
@@ -248,6 +241,7 @@ async def holiday_edit_select_handler(message: types.Message, state: FSMContext)
         await message.answer("❌ Iltimos, faqat raqam kiriting!")
 
 
+# ================= TA'TIL O'ZGARTIRISH (waiting_for_holiday_edit_name) =================
 @holidays_router.message(HolidayStates.waiting_for_holiday_edit_name, F.text == "🏠 Bosh sahifa")
 async def holiday_edit_name_home(message: types.Message, state: FSMContext):
     await state.clear()
@@ -291,6 +285,7 @@ async def holiday_edit_name_handler(message: types.Message, state: FSMContext):
     )
 
 
+# ================= TA'TIL O'ZGARTIRISH (waiting_for_holiday_edit_date) =================
 @holidays_router.message(HolidayStates.waiting_for_holiday_edit_date, F.text == "🏠 Bosh sahifa")
 async def holiday_edit_date_home(message: types.Message, state: FSMContext):
     await state.clear()
