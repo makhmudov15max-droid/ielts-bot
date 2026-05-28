@@ -27,40 +27,40 @@ async def add_holiday(user_id: str, user_name: str, role: str, name: str, date: 
 
 
 async def add_holiday_for_all(name: str, date: str, is_repeat: bool = False):
-    """Barcha xodimlar uchun ta'til qo'shish"""
-    from utils.users_db import load_users
-    
-    users = await load_users()
-    if not users:
-        logging.error("add_holiday_for_all: users yuklanmadi!")
+    """Global ta'til qo'shish (barcha xodimlar uchun bitta yozuv)"""
+    pool = get_pool()
+    if not pool:
+        logging.error("add_holiday_for_all: pool mavjud emas")
         return 0
-    
-    count = 0
-    for user_id, user_info in users.items():
-        if isinstance(user_info, dict):
-            user_name = user_info.get("name", "")
-            user_role = user_info.get("role", "")
-        else:
-            user_name = ""
-            user_role = str(user_info) if user_info else ""
-        
-        result = await add_holiday(
-            str(user_id),
-            user_name,
-            user_role,
-            name,
-            date,
-            is_repeat
-        )
-        if result:
-            count += 1
-    
-    logging.info(f"add_holiday_for_all: {count} ta xodimga ta'til qo'shildi")
-    return count
+
+    try:
+        async with pool.acquire() as conn:
+            # Bir xil nom va sana bilan ta'til allaqachon bormi?
+            existing = await conn.fetchrow(
+                "SELECT id FROM holidays WHERE name = $1 AND date = $2 AND user_id = 'global'",
+                name, date
+            )
+            if existing:
+                logging.warning(f"add_holiday_for_all: '{name}' ({date}) allaqachon mavjud")
+                return 1  # Muvaffaqiyatli (duplicate emas, mavjud)
+
+            row = await conn.fetchrow("""
+                INSERT INTO holidays (user_id, user_name, role, name, date, is_repeat)
+                VALUES ('global', 'Global', 'all', $1, $2, $3)
+                RETURNING id
+            """, name, date, is_repeat)
+
+            if row:
+                logging.info(f"add_holiday_for_all: '{name}' ({date}) global ta'til saqlanди, ID={row['id']}")
+                return 1
+            return 0
+    except Exception as e:
+        logging.error(f"add_holiday_for_all xatosi: {e}")
+        return 0
 
 
 async def get_all_holidays():
-    """Barcha ta'tillarni olish (unique)"""
+    """Barcha ta'tillarni olish (global)"""
     pool = get_pool()
     if not pool:
         return []
@@ -69,6 +69,7 @@ async def get_all_holidays():
             rows = await conn.fetch("""
                 SELECT DISTINCT ON (name, date) id, name, date, is_repeat
                 FROM holidays
+                WHERE user_id = 'global'
                 ORDER BY name, date, id DESC
             """)
             return [dict(row) for row in rows]
@@ -92,7 +93,7 @@ async def get_holiday_by_id(holiday_id: int):
 
 
 async def update_holiday(holiday_id: int, name: str = None, date: str = None):
-    """Ta'tilni yangilash (barcha xodimlar uchun)"""
+    """Ta'tilni yangilash (global)"""
     pool = get_pool()
     if not pool:
         return False
@@ -111,8 +112,8 @@ async def update_holiday(holiday_id: int, name: str = None, date: str = None):
             await conn.execute("""
                 UPDATE holidays 
                 SET name = $1, date = $2, is_repeat = $3, updated_at = CURRENT_TIMESTAMP
-                WHERE name = $4 AND date = $5
-            """, new_name, new_date, is_repeat, old["name"], old["date"])
+                WHERE id = $4
+            """, new_name, new_date, is_repeat, holiday_id)
             
             logging.info(f"update_holiday: {old['name']} -> {new_name} updated")
             return True
@@ -122,7 +123,7 @@ async def update_holiday(holiday_id: int, name: str = None, date: str = None):
 
 
 async def delete_holiday(holiday_id: int):
-    """Ta'tilni o'chirish (barcha xodimlar uchun)"""
+    """Ta'tilni o'chirish (global)"""
     pool = get_pool()
     if not pool:
         return False
@@ -133,9 +134,7 @@ async def delete_holiday(holiday_id: int):
             if not holiday:
                 return False
             
-            await conn.execute("""
-                DELETE FROM holidays WHERE name = $1 AND date = $2
-            """, holiday["name"], holiday["date"])
+            await conn.execute("DELETE FROM holidays WHERE id = $1", holiday_id)
             
             logging.info(f"delete_holiday: {holiday['name']} deleted")
             return True
@@ -145,7 +144,7 @@ async def delete_holiday(holiday_id: int):
 
 
 async def is_today_holiday(user_id: str) -> bool:
-    """Bugun foydalanuvchi uchun ta'til kunimi tekshirish"""
+    """Bugun ta'til kunimi tekshirish (global ta'tillar)"""
     today = datetime.now(TASHKENT_TZ)
     today_full = today.strftime("%Y-%m-%d")
     today_repeat = today.strftime("%m-%d")
@@ -158,9 +157,10 @@ async def is_today_holiday(user_id: str) -> bool:
         async with pool.acquire() as conn:
             row = await conn.fetchrow("""
                 SELECT id FROM holidays 
-                WHERE user_id = $1 AND (date = $2 OR (is_repeat = TRUE AND date = $3))
+                WHERE user_id = 'global' 
+                  AND (date = $1 OR (is_repeat = TRUE AND date = $2))
                 LIMIT 1
-            """, user_id, today_full, today_repeat)
+            """, today_full, today_repeat)
             return row is not None
     except Exception as e:
         logging.error(f"is_today_holiday xatosi: {e}")
