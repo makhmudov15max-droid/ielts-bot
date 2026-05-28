@@ -21,12 +21,14 @@ async def init_holidays_table():
                     role TEXT,
                     name TEXT NOT NULL,
                     date TEXT NOT NULL,
+                    is_repeat BOOLEAN DEFAULT FALSE,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_holidays_user ON holidays(user_id)")
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_holidays_date ON holidays(date)")
+            await conn.execute("ALTER TABLE holidays ADD COLUMN IF NOT EXISTS is_repeat BOOLEAN DEFAULT FALSE")
             logging.info("✅ holidays jadvali tayyor")
     except Exception as e:
         logging.error(f"init_holidays_table xatosi: {e}")
