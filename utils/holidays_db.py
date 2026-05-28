@@ -6,26 +6,6 @@ from utils.database import get_pool
 TASHKENT_TZ = timezone(timedelta(hours=5))
 
 
-async def init_holidays_table():
-    """holidays jadvalini yaratish"""
-    pool = get_pool()
-    if not pool:
-        return
-    try:
-        async with pool.acquire() as conn:
-            await conn.execute("""
-                CREATE TABLE IF NOT EXISTS holidays (
-                    id SERIAL PRIMARY KEY,
-                    user_id TEXT NOT NULL,
-                    user_name TEXT,
-                    role TEXT,
-                    name TEXT NOT NULL,
-                    date TEXT NOT NULL,
-                    is_repeat BOOLEAN DEFAULT FALSE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_holidays_user ON holidays(user_id)")
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_holidays_date ON holidays(date)")
             logging.info("✅ holidays jadvali tayyor")
