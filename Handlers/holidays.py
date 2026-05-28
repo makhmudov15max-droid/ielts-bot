@@ -11,6 +11,7 @@ from utils.holidays_db import (
     update_holiday,
     delete_holiday,
     get_holiday_by_id,
+    delete_all_holidays,
 )
 
 holidays_router = Router()
@@ -31,6 +32,7 @@ class HolidayStates(StatesGroup):
     waiting_for_holiday_edit_select = State() # Qaysi ta'tilni o'zgartirish
     waiting_for_holiday_edit_name = State()   # Yangi nom
     waiting_for_holiday_edit_date = State()   # Yangi sana
+    waiting_for_delete_all_confirm = State()  # Barcha ta'tilni o'chirish tasdiqlash
 
 
 # ================= YORDAMCHI FUNKSIYALAR =================
@@ -108,6 +110,7 @@ def get_holiday_action_keyboard():
     return types.ReplyKeyboardMarkup(
         keyboard=[
             [types.KeyboardButton(text="📝 Ta'til kiritish"), types.KeyboardButton(text="✏️ Ta'til o'zgartirish")],
+            [types.KeyboardButton(text="🗑 Barcha ta'tilni o'chirish")],
             [types.KeyboardButton(text="🏠 Bosh sahifa"), types.KeyboardButton(text="⬅️ Ortga")],
         ],
         resize_keyboard=True
@@ -186,6 +189,58 @@ async def holiday_edit_start(message: types.Message, state: FSMContext):
 
     await message.answer(text=text, parse_mode="HTML", reply_markup=get_back_home_keyboard())
 
+
+
+@holidays_router.message(HolidayStates.waiting_for_action, F.text == "🗑 Barcha ta'tilni o'chirish")
+async def holiday_delete_all_start(message: types.Message, state: FSMContext):
+    holidays = await get_all_holidays()
+    if not holidays:
+        await message.answer(
+            "📭 O'chiradigan ta'til yo'q.",
+            reply_markup=get_holiday_action_keyboard()
+        )
+        return
+
+    await state.set_state(HolidayStates.waiting_for_delete_all_confirm)
+
+    text = f"⚠️ <b>Diqqat!</b> Quyidagi <b>{len(holidays)} ta ta'til</b> butunlay o'chiriladi:\n\n"
+    for h in holidays:
+        repeat_mark = "🔁" if h["is_repeat"] else "📆"
+        text += f"  {repeat_mark} {h['name']} — {display_date(h['date'])}\n"
+    text += "\n✅ Tasdiqlaysizmi?"
+
+    confirm_kb = types.ReplyKeyboardMarkup(
+        keyboard=[
+            [types.KeyboardButton(text="✅ Ha, o'chirilsin"), types.KeyboardButton(text="❌ Yo'q, bekor")],
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(text=text, parse_mode="HTML", reply_markup=confirm_kb)
+
+
+@holidays_router.message(HolidayStates.waiting_for_delete_all_confirm, F.text == "✅ Ha, o'chirilsin")
+async def holiday_delete_all_confirm(message: types.Message, state: FSMContext):
+    count = await delete_all_holidays()
+    await state.clear()
+    await message.answer(
+        text=f"✅ <b>{count} ta ta'til o'chirildi.</b>",
+        parse_mode="HTML",
+        reply_markup=get_holiday_action_keyboard()
+    )
+
+
+@holidays_router.message(HolidayStates.waiting_for_delete_all_confirm, F.text == "❌ Yo'q, bekor")
+async def holiday_delete_all_cancel(message: types.Message, state: FSMContext):
+    await state.set_state(HolidayStates.waiting_for_action)
+    await message.answer(
+        "❌ Bekor qilindi.",
+        reply_markup=get_holiday_action_keyboard()
+    )
+
+
+@holidays_router.message(HolidayStates.waiting_for_delete_all_confirm)
+async def holiday_delete_all_invalid(message: types.Message):
+    await message.answer("❌ Iltimos, tugmalardan birini tanlang!")
 
 @holidays_router.message(HolidayStates.waiting_for_action)
 async def invalid_action_selected(message: types.Message):
