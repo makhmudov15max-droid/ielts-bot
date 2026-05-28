@@ -1,4 +1,3 @@
-from utils.holidays_db import init_holidays_table
 import asyncpg
 import os
 import logging
@@ -6,6 +5,32 @@ import logging
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 db_pool = None
+
+
+async def init_holidays_table():
+    """holidays jadvalini yaratish (aylanma importni oldini olish uchun alohida funksiya)"""
+    if not db_pool:
+        return
+    try:
+        async with db_pool.acquire() as conn:
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS holidays (
+                    id SERIAL PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    user_name TEXT,
+                    role TEXT,
+                    name TEXT NOT NULL,
+                    date TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_holidays_user ON holidays(user_id)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_holidays_date ON holidays(date)")
+            logging.info("✅ holidays jadvali tayyor")
+    except Exception as e:
+        logging.error(f"init_holidays_table xatosi: {e}")
+
 
 async def init_db():
     """Database pool ni yaratish va jadvallarni yaratish"""
@@ -101,10 +126,10 @@ async def init_db():
                     reason TEXT,
                     proof_file_id TEXT,
                     proof_type TEXT,
+                    status TEXT DEFAULT 'pending',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-            await init_holidays_table()
             
             # Indexes
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_users_id ON users(user_id)")
@@ -114,8 +139,24 @@ async def init_db():
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_proofs_date ON proofs(date)")
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_attendance_user ON attendance(user_id)")
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date)")
-            await conn.execute("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending'")
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_attendance_status ON attendance(status)")
+            
+            # Holidays table (to'g'ridan-to'g'ri)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS holidays (
+                    id SERIAL PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    user_name TEXT,
+                    role TEXT,
+                    name TEXT NOT NULL,
+                    date TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_holidays_user ON holidays(user_id)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_holidays_date ON holidays(date)")
+            logging.info("✅ holidays jadvali tayyor")
             
             # Owner qo'shish
             await conn.execute("""
@@ -129,11 +170,13 @@ async def init_db():
         logging.error(f"❌ Database xatosi: {e}")
         raise
 
+
 async def close_db():
     global db_pool
     if db_pool:
         await db_pool.close()
         logging.info("🔒 Database ulanishi yopildi")
+
 
 def get_pool():
     return db_pool
