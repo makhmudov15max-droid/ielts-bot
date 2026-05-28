@@ -3,7 +3,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 import re
 
-from Keyboards.main_menu import get_main_menu, get_back_home_keyboard, get_settings_role_keyboard, get_work_time_keyboard
+from Keyboards.main_menu import get_main_menu, get_back_home_keyboard, get_settings_role_keyboard, get_work_time_keyboard, get_settings_main_keyboard
 from utils.access import check_user_access
 from utils.users_db import set_user_work_time, get_user_work_time
 
@@ -22,6 +22,7 @@ def init_settings_handler(users_roles, admin_id):
 
 # ================= STATES =================
 class SettingsStates(StatesGroup):
+    waiting_for_main_choice = State()   # <-- YANGI STATE (Ta'tillar / Ish smena)
     waiting_for_role = State()
     waiting_for_employee = State()
     waiting_for_work_time = State()
@@ -56,7 +57,51 @@ async def settings_menu_handler(message: types.Message, state: FSMContext):
     )
 
 
-# ================= ROL TANLASH =================
+# ================= TA'TIL VA ISH SMENA TANLASH =================
+@settings_router.message(SettingsStates.waiting_for_main_choice, F.text == "🌴 Ta'tillar")
+async def settings_holidays_choice(message: types.Message, state: FSMContext):
+    # Ta'tillar handleriga o'tkazish
+    from Handlers.holidays import holidays_router
+    await state.clear()
+    # Ta'tillar handlerini chaqirish
+    await message.answer(
+        text="🌴 <b>Ta'tillar boshqaruvi</b>\n\nQaysi bo'lim xodimlarining ta'tillarini ko'rmoqchisiz?",
+        parse_mode="HTML",
+        reply_markup=get_holiday_role_keyboard()
+    )
+    # State ni holidays handleriga o'tkazish
+    await state.set_state(HolidayStates.waiting_for_role)
+
+
+@settings_router.message(SettingsStates.waiting_for_main_choice, F.text == "🏢 Ish smena")
+async def settings_worktime_choice(message: types.Message, state: FSMContext):
+    await state.set_state(SettingsStates.waiting_for_role)
+    await message.answer(
+        text="Qaysi bo'lim xodimlarining ish vaqtini o'zgartirmoqchisiz?",
+        reply_markup=get_settings_role_keyboard()
+    )
+
+
+@settings_router.message(SettingsStates.waiting_for_main_choice, F.text == "🏠 Bosh sahifa")
+async def settings_main_home(message: types.Message, state: FSMContext):
+    await state.clear()
+    role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
+    await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
+
+
+@settings_router.message(SettingsStates.waiting_for_main_choice, F.text == "⬅️ Ortga")
+async def settings_main_back(message: types.Message, state: FSMContext):
+    await state.clear()
+    role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
+    await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
+
+
+@settings_router.message(SettingsStates.waiting_for_main_choice)
+async def invalid_main_choice(message: types.Message):
+    await message.answer("❌ Iltimos, tugmalardan birini tanlang!", reply_markup=get_settings_main_keyboard())
+
+
+# ================= ROL TANLASH (ISH SMENA UCHUN) =================
 @settings_router.message(SettingsStates.waiting_for_role, F.text == "🏠 Bosh sahifa")
 async def settings_role_home(message: types.Message, state: FSMContext):
     await state.clear()
@@ -66,9 +111,12 @@ async def settings_role_home(message: types.Message, state: FSMContext):
 
 @settings_router.message(SettingsStates.waiting_for_role, F.text == "⬅️ Ortga")
 async def settings_role_back(message: types.Message, state: FSMContext):
-    await state.clear()
-    role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-    await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
+    await state.set_state(SettingsStates.waiting_for_main_choice)
+    await message.answer(
+        text="⚙️ <b>Sozlamalar</b>\n\nQaysi bo'limni sozlamoqchisiz?",
+        parse_mode="HTML",
+        reply_markup=get_settings_main_keyboard()
+    )
 
 
 @settings_router.message(SettingsStates.waiting_for_role, F.text.in_(["Admin", "Kassir", "Sanitar", "Manager"]))
@@ -97,7 +145,7 @@ async def select_role_for_settings(message: types.Message, state: FSMContext):
 
 @settings_router.message(SettingsStates.waiting_for_role)
 async def invalid_role_selected(message: types.Message):
-    await message.answer("❌ Iltimos, tugmalardan birini tanlang!")
+    await message.answer("❌ Iltimos, tugmalardan birini tanlang!", reply_markup=get_settings_role_keyboard())
 
 
 # ================= XODIM TANLASH =================
@@ -245,3 +293,18 @@ async def set_custom_worktime(message: types.Message, state: FSMContext):
         parse_mode="HTML",
         reply_markup=get_main_menu(role)
     )
+
+
+# ================= YORDAMCHI FUNKSIYALAR (HOLIDAYS UCHUN) =================
+def get_holiday_role_keyboard():
+    return types.ReplyKeyboardMarkup(
+        keyboard=[
+            [types.KeyboardButton(text="Admin"), types.KeyboardButton(text="Kassir")],
+            [types.KeyboardButton(text="Sanitar"), types.KeyboardButton(text="Manager")],
+            [types.KeyboardButton(text="🏠 Bosh sahifa"), types.KeyboardButton(text="⬅️ Ortga")],
+        ],
+        resize_keyboard=True
+    )
+
+
+from Handlers.holidays import HolidayStates
