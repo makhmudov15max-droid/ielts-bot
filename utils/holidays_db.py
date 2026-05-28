@@ -180,3 +180,28 @@ async def is_today_holiday(user_id: str) -> bool:
     except Exception as e:
         logging.error(f"is_today_holiday xatosi: {e}")
         return False
+
+# utils/holidays_db.py ga qo'shing:
+
+async def is_today_global_holiday() -> bool:
+    """Bugun global ta'til kunimi tekshirish (har qanday xodim uchun)"""
+    today = datetime.now(TASHKENT_TZ)
+    today_full = today.strftime("%Y-%m-%d")
+    today_repeat = today.strftime("%m-%d")
+    
+    pool = get_pool()
+    if not pool:
+        return False
+    
+    try:
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT id FROM holidays
+                WHERE user_id = 'global'
+                  AND (date = $1 OR (is_repeat = TRUE AND date = $2))
+                LIMIT 1
+            """, today_full, today_repeat)
+            return row is not None
+    except Exception as e:
+        logging.error(f"is_today_global_holiday xatosi: {e}")
+        return False
