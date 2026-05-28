@@ -146,3 +146,39 @@ async def get_holiday_by_id(holiday_id: int):
     except Exception as e:
         logging.error(f"get_holiday_by_id xatosi: {e}")
         return None
+
+async def add_holiday_for_all(name: str, date: str):
+    """Barcha xodimlar uchun ta'til qo'shish"""
+    from utils.users_db import load_users
+    
+    users = await load_users()
+    count = 0
+    for user_id, user_info in users.items():
+        if user_info.get("role") in ["Owner", "Manager", "Admin", "Kassir", "Sanitar"]:
+            result = await add_holiday(user_id, user_info.get("name", ""), user_info.get("role", ""), name, date)
+            if result:
+                count += 1
+    return count
+
+
+async def get_all_holidays():
+    """Barcha ta'tillarni olish (unique)"""
+    pool = get_pool()
+    if not pool:
+        return []
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT DISTINCT id, name, date FROM holidays
+                ORDER BY date ASC
+            """)
+            # Duplicate larni olib tashlash (name va date bo'yicha)
+            unique = {}
+            for row in rows:
+                key = f"{row['name']}_{row['date']}"
+                if key not in unique:
+                    unique[key] = dict(row)
+            return list(unique.values())
+    except Exception as e:
+        logging.error(f"get_all_holidays xatosi: {e}")
+        return []
