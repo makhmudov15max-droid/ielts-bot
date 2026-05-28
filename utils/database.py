@@ -138,6 +138,31 @@ async def init_db():
                 ON CONFLICT (user_id) DO NOTHING
             """, "6500594896", "Owner", "Baxtiyorjon", "09:00", "18:00")
             
+            # ================= MIGRATION: Eski ta'tillarni global qilish =================
+            # Eski foydalanuvchi-ID bilan saqlangan ta'tillarni global formatga o'tkazish
+            try:
+                old_holidays = await conn.fetch("""
+                    SELECT DISTINCT ON (name, date) name, date, is_repeat
+                    FROM holidays
+                    WHERE user_id != 'global'
+                    ORDER BY name, date
+                """)
+                for h in old_holidays:
+                    existing = await conn.fetchrow(
+                        "SELECT id FROM holidays WHERE user_id = 'global' AND name = $1 AND date = $2",
+                        h["name"], h["date"]
+                    )
+                    if not existing:
+                        await conn.execute("""
+                            INSERT INTO holidays (user_id, user_name, role, name, date, is_repeat)
+                            VALUES ('global', 'Global', 'all', $1, $2, $3)
+                        """, h["name"], h["date"], h["is_repeat"])
+                if old_holidays:
+                    await conn.execute("DELETE FROM holidays WHERE user_id != 'global'")
+                    logging.info(f"✅ Migration: {len(old_holidays)} ta ta'til global formatga o'tkazildi")
+            except Exception as mig_err:
+                logging.warning(f"Migration xatosi (muhim emas): {mig_err}")
+            
         logging.info("✅ Barcha jadvallar tayyor!")
         
     except Exception as e:
