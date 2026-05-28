@@ -145,8 +145,10 @@ async def holiday_add_name_entered(message: types.Message, state: FSMContext):
     await state.update_data(holiday_name=name)
     await state.set_state(HolidayStates.waiting_for_holiday_date)
     await message.answer(
-        text="📅 <b>Ta'til sanasini kiriting (YYYY-MM-DD formatida)</b>\n\n"
-             "Masalan: <code>2026-03-21</code>",
+        text="📅 <b>Ta'til sanasini kiriting</b>\n\n"
+             "Formatlar:\n"
+             "• <b>YYYY-MM-DD</b> - faqat o'sha yil uchun (masalan: 2026-03-21)\n"
+             "• <b>MM-DD</b> - har yili takrorlanadi (masalan: 03-21)",
         parse_mode="HTML",
         reply_markup=get_back_home_keyboard()
     )
@@ -196,8 +198,11 @@ async def holiday_add_date_entered(message: types.Message, state: FSMContext):
     data = await state.get_data()
     holiday_name = data.get("holiday_name")
     
+    # Agar MM-DD formatida bo'lsa, is_repeat = True
+    is_repeat = bool(is_repeat_date)
+    
     # Barcha xodimlar uchun ta'til qo'shish
-    result = await add_holiday_for_all(holiday_name, date_text, is_repeat_date)
+    result = await add_holiday_for_all(holiday_name, date_text, is_repeat)
     
     await state.clear()
     if result and result > 0:
@@ -298,7 +303,10 @@ async def holiday_edit_name_handler(message: types.Message, state: FSMContext):
     current_date = data.get("selected_holiday_date")
     
     await message.answer(
-        text=f"📅 Yangi sanani kiriting (YYYY-MM-DD formatida)\n\n"
+        text=f"📅 Yangi sanani kiriting\n\n"
+             f"Formatlar:\n"
+             f"• <b>YYYY-MM-DD</b> - faqat o'sha yil uchun\n"
+             f"• <b>MM-DD</b> - har yili takrorlanadi\n\n"
              f"Joriy sana: {current_date}\n"
              f"(o'zgarishsiz qoldirish uchun '0' yozing):",
         parse_mode="HTML",
@@ -334,9 +342,20 @@ async def holiday_edit_date_handler(message: types.Message, state: FSMContext):
     new_date = message.text.strip()
     if new_date == "0":
         new_date = current_date
-    elif not re.match(r"\d{4}-\d{2}-\d{2}", new_date):
-        await message.answer("❌ Noto'g'ri format! Iltimos, YYYY-MM-DD formatida kiriting.")
-        return
+    else:
+        # Formatni tekshirish
+        full_date_pattern = r"^\d{4}-\d{2}-\d{2}$"
+        repeat_date_pattern = r"^\d{2}-\d{2}$"
+        
+        if not re.match(full_date_pattern, new_date) and not re.match(repeat_date_pattern, new_date):
+            await message.answer(
+                text="❌ <b>Noto'g'ri format!</b>\n\n"
+                     "Iltimos, quyidagi formatlardan birini kiriting:\n"
+                     "• <b>YYYY-MM-DD</b> (masalan: 2026-03-21)\n"
+                     "• <b>MM-DD</b> (masalan: 03-21)",
+                parse_mode="HTML"
+            )
+            return
     
     final_name = new_name if new_name else data.get("selected_holiday_name")
     
