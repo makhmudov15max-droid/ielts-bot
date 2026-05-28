@@ -16,6 +16,7 @@ import logging
 
 from Keyboards.main_menu import get_main_menu, get_back_home_keyboard
 from utils.access import check_user_access
+from utils.holidays_db import is_today_global_holiday, get_all_holidays
 
 monitoring_router = Router()
 
@@ -94,6 +95,100 @@ def get_late_proof_keyboard():
     )
 
 
+# ================= BAYRAM KUNLARI UCHUN YORDAMCHI FUNKSIYALAR =================
+async def get_holiday_dates() -> set:
+    """Barcha ta'til sanalarini (YYYY-MM-DD va MM-DD formatlarida) qaytaradi"""
+    holidays = await get_all_holidays()
+    holiday_set = set()
+    for h in holidays:
+        date = h["date"]
+        is_repeat = h.get("is_repeat", False)
+        if is_repeat:
+            holiday_set.add(date)  # MM-DD
+        else:
+            holiday_set.add(date)  # YYYY-MM-DD
+    return holiday_set
+
+
+def is_holiday_date(date_str: str, holidays_set: set) -> bool:
+    """Berilgan sana bayram kunimi tekshiradi"""
+    if date_str in holidays_set:
+        return True
+    mm_dd = date_str[5:]  # "YYYY-MM-DD" dan "MM-DD" ni olish
+    return mm_dd in holidays_set
+
+
+async def format_attendance_report(records: list, title: str) -> str:
+    """Attendance report - bayram kunlarini hisobga olgan holda"""
+    if not records:
+        return f"{title}\n\n📭 Bu davr uchun ma'lumotlar topilmadi."
+    
+    holidays_set = await get_holiday_dates()
+    
+    checked_in_days = []
+    missed_days = []
+    holiday_days = []
+    
+    for r in records:
+        date = r.get("date", "Noma'lum")
+        status = r.get("status", "pending")
+        arrived_at = r.get("arrived_at", "Noma'lum")
+        late_min = r.get("late_minutes", 0)
+        reason = r.get("reason", "")
+        
+        is_holiday = is_holiday_date(date, holidays_set) if holidays_set else False
+        
+        if status == "checked_in":
+            if is_holiday:
+                holiday_days.append(f"   {date} - 🎉 BAYRAM (ishga kelgan)")
+            elif late_min > 0:
+                if reason:
+                    checked_in_days.append(f"   {date} - {arrived_at} ({late_min} daqiqa kech) - {reason}")
+                else:
+                    checked_in_days.append(f"   {date} - {arrived_at} ({late_min} daqiqa kech)")
+            else:
+                checked_in_days.append(f"   {date} - {arrived_at} (vaqtida)")
+        elif status in ["missed", "pending"]:
+            if is_holiday:
+                holiday_days.append(f"   {date} - 🎉 BAYRAM (dam olish kuni)")
+            else:
+                missed_days.append(f"   {date} - ❌ Tasdiqlanmagan")
+    
+    text = f"{title}\n\n"
+    
+    if holiday_days:
+        text += "🎉 <b>Bayram kunlari (ish kuni hisoblanmaydi):</b>\n"
+        text += "\n".join(holiday_days) + "\n\n"
+    
+    if checked_in_days:
+        text += "✅ <b>Ishga kelgan kunlar:</b>\n"
+        text += "\n".join(checked_in_days) + "\n\n"
+    else:
+        text += "✅ <b>Ishga kelgan kunlar:</b> Yo'q\n\n"
+    
+    if missed_days:
+        text += "⚠️ <b>Ishga kelmagan / tasdiqlamagan kunlar:</b>\n"
+        text += "\n".join(missed_days) + "\n\n"
+    
+    # Statistikaga bayram kunlarini kiritma (faqat ish kunlari)
+    total_work_days = len(checked_in_days)
+    total_days_in_period = len(set(r.get("date") for r in records if not is_holiday_date(r.get("date"), holidays_set)))
+    
+    text += "📊 <b>Statistika (bayramlar hisobga olinmagan):</b>\n"
+    text += f"   ✅ Ishlagan kunlar: {total_work_days}/{total_days_in_period}"
+    
+    return text
+
+
+def get_all_days_in_current_month():
+    now = datetime.now(TASHKENT_TZ)
+    _, last_day = calendar.monthrange(now.year, now.month)
+    dates = []
+    for d in range(1, last_day + 1):
+        dates.append(f"{now.year}-{now.month:02d}-{d:02d}")
+    return dates
+
+
 # ================= HELPERS =================
 def get_user_id_by_name(name: str):
     clean = name.replace("👤 ", "").strip()
@@ -109,62 +204,6 @@ def get_all_users_by_role(role: str):
         if isinstance(u_info, dict) and u_info.get("role") == role and u_info.get("name"):
             users.append((u_id, u_info["name"]))
     return users
-
-
-def format_attendance_report(records: list, title: str) -> str:
-    if not records:
-        return f"{title}\n\n📭 Bu davr uchun ma'lumotlar topilmadi."
-    
-    checked_in_days = []
-    missed_days = []
-    
-    for r in records:
-        date = r.get("date", "Noma'lum")
-        status = r.get("status", "pending")
-        arrived_at = r.get("arrived_at", "Noma'lum")
-        late_min = r.get("late_minutes", 0)
-        reason = r.get("reason", "")
-        
-        if status == "checked_in":
-            if late_min > 0:
-                if reason:
-                    checked_in_days.append(f"   {date} - {arrived_at} ({late_min} daqiqa kech) - {reason}")
-                else:
-                    checked_in_days.append(f"   {date} - {arrived_at} ({late_min} daqiqa kech)")
-            else:
-                checked_in_days.append(f"   {date} - {arrived_at} (vaqtida)")
-        elif status == "missed":
-            missed_days.append(f"   {date} - ❌ Tasdiqlanmagan")
-        elif status == "pending":
-            missed_days.append(f"   {date} - ⏳ Tasdiqlanmagan")
-    
-    text = f"{title}\n\n"
-    
-    if checked_in_days:
-        text += "✅ <b>Ishga kelgan kunlar:</b>\n"
-        text += "\n".join(checked_in_days) + "\n\n"
-    else:
-        text += "✅ <b>Ishga kelgan kunlar:</b> Yo'q\n\n"
-    
-    if missed_days:
-        text += "⚠️ <b>Ishga kelmagan / tasdiqlamagan kunlar:</b>\n"
-        text += "\n".join(missed_days) + "\n\n"
-    
-    total_work_days = len(checked_in_days)
-    total_days_in_month = len(set(r.get("date") for r in records))
-    
-    text += "📊 <b>Statistika:</b>\n"
-    text += f"   ✅ Ishlagan kunlar: {total_work_days}/{total_days_in_month}"
-    
-    return text
-
-def get_all_days_in_current_month():
-    now = datetime.now(TASHKENT_TZ)
-    _, last_day = calendar.monthrange(now.year, now.month)
-    dates = []
-    for d in range(1, last_day + 1):
-        dates.append(f"{now.year}-{now.month:02d}-{d:02d}")
-    return dates
 
 
 # ================= MONITORING ASOSIY MENU =================
@@ -302,7 +341,7 @@ async def monitoring_period_today(message: types.Message, state: FSMContext):
         await send_all_employees_report(message, today, today, f"📅 Bugungi ({today}) hisobot")
     else:
         records = await get_attendance_by_user_today(uid)
-        report = format_attendance_report(records, f"📅 <b>{name} — Bugungi ({today}) hisobot</b>")
+        report = await format_attendance_report(records, f"📅 <b>{name} — Bugungi ({today}) hisobot</b>")
         await message.answer(report, parse_mode="HTML", reply_markup=get_period_keyboard())
 
 
@@ -319,7 +358,7 @@ async def monitoring_period_this_month(message: types.Message, state: FSMContext
     else:
         records = await get_attendance_by_user_and_month(uid, now.year, now.month)
         title = f"📅 <b>{name} — {now.year}-{now.month:02d} oylik hisobot</b>"
-        report = format_attendance_report(records, title)
+        report = await format_attendance_report(records, title)
         await message.answer(report, parse_mode="HTML", reply_markup=get_period_keyboard())
 
 
@@ -379,7 +418,7 @@ async def monitoring_custom_dates_entered(message: types.Message, state: FSMCont
     else:
         records = await get_attendance_by_dates(uid, dates)
         title = f"📆 <b>{name} — {dates_str}</b>"
-        report = format_attendance_report(records, title)
+        report = await format_attendance_report(records, title)
         await message.answer(report, parse_mode="HTML", reply_markup=get_period_keyboard())
 
     await state.set_state(MonitoringStates.waiting_for_period)
@@ -409,11 +448,22 @@ async def send_all_employees_report(message: types.Message, start_date: str, end
         date_list.append(current.strftime("%Y-%m-%d"))
         current += timedelta(days=1)
     
+    # Bayram kunlarini olish
+    holidays_set = await get_holiday_dates()
+    
     for uid, name in employees:
         records = await get_attendance_by_dates(uid, date_list)
-        total_min = sum(r.get("late_minutes", 0) for r in records)
+        
+        # Faqat bayram bo'lmagan kunlardagi kech qolishlarni hisoblash
+        total_min = 0
+        for r in records:
+            r_date = r.get("date", "")
+            if is_holiday_date(r_date, holidays_set):
+                continue
+            total_min += r.get("late_minutes", 0)
+        
         h, m = divmod(total_min, 60)
-        full_text += f"👤 <b>{name}</b>\n   📌 Kech qolishlar: {len(records)} ta\n   ⏱ Jami: {h} soat {m} daqiqa\n\n"
+        full_text += f"👤 <b>{name}</b>\n   📌 Kech qolishlar: {len([r for r in records if not is_holiday_date(r.get('date'), holidays_set)])} ta\n   ⏱ Jami: {h} soat {m} daqiqa\n\n"
 
     await message.answer(full_text, parse_mode="HTML", reply_markup=get_period_keyboard())
 
@@ -545,6 +595,18 @@ class CheckInStates(StatesGroup):
 async def check_in_start_handler(message: types.Message, state: FSMContext):
     user_id = str(message.from_user.id)
     today = datetime.now(TASHKENT_TZ).strftime("%Y-%m-%d")
+    
+    # ===== BUGUN BAYRAM KUNI TEKSHIRISH =====
+    is_holiday = await is_today_global_holiday()
+    if is_holiday:
+        await message.answer(
+            text="🎉 <b>Hurmatli xodim, bugun bayram kuni!</b>\n\n"
+                 "Siz dam olishingiz mumkin. Ishga kelish shart emas.\n\n"
+                 "Bayram muborak bo'lsin! 🎊",
+            parse_mode="HTML",
+            reply_markup=get_main_menu(USERS_ROLES.get(user_id, {}).get("role", ""))
+        )
+        return
     
     if await has_checkin_today(user_id):
         await message.answer(
