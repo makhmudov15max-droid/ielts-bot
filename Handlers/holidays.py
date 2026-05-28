@@ -7,10 +7,11 @@ from Keyboards.main_menu import get_main_menu, get_back_home_keyboard
 from utils.access import check_user_access
 from utils.holidays_db import (
     add_holiday,
-    get_holidays_by_user,
     get_holidays_by_role,
     update_holiday,
     delete_holiday,
+    get_holiday_by_id,
+    get_all_holidays,
 )
 
 holidays_router = Router()
@@ -26,28 +27,15 @@ def init_holidays_handler(users_roles):
 
 # ================= STATES =================
 class HolidayStates(StatesGroup):
-    waiting_for_role = State()
-    waiting_for_employee = State()
-    waiting_for_holiday_action = State()
-    waiting_for_holiday_name = State()
-    waiting_for_holiday_date = State()
-    waiting_for_holiday_edit_select = State()
-    waiting_for_holiday_edit_name = State()
-    waiting_for_holiday_edit_date = State()
+    waiting_for_action = State()           # Ta'til kiritish / o'zgartirish
+    waiting_for_holiday_name = State()     # Ta'til nomi
+    waiting_for_holiday_date = State()     # Ta'til sanasi
+    waiting_for_holiday_edit_select = State()  # Qaysi ta'tilni o'zgartirish
+    waiting_for_holiday_edit_name = State()    # Yangi nom
+    waiting_for_holiday_edit_date = State()    # Yangi sana
 
 
 # ================= KEYBOARDS =================
-def get_holiday_role_keyboard():
-    return types.ReplyKeyboardMarkup(
-        keyboard=[
-            [types.KeyboardButton(text="Admin"), types.KeyboardButton(text="Kassir")],
-            [types.KeyboardButton(text="Sanitar"), types.KeyboardButton(text="Manager")],
-            [types.KeyboardButton(text="🏠 Bosh sahifa"), types.KeyboardButton(text="⬅️ Ortga")],
-        ],
-        resize_keyboard=True
-    )
-
-
 def get_holiday_action_keyboard():
     return types.ReplyKeyboardMarkup(
         keyboard=[
@@ -67,143 +55,35 @@ def get_holiday_edit_keyboard(holiday_id: int):
     )
 
 
-def get_all_users_by_role(role: str):
-    users = []
-    for u_id, u_info in USERS_ROLES.items():
-        if isinstance(u_info, dict) and u_info.get("role") == role and u_info.get("name"):
-            users.append((u_id, u_info["name"]))
-    return users
-
-
-def get_user_id_by_name(name: str):
-    clean = name.replace("👤 ", "").strip()
-    for u_id, u_info in USERS_ROLES.items():
-        if isinstance(u_info, dict) and u_info.get("name") == clean:
-            return u_id
-    return None
-
-
-def get_employee_list_keyboard(role: str):
-    keyboard = []
-    employees = get_all_users_by_role(role)
-    if not employees:
-        return None
-    keyboard.append([types.KeyboardButton(text="👥 Barcha xodimlar")])
-    for u_id, name in employees:
-        keyboard.append([types.KeyboardButton(text=f"👤 {name}")])
-    keyboard.append([types.KeyboardButton(text="🏠 Bosh sahifa"), types.KeyboardButton(text="⬅️ Ortga")])
-    return types.ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
-
-
 # ================= TA'TILLAR ASOSIY HANDLER =================
 @holidays_router.message(F.text == "🌴 Ta'tillar")
 async def holidays_main_handler(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
-    await state.set_state(HolidayStates.waiting_for_role)
+    await state.set_state(HolidayStates.waiting_for_action)
     await message.answer(
-        text="🌴 <b>Ta'tillar boshqaruvi</b>\n\nQaysi bo'lim xodimlarining ta'tillarini ko'rmoqchisiz?",
-        parse_mode="HTML",
-        reply_markup=get_holiday_role_keyboard()
-    )
-
-
-@holidays_router.message(HolidayStates.waiting_for_role, F.text == "🏠 Bosh sahifa")
-async def holidays_role_home(message: types.Message, state: FSMContext):
-    await state.clear()
-    role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-    await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-
-
-@holidays_router.message(HolidayStates.waiting_for_role, F.text == "⬅️ Ortga")
-async def holidays_role_back(message: types.Message, state: FSMContext):
-    await state.clear()
-    role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-    await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-
-
-@holidays_router.message(HolidayStates.waiting_for_role, F.text.in_(["Admin", "Kassir", "Sanitar", "Manager"]))
-async def holidays_role_selected(message: types.Message, state: FSMContext):
-    role = message.text
-    employees = get_all_users_by_role(role)
-    
-    if not employees:
-        await message.answer(f"📭 Tizimda {role} rolidagi xodimlar topilmadi.", reply_markup=get_holiday_role_keyboard())
-        return
-    
-    await state.update_data(selected_role=role)
-    await state.set_state(HolidayStates.waiting_for_employee)
-    
-    keyboard = get_employee_list_keyboard(role)
-    await message.answer(
-        text=f"👥 <b>{role}</b> rolidagi xodimlardan birini tanlang:",
-        parse_mode="HTML",
-        reply_markup=keyboard
-    )
-
-
-@holidays_router.message(HolidayStates.waiting_for_role)
-async def invalid_role_selected(message: types.Message):
-    await message.answer("❌ Iltimos, tugmalardan birini tanlang!", reply_markup=get_holiday_role_keyboard())
-
-
-# ================= XODIM TANLASH =================
-@holidays_router.message(HolidayStates.waiting_for_employee, F.text == "🏠 Bosh sahifa")
-async def holidays_employee_home(message: types.Message, state: FSMContext):
-    await state.clear()
-    role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-    await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-
-
-@holidays_router.message(HolidayStates.waiting_for_employee, F.text == "⬅️ Ortga")
-async def holidays_employee_back(message: types.Message, state: FSMContext):
-    await state.set_state(HolidayStates.waiting_for_role)
-    await message.answer("Qaysi bo'lim xodimlarining ta'tillarini ko'rmoqchisiz?", reply_markup=get_holiday_role_keyboard())
-
-
-@holidays_router.message(HolidayStates.waiting_for_employee, F.text == "👥 Barcha xodimlar")
-async def holidays_all_employees_selected(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    role = data.get("selected_role")
-    await state.update_data(selected_user_id="ALL", selected_user_name=f"Barcha {role}lar")
-    await state.set_state(HolidayStates.waiting_for_holiday_action)
-    await message.answer(
-        text="🌴 <b>Ta'tillar boshqaruvi</b>\n\nQanday amalni bajarmoqchisiz?",
+        text="🌴 <b>Ta'tillarni boshqarish</b>\n\nQanday amalni bajarmoqchisiz?",
         parse_mode="HTML",
         reply_markup=get_holiday_action_keyboard()
     )
 
 
-@holidays_router.message(HolidayStates.waiting_for_employee, F.text.startswith("👤 "))
-async def holidays_employee_selected(message: types.Message, state: FSMContext):
-    text = message.text.strip()
-    uid = get_user_id_by_name(text)
-    
-    if not uid:
-        data = await state.get_data()
-        role = data.get("selected_role", "Admin")
-        await message.answer("❌ Xodim topilmadi.", reply_markup=get_employee_list_keyboard(role))
-        return
-    
-    name = text.replace("👤 ", "").strip()
-    await state.update_data(selected_user_id=uid, selected_user_name=name)
-    await state.set_state(HolidayStates.waiting_for_holiday_action)
-    await message.answer(
-        text="🌴 <b>Ta'tillar boshqaruvi</b>\n\nQanday amalni bajarmoqchisiz?",
-        parse_mode="HTML",
-        reply_markup=get_holiday_action_keyboard()
-    )
+@holidays_router.message(HolidayStates.waiting_for_action, F.text == "🏠 Bosh sahifa")
+async def holidays_action_home(message: types.Message, state: FSMContext):
+    await state.clear()
+    role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
+    await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
 
 
-@holidays_router.message(HolidayStates.waiting_for_employee)
-async def invalid_employee_selected(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    role = data.get("selected_role", "Admin")
-    await message.answer("❌ Iltimos, ro'yxatdan tanlang!", reply_markup=get_employee_list_keyboard(role))
+@holidays_router.message(HolidayStates.waiting_for_action, F.text == "⬅️ Ortga")
+async def holidays_action_back(message: types.Message, state: FSMContext):
+    await state.clear()
+    role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
+    await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
 
 
 # ================= TA'TIL KIRITISH =================
-@holidays_router.message(HolidayStates.waiting_for_holiday_action, F.text == "📝 Ta'til kiritish")
+@holidays_router.message(HolidayStates.waiting_for_action, F.text == "📝 Ta'til kiritish")
 async def holiday_add_start(message: types.Message, state: FSMContext):
     await state.set_state(HolidayStates.waiting_for_holiday_name)
     await message.answer(
@@ -212,23 +92,6 @@ async def holiday_add_start(message: types.Message, state: FSMContext):
              "Masalan: Navro'z bayrami",
         parse_mode="HTML",
         reply_markup=get_back_home_keyboard()
-    )
-
-
-@holidays_router.message(HolidayStates.waiting_for_holiday_name, F.text == "🏠 Bosh sahifa")
-async def holiday_add_name_home(message: types.Message, state: FSMContext):
-    await state.clear()
-    role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-    await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-
-
-@holidays_router.message(HolidayStates.waiting_for_holiday_name, F.text == "⬅️ Ortga")
-async def holiday_add_name_back(message: types.Message, state: FSMContext):
-    await state.set_state(HolidayStates.waiting_for_holiday_action)
-    await message.answer(
-        text="🌴 <b>Ta'tillar boshqaruvi</b>\n\nQanday amalni bajarmoqchisiz?",
-        parse_mode="HTML",
-        reply_markup=get_holiday_action_keyboard()
     )
 
 
@@ -257,54 +120,28 @@ async def holiday_add_date_entered(message: types.Message, state: FSMContext):
         return
     
     data = await state.get_data()
-    user_id = data.get("selected_user_id")
-    user_name = data.get("selected_user_name")
-    role = data.get("selected_role", "")
     holiday_name = data.get("holiday_name")
     
-    # Barcha xodimlar uchun
-    if user_id == "ALL":
-        employees = get_all_users_by_role(role)
-        count = 0
-        for uid, uname in employees:
-            result = await add_holiday(uid, uname, role, holiday_name, date_text)
-            if result:
-                count += 1
-        await state.clear()
+    # Barcha xodimlar uchun ta'til qo'shish (owner, manager ham)
+    result = await add_holiday_for_all(holiday_name, date_text)
+    
+    await state.clear()
+    if result:
         await message.answer(
-            text=f"✅ <b>{count} ta xodimga ta'til qo'shildi!</b>\n\n"
+            text=f"✅ <b>Ta'til muvaffaqiyatli qo'shildi!</b>\n\n"
                  f"📌 Ta'til: {holiday_name}\n"
                  f"📅 Sana: {date_text}",
             parse_mode="HTML",
-            reply_markup=get_holiday_role_keyboard()
+            reply_markup=get_holiday_action_keyboard()
         )
     else:
-        result = await add_holiday(user_id, user_name, role, holiday_name, date_text)
-        await state.clear()
-        if result:
-            await message.answer(
-                text=f"✅ <b>Ta'til muvaffaqiyatli qo'shildi!</b>\n\n"
-                     f"👤 Xodim: {user_name}\n"
-                     f"📌 Ta'til: {holiday_name}\n"
-                     f"📅 Sana: {date_text}",
-                parse_mode="HTML",
-                reply_markup=get_holiday_role_keyboard()
-            )
-        else:
-            await message.answer("❌ Saqlashda xatolik yuz berdi. Qayta urinib ko'ring.", reply_markup=get_holiday_role_keyboard())
+        await message.answer("❌ Saqlashda xatolik yuz berdi. Qayta urinib ko'ring.", reply_markup=get_holiday_action_keyboard())
 
 
 # ================= TA'TIL O'ZGARTIRISH =================
-@holidays_router.message(HolidayStates.waiting_for_holiday_action, F.text == "✏️ Ta'til o'zgartirish")
+@holidays_router.message(HolidayStates.waiting_for_action, F.text == "✏️ Ta'til o'zgartirish")
 async def holiday_edit_start(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    user_id = data.get("selected_user_id")
-    role = data.get("selected_role", "")
-    
-    if user_id == "ALL":
-        holidays = await get_holidays_by_role(role)
-    else:
-        holidays = await get_holidays_by_user(user_id)
+    holidays = await get_all_holidays()
     
     if not holidays:
         await message.answer(
@@ -338,9 +175,9 @@ async def holiday_edit_select_handler(message: types.Message, state: FSMContext)
         return
     
     if message.text == "⬅️ Ortga":
-        await state.set_state(HolidayStates.waiting_for_holiday_action)
+        await state.set_state(HolidayStates.waiting_for_action)
         await message.answer(
-            text="🌴 <b>Ta'tillar boshqaruvi</b>\n\nQanday amalni bajarmoqchisiz?",
+            text="🌴 <b>Ta'tillarni boshqarish</b>\n\nQanday amalni bajarmoqchisiz?",
             parse_mode="HTML",
             reply_markup=get_holiday_action_keyboard()
         )
@@ -372,23 +209,6 @@ async def holiday_edit_select_handler(message: types.Message, state: FSMContext)
 
 @holidays_router.message(HolidayStates.waiting_for_holiday_edit_name)
 async def holiday_edit_name_handler(message: types.Message, state: FSMContext):
-    if message.text == "🏠 Bosh sahifa":
-        await state.clear()
-        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-        return
-    
-    if message.text == "⬅️ Ortga":
-        await state.set_state(HolidayStates.waiting_for_holiday_edit_select)
-        data = await state.get_data()
-        holidays = data.get("holidays_list", [])
-        text = "📅 <b>Joriy ta'tillar ro'yxati:</b>\n\n"
-        for idx, h in enumerate(holidays, 1):
-            text += f"{idx}. {h['name']} - {h['date']}\n"
-        text += "\n✏️ O'zgartirmoqchi bo'lgan ta'tilning raqamini yuboring:"
-        await message.answer(text, parse_mode="HTML", reply_markup=get_back_home_keyboard())
-        return
-    
     new_name = message.text.strip()
     if new_name == "0":
         new_name = None
@@ -410,17 +230,6 @@ async def holiday_edit_name_handler(message: types.Message, state: FSMContext):
 
 @holidays_router.message(HolidayStates.waiting_for_holiday_edit_date)
 async def holiday_edit_date_handler(message: types.Message, state: FSMContext):
-    if message.text == "🏠 Bosh sahifa":
-        await state.clear()
-        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
-        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-        return
-    
-    if message.text == "⬅️ Ortga":
-        await state.set_state(HolidayStates.waiting_for_holiday_edit_name)
-        await message.answer("📌 Ta'til nomini qayta kiriting (yoki o'zgarishsiz qoldirish uchun '0'):", reply_markup=get_back_home_keyboard())
-        return
-    
     data = await state.get_data()
     holiday_id = data.get("selected_holiday_id")
     new_name = data.get("edit_holiday_name")
@@ -445,10 +254,10 @@ async def holiday_edit_date_handler(message: types.Message, state: FSMContext):
                  f"📌 Yangi nom: {final_name}\n"
                  f"📅 Yangi sana: {new_date}",
             parse_mode="HTML",
-            reply_markup=get_holiday_role_keyboard()
+            reply_markup=get_holiday_action_keyboard()
         )
     else:
-        await message.answer("❌ Saqlashda xatolik yuz berdi. Qayta urinib ko'ring.", reply_markup=get_holiday_role_keyboard())
+        await message.answer("❌ Saqlashda xatolik yuz berdi. Qayta urinib ko'ring.", reply_markup=get_holiday_action_keyboard())
 
 
 # ================= TA'TIL O'CHIRISH (CALLBACK) =================
@@ -462,7 +271,7 @@ async def holiday_delete_callback(call: types.CallbackQuery, state: FSMContext):
         await call.message.delete()
         await call.message.answer(
             text="✅ Ta'til muvaffaqiyatli o'chirildi!",
-            reply_markup=get_holiday_role_keyboard()
+            reply_markup=get_holiday_action_keyboard()
         )
     else:
         await call.answer("❌ O'chirishda xatolik yuz berdi!", show_alert=True)
@@ -473,8 +282,6 @@ async def holiday_delete_callback(call: types.CallbackQuery, state: FSMContext):
 @holidays_router.callback_query(F.data.startswith("holiday_edit_"))
 async def holiday_edit_callback(call: types.CallbackQuery, state: FSMContext):
     holiday_id = int(call.data.split("_")[2])
-    
-    from utils.holidays_db import get_holiday_by_id
     holiday = await get_holiday_by_id(holiday_id)
     
     if not holiday:
