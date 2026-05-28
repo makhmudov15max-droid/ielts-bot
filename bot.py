@@ -21,6 +21,7 @@ from Handlers.settings import settings_router, init_settings_handler
 from utils.database import init_db, close_db
 from utils.users_db import load_users
 from utils.tasks_db import load_tasks
+from Handlers.holidays import holidays_router, init_holidays_handler
 
 # ================= LOGGING =================
 logging.basicConfig(
@@ -65,6 +66,7 @@ async def main():
         init_monitoring_handler(USERS_ROLES)
         init_settings_handler(USERS_ROLES, ADMIN_ID)
         init_attendance_admin_handler(USERS_ROLES)
+        init_holidays_handler(USERS_ROLES)
 
         bot = Bot(token=BOT_TOKEN)
         dp = Dispatcher(storage=storage)
@@ -87,6 +89,7 @@ async def main():
         dp.include_router(report_router)
         dp.include_router(settings_router)
         dp.include_router(attendance_admin_router)
+        dp.include_router(holidays_router)
 
         logging.info("✅ Barcha routerlar ulandi")
 
