@@ -128,3 +128,21 @@ async def delete_all_holidays_by_user(user_id: str):
     except Exception as e:
         logging.error(f"delete_all_holidays_by_user xatosi: {e}")
         return False
+
+async def get_holiday_by_id(holiday_id: int):
+    """ID bo'yicha ta'tilni olish"""
+    pool = get_pool()
+    if not pool:
+        return None
+    try:
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT id, user_id, user_name, role, name, date FROM holidays
+                WHERE id = $1
+            """, holiday_id)
+            if row:
+                return dict(row)
+            return None
+    except Exception as e:
+        logging.error(f"get_holiday_by_id xatosi: {e}")
+        return None
