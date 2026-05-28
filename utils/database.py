@@ -1,3 +1,4 @@
+from utils.holidays_db import init_holidays_table
 import asyncpg
 import os
 import logging
@@ -103,6 +104,7 @@ async def init_db():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            await init_holidays_table()
             
             # Indexes
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_users_id ON users(user_id)")
