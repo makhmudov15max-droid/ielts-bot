@@ -7,33 +7,6 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 db_pool = None
 
 
-async def init_holidays_table():
-    """holidays jadvalini yaratish (aylanma importni oldini olish uchun alohida funksiya)"""
-    if not db_pool:
-        return
-    try:
-        async with db_pool.acquire() as conn:
-            await conn.execute("""
-                CREATE TABLE IF NOT EXISTS holidays (
-                    id SERIAL PRIMARY KEY,
-                    user_id TEXT NOT NULL,
-                    user_name TEXT,
-                    role TEXT,
-                    name TEXT NOT NULL,
-                    date TEXT NOT NULL,
-                    is_repeat BOOLEAN DEFAULT FALSE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_holidays_user ON holidays(user_id)")
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_holidays_date ON holidays(date)")
-            await conn.execute("ALTER TABLE holidays ADD COLUMN IF NOT EXISTS is_repeat BOOLEAN DEFAULT FALSE")
-            logging.info("✅ holidays jadvali tayyor")
-    except Exception as e:
-        logging.error(f"init_holidays_table xatosi: {e}")
-
-
 async def init_db():
     """Database pool ni yaratish va jadvallarni yaratish"""
     global db_pool
@@ -58,7 +31,7 @@ async def init_db():
         logging.info("✅ PostgreSQL ulandi!")
         
         async with db_pool.acquire() as conn:
-            # Users table (IF NOT EXISTS bilan)
+            # ================= USERS TABLE =================
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     user_id TEXT PRIMARY KEY,
@@ -66,16 +39,14 @@ async def init_db():
                     name TEXT,
                     active_task INTEGER,
                     is_waiting_for_proof BOOLEAN DEFAULT FALSE,
+                    work_start TEXT DEFAULT '09:00',
+                    work_end TEXT DEFAULT '18:00',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
             
-            # Yangi ustunlarni qo'shish (agar mavjud bo'lmasa)
-            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS work_start TEXT DEFAULT '09:00'")
-            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS work_end TEXT DEFAULT '18:00'")
-            
-            # Tasks table
+            # ================= TASKS TABLE =================
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS tasks (
                     id SERIAL PRIMARY KEY,
@@ -96,7 +67,7 @@ async def init_db():
                 )
             """)
             
-            # Proofs table
+            # ================= PROOFS TABLE =================
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS proofs (
                     id SERIAL PRIMARY KEY,
@@ -115,7 +86,7 @@ async def init_db():
                 )
             """)
             
-            # Attendance table
+            # ================= ATTENDANCE TABLE =================
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS attendance (
                     id SERIAL PRIMARY KEY,
@@ -133,17 +104,7 @@ async def init_db():
                 )
             """)
             
-            # Indexes
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_users_id ON users(user_id)")
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_tasks_assigned ON tasks(assigned_to_id)")
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)")
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_proofs_user ON proofs(user_id)")
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_proofs_date ON proofs(date)")
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_attendance_user ON attendance(user_id)")
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date)")
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_attendance_status ON attendance(status)")
-            
-            # Holidays table (to'g'ridan-to'g'ri)
+            # ================= HOLIDAYS TABLE (is_repeat bilan) =================
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS holidays (
                     id SERIAL PRIMARY KEY,
@@ -157,11 +118,20 @@ async def init_db():
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            
+            # ================= INDEXES =================
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_users_id ON users(user_id)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_tasks_assigned ON tasks(assigned_to_id)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_proofs_user ON proofs(user_id)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_proofs_date ON proofs(date)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_attendance_user ON attendance(user_id)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_attendance_status ON attendance(status)")
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_holidays_user ON holidays(user_id)")
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_holidays_date ON holidays(date)")
-            logging.info("✅ holidays jadvali tayyor")
             
-            # Owner qo'shish
+            # ================= OWNER QO'SHISH =================
             await conn.execute("""
                 INSERT INTO users (user_id, role, name, work_start, work_end)
                 VALUES ($1, $2, $3, $4, $5)
@@ -169,6 +139,7 @@ async def init_db():
             """, "6500594896", "Owner", "Baxtiyorjon", "09:00", "18:00")
             
         logging.info("✅ Barcha jadvallar tayyor!")
+        
     except Exception as e:
         logging.error(f"❌ Database xatosi: {e}")
         raise
