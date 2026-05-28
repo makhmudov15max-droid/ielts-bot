@@ -119,6 +119,15 @@ async def init_db():
                 )
             """)
             
+            # ================= MIGRATION: Ustunlar qo'shish =================
+            # is_repeat ustuni eski bazalarda bo'lmasligi mumkin
+            await conn.execute("""
+                ALTER TABLE holidays ADD COLUMN IF NOT EXISTS is_repeat BOOLEAN DEFAULT FALSE
+            """)
+            await conn.execute("""
+                ALTER TABLE holidays ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            """)
+            
             # ================= INDEXES =================
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_users_id ON users(user_id)")
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_tasks_assigned ON tasks(assigned_to_id)")
