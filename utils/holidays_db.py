@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 from utils.database import get_pool
 
@@ -36,6 +37,7 @@ async def add_holiday(user_id: str, user_name: str, role: str, name: str, date: 
     """Yangi ta'til qo'shish"""
     pool = get_pool()
     if not pool:
+        logging.error("add_holiday: pool mavjud emas")
         return None
     try:
         async with pool.acquire() as conn:
@@ -44,6 +46,7 @@ async def add_holiday(user_id: str, user_name: str, role: str, name: str, date: 
                 VALUES ($1, $2, $3, $4, $5, $6)
                 RETURNING id
             """, user_id, user_name, role, name, date, is_repeat)
+            logging.info(f"add_holiday: ID={row['id']} qo'shildi (user={user_id}, name={name})")
             return row["id"]
     except Exception as e:
         logging.error(f"add_holiday xatosi: {e}")
@@ -55,18 +58,33 @@ async def add_holiday_for_all(name: str, date: str, is_repeat: bool = False):
     from utils.users_db import load_users
     
     users = await load_users()
+    if not users:
+        logging.error("add_holiday_for_all: users yuklanmadi!")
+        return 0
+    
     count = 0
     for user_id, user_info in users.items():
+        # user_info dict ekanligini tekshirish
+        if isinstance(user_info, dict):
+            user_name = user_info.get("name", "")
+            user_role = user_info.get("role", "")
+        else:
+            # Agar string bo'lsa (eski format)
+            user_name = ""
+            user_role = str(user_info) if user_info else ""
+        
         result = await add_holiday(
-            user_id, 
-            user_info.get("name", ""), 
-            user_info.get("role", ""), 
-            name, 
-            date, 
+            str(user_id),
+            user_name,
+            user_role,
+            name,
+            date,
             is_repeat
         )
         if result:
             count += 1
+    
+    logging.info(f"add_holiday_for_all: {count} ta xodimga ta'til qo'shildi")
     return count
 
 
@@ -119,7 +137,6 @@ async def update_holiday(holiday_id: int, name: str = None, date: str = None):
             new_date = date if date else old["date"]
             
             # MM-DD formatida bo'lsa is_repeat = True
-            import re
             is_repeat = bool(re.match(r"^\d{2}-\d{2}$", new_date))
             
             # Barcha xodimlar uchun yangilash (bir xil nom va sanadagi barcha yozuvlar)
@@ -129,6 +146,7 @@ async def update_holiday(holiday_id: int, name: str = None, date: str = None):
                 WHERE name = $4 AND date = $5
             """, new_name, new_date, is_repeat, old["name"], old["date"])
             
+            logging.info(f"update_holiday: {old['name']} -> {new_name} updated")
             return True
     except Exception as e:
         logging.error(f"update_holiday xatosi: {e}")
@@ -153,6 +171,7 @@ async def delete_holiday(holiday_id: int):
                 DELETE FROM holidays WHERE name = $1 AND date = $2
             """, holiday["name"], holiday["date"])
             
+            logging.info(f"delete_holiday: {holiday['name']} deleted")
             return True
     except Exception as e:
         logging.error(f"delete_holiday xatosi: {e}")
