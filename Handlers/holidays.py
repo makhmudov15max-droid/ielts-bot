@@ -173,22 +173,43 @@ async def holiday_add_date_back(message: types.Message, state: FSMContext):
 @holidays_router.message(HolidayStates.waiting_for_holiday_date)
 async def holiday_add_date_entered(message: types.Message, state: FSMContext):
     date_text = message.text.strip()
-    if not re.match(r"\d{4}-\d{2}-\d{2}", date_text):
-        await message.answer("❌ Noto'g'ri format! Iltimos, YYYY-MM-DD formatida kiriting.\nMasalan: <code>2026-03-21</code>", parse_mode="HTML")
+    
+    # Formatni tekshirish: YYYY-MM-DD yoki MM-DD
+    full_date_pattern = r"^\d{4}-\d{2}-\d{2}$"
+    repeat_date_pattern = r"^\d{2}-\d{2}$"
+    
+    is_full_date = re.match(full_date_pattern, date_text)
+    is_repeat_date = re.match(repeat_date_pattern, date_text)
+    
+    if not is_full_date and not is_repeat_date:
+        await message.answer(
+            text="❌ <b>Noto'g'ri format!</b>\n\n"
+                 "Iltimos, quyidagi formatlardan birini kiriting:\n"
+                 "• <b>YYYY-MM-DD</b> (faqat o'sha yil uchun)\n"
+                 "  Masalan: <code>2026-03-21</code>\n\n"
+                 "• <b>MM-DD</b> (har yili takrorlanadi)\n"
+                 "  Masalan: <code>03-21</code> (Navro'z)",
+            parse_mode="HTML"
+        )
         return
     
     data = await state.get_data()
     holiday_name = data.get("holiday_name")
     
     # Barcha xodimlar uchun ta'til qo'shish
-    result = await add_holiday_for_all(holiday_name, date_text)
+    result = await add_holiday_for_all(holiday_name, date_text, is_repeat_date)
     
     await state.clear()
     if result and result > 0:
+        if is_repeat_date:
+            repeat_text = f"(har yili {date_text} da takrorlanadi)"
+        else:
+            repeat_text = f"(faqat {date_text} uchun)"
+        
         await message.answer(
             text=f"✅ <b>Ta'til muvaffaqiyatli qo'shildi!</b>\n\n"
                  f"📌 Ta'til: {holiday_name}\n"
-                 f"📅 Sana: {date_text}\n\n"
+                 f"📅 Sana: {date_text} {repeat_text}\n\n"
                  f"👥 {result} ta xodimga qo'shildi.",
             parse_mode="HTML",
             reply_markup=get_holiday_action_keyboard()
