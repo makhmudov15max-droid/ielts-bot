@@ -169,7 +169,7 @@ async def process_role_change_menu(call: types.CallbackQuery):
         
     target_user_id = call.data.split("_")[1]
     
-    roles = ["Admin", "Kassir", "Sanitar", "Manager", "Maintenance"]
+    roles = ["Admin", "Kassir", "Sanitar", "Manager", "Maintenance", "Head Admin"]
     inline_kb = []
     row = []
     
@@ -178,6 +178,8 @@ async def process_role_change_menu(call: types.CallbackQuery):
         if len(row) == 2:
             inline_kb.append(row)
             row = []
+    if row:  # Qolgan tugmalar (juft bo'lmasa)
+        inline_kb.append(row)
             
     inline_kb.append([types.InlineKeyboardButton(text="⬅️ Orqaga", callback_data=f"editstaff_{target_user_id}")])
     
@@ -326,7 +328,7 @@ async def process_restore_staff_callback(call: types.CallbackQuery):
         
     display_name = user_info.get("name") if user_info.get("name") else f"Foydalanuvchi [{target_user_id}]"
     
-    roles = ["Admin", "Kassir", "Sanitar", "Manager", "Maintenance"]
+    roles = ["Admin", "Kassir", "Sanitar", "Manager", "Maintenance", "Head Admin"]
     inline_kb = []
     row = []
     
@@ -335,6 +337,8 @@ async def process_restore_staff_callback(call: types.CallbackQuery):
         if len(row) == 2:
             inline_kb.append(row)
             row = []
+    if row:  # Qolgan tugmalar
+        inline_kb.append(row)
             
     inline_kb.append([types.InlineKeyboardButton(text="⬅️ Bekor qilish", callback_data="editstaff_cancel")])
     
