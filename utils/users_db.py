@@ -28,29 +28,55 @@ async def load_users():
         return {}
 
 async def save_users(data):
-    """PostgreSQL ga foydalanuvchilarni saqlaydi"""
+    """PostgreSQL ga foydalanuvchilarni saqlaydi.
+
+    MUHIM: work_start / work_end faqat data ichida aniq ko'rsatilgan bo'lsa
+    yangilanadi. Agar ular yo'q bo'lsa (masalan yangi user qo'shilganda),
+    bazadagi mavjud qiymat saqlanib qoladi — hech qachon "09:00"/"18:00" ga
+    reset bo'lmaydi.
+    """
     pool = get_pool()
     if not pool:
         logging.error("Database pool mavjud emas!")
         return
-    
+
     try:
         async with pool.acquire() as conn:
             for user_id, user_info in data.items():
-                await conn.execute("""
-                    INSERT INTO users (user_id, role, name, active_task, is_waiting_for_proof, work_start, work_end, updated_at)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
-                    ON CONFLICT (user_id) DO UPDATE SET
-                        role = EXCLUDED.role,
-                        name = EXCLUDED.name,
-                        active_task = EXCLUDED.active_task,
-                        is_waiting_for_proof = EXCLUDED.is_waiting_for_proof,
-                        work_start = EXCLUDED.work_start,
-                        work_end = EXCLUDED.work_end,
-                        updated_at = CURRENT_TIMESTAMP
-                """, user_id, user_info.get("role"), user_info.get("name"),
-                   user_info.get("active_task"), user_info.get("is_waiting_for_proof", False),
-                   user_info.get("work_start", "09:00"), user_info.get("work_end", "18:00"))
+                has_work_time = (
+                    "work_start" in user_info and user_info["work_start"] is not None and
+                    "work_end" in user_info and user_info["work_end"] is not None
+                )
+
+                if has_work_time:
+                    # work_start/work_end aniq berilgan — to'liq yangilash
+                    await conn.execute("""
+                        INSERT INTO users (user_id, role, name, active_task, is_waiting_for_proof, work_start, work_end, updated_at)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+                        ON CONFLICT (user_id) DO UPDATE SET
+                            role = EXCLUDED.role,
+                            name = EXCLUDED.name,
+                            active_task = EXCLUDED.active_task,
+                            is_waiting_for_proof = EXCLUDED.is_waiting_for_proof,
+                            work_start = EXCLUDED.work_start,
+                            work_end = EXCLUDED.work_end,
+                            updated_at = CURRENT_TIMESTAMP
+                    """, user_id, user_info.get("role"), user_info.get("name"),
+                       user_info.get("active_task"), user_info.get("is_waiting_for_proof", False),
+                       user_info["work_start"], user_info["work_end"])
+                else:
+                    # work_start/work_end yo'q — bazadagi qiymatni saqlab qolish
+                    await conn.execute("""
+                        INSERT INTO users (user_id, role, name, active_task, is_waiting_for_proof, work_start, work_end, updated_at)
+                        VALUES ($1, $2, $3, $4, $5, '09:00', '18:00', CURRENT_TIMESTAMP)
+                        ON CONFLICT (user_id) DO UPDATE SET
+                            role = EXCLUDED.role,
+                            name = EXCLUDED.name,
+                            active_task = EXCLUDED.active_task,
+                            is_waiting_for_proof = EXCLUDED.is_waiting_for_proof,
+                            updated_at = CURRENT_TIMESTAMP
+                    """, user_id, user_info.get("role"), user_info.get("name"),
+                       user_info.get("active_task"), user_info.get("is_waiting_for_proof", False))
     except Exception as e:
         logging.error(f"Users saqlash xatosi: {e}")
 
