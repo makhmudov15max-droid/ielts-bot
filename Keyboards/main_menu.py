@@ -27,6 +27,20 @@ def get_main_menu(role: str):
         keyboard = [
             [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="📋 Vazifalar roʻyxati")]
         ]
+    elif role == "Maintenance":
+        keyboard = [
+            [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="📋 Vazifalar roʻyxati")]
+        ]
+    elif role == "Head Admin":
+        keyboard = [
+            [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="➕ Vazifa qoʻshish"), KeyboardButton(text="🗑 Vazifani oʻchirish")],
+            [KeyboardButton(text="📋 Vazifalar roʻyxati"), KeyboardButton(text="📊 Admin oylik"), KeyboardButton(text="💰 Kassir oylik")],
+            [KeyboardButton(text="📑 Guruh Report")]
+        ]
+    else:
+        keyboard = [
+            [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="📋 Vazifalar roʻyxati")]
+        ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
@@ -44,7 +58,7 @@ def get_settings_role_keyboard():
         keyboard=[
             [KeyboardButton(text="Admin"), KeyboardButton(text="Kassir")],
             [KeyboardButton(text="Sanitar"), KeyboardButton(text="Manager")],
-            [KeyboardButton(text="Maintenance")],
+            [KeyboardButton(text="Maintenance"), KeyboardButton(text="Head Admin")],
             [KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")]
         ],
         resize_keyboard=True
@@ -75,7 +89,7 @@ assign_role_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Admin"), KeyboardButton(text="Manager")],
         [KeyboardButton(text="Kassir"), KeyboardButton(text="Sanitar")],
-        [KeyboardButton(text="Maintenance")],
+        [KeyboardButton(text="Maintenance"), KeyboardButton(text="Head Admin")],
         [KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")]
     ],
     resize_keyboard=True
@@ -122,7 +136,7 @@ def get_inline_days_keyboard(selected_days: list = None):
 
 
 def get_admin_approval_keyboard(user_id: int):
-    roles = ["Admin", "Kassir", "Sanitar", "Manager", "Maintenance"]
+    roles = ["Admin", "Kassir", "Sanitar", "Manager", "Maintenance", "Head Admin"]
     inline_keyboard = []
     row = []
     for role in roles:
@@ -157,7 +171,7 @@ def get_proof_role_keyboard():
     keyboard = [
         [KeyboardButton(text="Admin"), KeyboardButton(text="Kassir")],
         [KeyboardButton(text="Sanitar"), KeyboardButton(text="Manager")],
-        [KeyboardButton(text="Maintenance")],
+        [KeyboardButton(text="Maintenance"), KeyboardButton(text="Head Admin")],
         [KeyboardButton(text="Barcha xodimlar"), KeyboardButton(text="🏠 Bosh sahifa")]
     ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
