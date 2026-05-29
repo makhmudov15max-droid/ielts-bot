@@ -181,3 +181,36 @@ async def get_user_role(user_id: str) -> str:
     except Exception as e:
         logging.error(f"get_user_role xatosi: {e}")
         return None
+
+
+async def get_motivation_index(user_id: str) -> int:
+    """Foydalanuvchining navbatdagi motivatsion xabar indeksini olish"""
+    pool = get_pool()
+    if not pool:
+        return 0
+    try:
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT motivation_index FROM users WHERE user_id = $1", user_id
+            )
+            return row["motivation_index"] if row and row["motivation_index"] is not None else 0
+    except Exception as e:
+        logging.error(f"get_motivation_index xatosi: {e}")
+        return 0
+
+
+async def increment_motivation_index(user_id: str, total: int = 200):
+    """Motivatsion xabar indeksini keyingiga o'tkazish (200 dan keyin 0 ga qaytadi)"""
+    pool = get_pool()
+    if not pool:
+        return
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute("""
+                UPDATE users
+                SET motivation_index = (COALESCE(motivation_index, 0) + 1) % $1,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = $2
+            """, total, user_id)
+    except Exception as e:
+        logging.error(f"increment_motivation_index xatosi: {e}")
