@@ -44,6 +44,7 @@ def get_proof_employee_keyboard(role_name):
         "Admin": "Adminlar",
         "Kassir": "Kassirlar",
         "Sanitar": "Sanitarlar",
+        "Maintenance": "Maintenance xodimlari",
         "Manager": "Managerlar"
     }
     display_name = role_display.get(role_name, f"{role_name}lar")
@@ -193,7 +194,7 @@ async def proof_role_selected_handler(message: types.Message, state: FSMContext)
         )
         return
     
-    valid_roles = ["Admin", "Kassir", "Sanitar", "Manager"]
+    valid_roles = ["Admin", "Kassir", "Sanitar", "Manager", "Maintenance"]
     if role not in valid_roles:
         await message.answer("❌ Iltimos, tugmalardan birini tanlang!")
         return
