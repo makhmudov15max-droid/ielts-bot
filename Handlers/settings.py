@@ -117,7 +117,7 @@ async def settings_role_back(message: types.Message, state: FSMContext):
     )
 
 
-@settings_router.message(SettingsStates.waiting_for_role, F.text.in_(["Admin", "Kassir", "Sanitar", "Manager"]))
+@settings_router.message(SettingsStates.waiting_for_role, F.text.in_(["Admin", "Kassir", "Sanitar", "Manager", "Maintenance"]))
 async def select_role_for_settings(message: types.Message, state: FSMContext):
     role = message.text
     employees = get_employees_by_role(role)
