@@ -140,6 +140,11 @@ async def init_db():
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_holidays_user ON holidays(user_id)")
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_holidays_date ON holidays(date)")
             
+            # ================= MIGRATION: motivation_index ustuni =================
+            await conn.execute("""
+                ALTER TABLE users ADD COLUMN IF NOT EXISTS motivation_index INTEGER DEFAULT 0
+            """)
+            
             # ================= OWNER QO'SHISH =================
             await conn.execute("""
                 INSERT INTO users (user_id, role, name, work_start, work_end)
