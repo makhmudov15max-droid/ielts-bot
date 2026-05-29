@@ -138,7 +138,7 @@ async def task_type_selected_handler(message: types.Message, state: FSMContext):
     await state.set_state(TaskStates.waiting_for_target_role)
 
 
-@tasks_router.message(TaskStates.waiting_for_target_role, F.text.in_(["Admin", "Kassir", "Sanitar", "Manager"]))
+@tasks_router.message(TaskStates.waiting_for_target_role, F.text.in_(["Admin", "Kassir", "Sanitar", "Manager", "Maintenance"]))
 async def get_target_role_handler(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
