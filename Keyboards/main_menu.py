@@ -44,6 +44,7 @@ def get_settings_role_keyboard():
         keyboard=[
             [KeyboardButton(text="Admin"), KeyboardButton(text="Kassir")],
             [KeyboardButton(text="Sanitar"), KeyboardButton(text="Manager")],
+            [KeyboardButton(text="Maintenance")],
             [KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")]
         ],
         resize_keyboard=True
@@ -74,6 +75,7 @@ assign_role_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Admin"), KeyboardButton(text="Manager")],
         [KeyboardButton(text="Kassir"), KeyboardButton(text="Sanitar")],
+        [KeyboardButton(text="Maintenance")],
         [KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")]
     ],
     resize_keyboard=True
@@ -120,7 +122,7 @@ def get_inline_days_keyboard(selected_days: list = None):
 
 
 def get_admin_approval_keyboard(user_id: int):
-    roles = ["Admin", "Kassir", "Sanitar", "Manager"]
+    roles = ["Admin", "Kassir", "Sanitar", "Manager", "Maintenance"]
     inline_keyboard = []
     row = []
     for role in roles:
@@ -155,6 +157,7 @@ def get_proof_role_keyboard():
     keyboard = [
         [KeyboardButton(text="Admin"), KeyboardButton(text="Kassir")],
         [KeyboardButton(text="Sanitar"), KeyboardButton(text="Manager")],
+        [KeyboardButton(text="Maintenance")],
         [KeyboardButton(text="Barcha xodimlar"), KeyboardButton(text="🏠 Bosh sahifa")]
     ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
