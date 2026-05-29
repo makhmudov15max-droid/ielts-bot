@@ -117,13 +117,22 @@ async def settings_role_back(message: types.Message, state: FSMContext):
     )
 
 
-@settings_router.message(SettingsStates.waiting_for_role, F.text.in_(["Admin", "Kassir", "Sanitar", "Manager", "Maintenance"]))
+VALID_ROLES_FOR_SETTINGS = ["Admin", "Kassir", "Sanitar", "Manager", "Maintenance", "Head Admin"]
+
+@settings_router.message(SettingsStates.waiting_for_role, F.text.in_(VALID_ROLES_FOR_SETTINGS))
 async def select_role_for_settings(message: types.Message, state: FSMContext):
-    role = message.text
+    role = message.text.strip()
+    if role not in VALID_ROLES_FOR_SETTINGS:
+        await message.answer("❌ Iltimos, tugmalardan birini tanlang!", reply_markup=get_settings_role_keyboard())
+        return
     employees = get_employees_by_role(role)
     
     if not employees:
-        await message.answer(f"⚠️ <b>{role}</b> rolida xodimlar topilmadi!", parse_mode="HTML")
+        await message.answer(
+            f"⚠️ <b>{role}</b> rolida xodimlar topilmadi!",
+            parse_mode="HTML",
+            reply_markup=get_settings_role_keyboard()
+        )
         return
     
     await state.update_data(selected_role=role)
@@ -142,7 +151,11 @@ async def select_role_for_settings(message: types.Message, state: FSMContext):
 
 
 @settings_router.message(SettingsStates.waiting_for_role)
-async def invalid_role_selected(message: types.Message):
+async def invalid_role_selected(message: types.Message, state: FSMContext):
+    # Strip qilib qayta tekshiramiz (encoding muammosi uchun)
+    role = message.text.strip() if message.text else ""
+    if role in VALID_ROLES_FOR_SETTINGS:
+        return await select_role_for_settings(message, state)
     await message.answer("❌ Iltimos, tugmalardan birini tanlang!", reply_markup=get_settings_role_keyboard())
 
 
