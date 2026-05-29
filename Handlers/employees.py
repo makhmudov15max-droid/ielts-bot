@@ -169,7 +169,7 @@ async def process_role_change_menu(call: types.CallbackQuery):
         
     target_user_id = call.data.split("_")[1]
     
-    roles = ["Admin", "Kassir", "Sanitar", "Manager"]
+    roles = ["Admin", "Kassir", "Sanitar", "Manager", "Maintenance"]
     inline_kb = []
     row = []
     
@@ -326,7 +326,7 @@ async def process_restore_staff_callback(call: types.CallbackQuery):
         
     display_name = user_info.get("name") if user_info.get("name") else f"Foydalanuvchi [{target_user_id}]"
     
-    roles = ["Admin", "Kassir", "Sanitar", "Manager"]
+    roles = ["Admin", "Kassir", "Sanitar", "Manager", "Maintenance"]
     inline_kb = []
     row = []
     
