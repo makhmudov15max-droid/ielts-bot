@@ -33,6 +33,22 @@ logging.getLogger("aiogram").setLevel(logging.WARNING)
 
 logging.info("🚀 Bot ishga tushmoqda...")
 
+LOCK_KEY = "ielts_bot_instance_lock"
+LOCK_TTL = 30  # soniya
+
+
+async def acquire_lock(redis_client) -> bool:
+    """Redis orqali faqat bitta instance ishlashini ta'minlaydi."""
+    result = await redis_client.set(LOCK_KEY, "1", nx=True, ex=LOCK_TTL)
+    return result is not None
+
+
+async def refresh_lock(redis_client):
+    """Lock ni har 10 soniyada yangilab turadi."""
+    while True:
+        await asyncio.sleep(10)
+        await redis_client.expire(LOCK_KEY, LOCK_TTL)
+
 
 async def main():
     try:
@@ -45,6 +61,17 @@ async def main():
         redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
         redis_client = redis.from_url(redis_url)
         storage = RedisStorage(redis=redis_client)
+
+        # ============================================================
+        # INSTANCE LOCK — faqat bitta bot ishlashi uchun
+        # ============================================================
+        if not await acquire_lock(redis_client):
+            logging.warning("⚠️ Boshqa bot instance allaqachon ishlamoqda. Bu instance to'xtatildi.")
+            await close_db()
+            return
+
+        logging.info("✅ Instance lock olindi — bu yagona aktiv bot.")
+        asyncio.create_task(refresh_lock(redis_client))
 
         logging.info("📡 Ma'lumotlar yuklanmoqda...")
         USERS_ROLES = await load_users()
@@ -71,20 +98,9 @@ async def main():
         bot = Bot(token=BOT_TOKEN)
         dp = Dispatcher(storage=storage)
 
-        # ============================================================
-        # WEBHOOK NI O'CHIRISH (Sherlock yoki boshqa bot qoldirgan)
-        # ============================================================
+        # Webhook va pending updates tozalash
         await bot.delete_webhook(drop_pending_updates=True)
         logging.info("✅ Webhook o'chirildi, eski xabarlar tozalandi")
-
-        # Barcha kutilayotgan xabarlarni tozalash (offset flush)
-        try:
-            updates = await bot.get_updates(offset=-1, limit=1, timeout=0)
-            if updates:
-                await bot.get_updates(offset=updates[-1].update_id + 1, limit=1, timeout=0)
-                logging.info(f"✅ Pending updates tozalandi (last_id={updates[-1].update_id})")
-        except Exception:
-            pass
 
         # Routerlarni ulash
         dp.include_router(start_router)
