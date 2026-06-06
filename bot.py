@@ -77,6 +77,15 @@ async def main():
         await bot.delete_webhook(drop_pending_updates=True)
         logging.info("✅ Webhook o'chirildi, eski xabarlar tozalandi")
 
+        # Barcha kutilayotgan xabarlarni tozalash (offset flush)
+        try:
+            updates = await bot.get_updates(offset=-1, limit=1, timeout=0)
+            if updates:
+                await bot.get_updates(offset=updates[-1].update_id + 1, limit=1, timeout=0)
+                logging.info(f"✅ Pending updates tozalandi (last_id={updates[-1].update_id})")
+        except Exception:
+            pass
+
         # Routerlarni ulash
         dp.include_router(start_router)
         dp.include_router(tasks_router)
