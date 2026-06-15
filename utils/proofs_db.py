@@ -132,6 +132,25 @@ async def get_proofs_by_role(role_name, start_date=None, end_date=None):
         logging.error(f"get_proofs_by_role xatosi: {e}")
         return []
 
+
+async def save_proof(user_id: str, user_name: str, task_id: int, task_name: str,
+                     task_description: str, proof_type: str, file_id: str = None,
+                     text_content: str = None, date: str = None, time: str = None,
+                     group_chat_id: str = None):
+    """Isbotni saqlash (add_proof uchun qulay wrapper)"""
+    return await add_proof(
+        user_id=user_id,
+        user_name=user_name,
+        task_id=task_id,
+        task_name=task_name,
+        task_description=task_description or "",
+        proof_type=proof_type,
+        file_id=file_id,
+        group_chat_id=group_chat_id or "",
+        text_content=text_content or ""
+    )
+
+
 async def get_proofs_by_date_range(start_date, end_date):
     """Sana oralig'i bo'yicha isbotlarni olish"""
     pool = get_pool()

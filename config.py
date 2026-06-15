@@ -1,7 +1,10 @@
-# Bot tokenini shu yerda saqlaymiz
-BOT_TOKEN = "8679587093:AAFaF5uXmvIpKUnGx7l3NXqPCmM_q4OUqu8"
+import os
 
-# Asosiy adminning telegram ID raqami (So'rovnomalar shu ID ga boradi)
-ADMIN_ID = 6500594896  #BM Telegram ID raqamlari
+# Bot tokenini muhit o'zgaruvchisidan yoki default qiymatdan olish
+BOT_TOKEN = os.getenv("BOT_TOKEN", "8679587093:***")
 
-REPORTS_GROUP_ID = -5226036627  # Nazoratchi Guruh ID raqami
+# Asosiy adminning telegram ID raqami
+ADMIN_ID = int(os.getenv("ADMIN_ID", "6500594896"))
+
+# Nazoratchi Guruh ID raqami
+REPORTS_GROUP_ID = int(os.getenv("REPORTS_GROUP_ID", "-5226036627"))

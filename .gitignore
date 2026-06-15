@@ -1,2 +1,4 @@
 google_creds.json
 .env
+__pycache__/
+*.pyc

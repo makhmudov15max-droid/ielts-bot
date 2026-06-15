@@ -6,15 +6,19 @@ from utils.attendance_db import (
     has_checkin_today,
     get_missed_days,
 )
-from utils.users_db import get_user_work_time, get_motivation_index, increment_motivation_index
+from utils.users_db import get_user_work_time, get_motivation_index, increment_motivation_index, set_user_free
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from Handlers.states import TaskStates
 from datetime import datetime, timedelta, timezone
 import calendar
 import logging
 
+from config import REPORTS_GROUP_ID
 from Keyboards.main_menu import get_main_menu, get_back_home_keyboard
+from utils.tasks_db import load_tasks, update_task_status
+from utils.proofs_db import save_proof
 # ================= 200 MOTIVATSION XABARLAR =================
 MOTIVATION_MESSAGES = [
     "✅ Ajoyib! Ish kunini intizom bilan boshladingiz.",
@@ -840,7 +844,7 @@ async def check_in_video_handler(message: types.Message, state: FSMContext):
     today = now.strftime("%Y-%m-%d")
     current_time = now.strftime("%H:%M")
     
-    GROUP_CHAT_ID = -5226036627
+    GROUP_CHAT_ID = REPORTS_GROUP_ID
     
     if not message.video_note:
         await message.answer(
@@ -1024,3 +1028,189 @@ async def check_in_back(message: types.Message, state: FSMContext):
     await state.clear()
     role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
     await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
+
+
+# ============================================================
+#  📸 TASK PROOF YUBORISH — xodim vazifa isbotini yuboradi
+# ============================================================
+@monitoring_router.message(TaskStates.waiting_for_task_proof)
+async def task_proof_handler(message: types.Message, state: FSMContext):
+    """Xodim vazifa isbotini (rasm/video/matn) yuborganda ishlaydi"""
+    user_id = str(message.from_user.id)
+    user_info = USERS_ROLES.get(user_id, {})
+    user_name = user_info.get("name", message.from_user.full_name)
+    now = datetime.now(TASHKENT_TZ)
+    today = now.strftime("%Y-%m-%d")
+    current_time = now.strftime("%H:%M")
+    
+    user_data = await state.get_data()
+    task_id = user_data.get("active_task_id")
+    proof_required = user_data.get("proof_required")
+    
+    # Vazifa ma'lumotlarini yuklash
+    tasks = await load_tasks()
+    task = next((t for t in tasks if t["id"] == task_id), None)
+    
+    if not task:
+        await message.answer("❌ Vazifa topilmadi. Ehtimol o'chirilgan.")
+        await state.clear()
+        await set_user_free(user_id)
+        return
+    
+    # Isbot turini tekshirish
+    proof_file_id = None
+    proof_type = None
+    text_content = None
+    
+    if proof_required == "Photo":
+        if not message.photo:
+            await message.answer(
+                "❌ <b>Noto'g'ri format!</b>\n\nIltimos, <b>Rasm (Photo)</b> yuboring!",
+                parse_mode="HTML"
+            )
+            return
+        proof_file_id = message.photo[-1].file_id
+        proof_type = "Photo"
+    elif proof_required == "Video message":
+        if not message.video_note:
+            await message.answer(
+                "❌ <b>Noto'g'ri format!</b>\n\nIltimos, <b>Dumaloq video (Video message)</b> yuboring!",
+                parse_mode="HTML"
+            )
+            return
+        proof_file_id = message.video_note.file_id
+        proof_type = "Video message"
+    elif proof_required == "Text":
+        if not message.text:
+            await message.answer(
+                "❌ <b>Noto'g'ri format!</b>\n\nIltimos, <b>Matn (Text)</b> yuboring!",
+                parse_mode="HTML"
+            )
+            return
+        text_content = message.text.strip()
+        proof_type = "Text"
+    else:
+        # Har qanday isbot turi qabul qilinsin
+        if message.photo:
+            proof_file_id = message.photo[-1].file_id
+            proof_type = "Photo"
+        elif message.video_note:
+            proof_file_id = message.video_note.file_id
+            proof_type = "Video message"
+        elif message.video:
+            proof_file_id = message.video.file_id
+            proof_type = "Video"
+        elif message.text:
+            text_content = message.text.strip()
+            proof_type = "Text"
+        else:
+            await message.answer("❌ Iltimos, rasm, video yoki matn yuboring!")
+            return
+    
+    # Isbotni bazaga saqlash
+    try:
+        await save_proof(
+            user_id=user_id,
+            user_name=user_name,
+            task_id=task_id,
+            task_name=task["task_name"],
+            task_description=task.get("task_description", ""),
+            proof_type=proof_type,
+            file_id=proof_file_id,
+            text_content=text_content,
+            date=today,
+            time=current_time
+        )
+    except Exception as e:
+        logging.error(f"Proof saqlashda xatolik: {e}")
+        await message.answer("❌ Isbot saqlashda xatolik yuz berdi. Qayta urinib ko'ring.")
+        return
+    
+    # Vazifani "completed" holatiga o'tkazish
+    await update_task_status(task_id, "completed", user_id)
+    
+    # Foydalanuvchini band holatidan chiqarish
+    await set_user_free(user_id)
+    
+    # Isbotni GURUHGA yuborish
+    try:
+        if proof_type == "Photo":
+            await message.bot.send_photo(
+                chat_id=REPORTS_GROUP_ID,
+                photo=proof_file_id,
+                caption=f"📸 <b>Vazifa isboti</b>\n\n"
+                        f"📌 <b>Vazifa:</b> {task['task_name']}\n"
+                        f"👤 <b>Xodim:</b> {user_name}\n"
+                        f"📅 <b>Sana:</b> {today}\n"
+                        f"⏰ <b>Vaqt:</b> {current_time}\n"
+                        f"📝 <b>Izoh:</b> {task.get('task_description', 'Mavjud emas')}",
+                parse_mode="HTML"
+            )
+        elif proof_type == "Video message":
+            await message.bot.send_video_note(
+                chat_id=REPORTS_GROUP_ID,
+                video_note=proof_file_id
+            )
+            await message.bot.send_message(
+                chat_id=REPORTS_GROUP_ID,
+                text=f"📹 <b>Vazifa isboti</b>\n\n"
+                     f"📌 <b>Vazifa:</b> {task['task_name']}\n"
+                     f"👤 <b>Xodim:</b> {user_name}\n"
+                     f"📅 <b>Sana:</b> {today}\n"
+                     f"⏰ <b>Vaqt:</b> {current_time}\n"
+                     f"📝 <b>Izoh:</b> {task.get('task_description', 'Mavjud emas')}",
+                parse_mode="HTML"
+            )
+        elif proof_type == "Video":
+            await message.bot.send_video(
+                chat_id=REPORTS_GROUP_ID,
+                video=proof_file_id,
+                caption=f"🎬 <b>Vazifa isboti</b>\n\n"
+                        f"📌 <b>Vazifa:</b> {task['task_name']}\n"
+                        f"👤 <b>Xodim:</b> {user_name}\n"
+                        f"📅 <b>Sana:</b> {today}\n"
+                        f"⏰ <b>Vaqt:</b> {current_time}",
+                parse_mode="HTML"
+            )
+        elif proof_type == "Text":
+            await message.bot.send_message(
+                chat_id=REPORTS_GROUP_ID,
+                text=f"✍️ <b>Vazifa isboti (Matn)</b>\n\n"
+                     f"📌 <b>Vazifa:</b> {task['task_name']}\n"
+                     f"👤 <b>Xodim:</b> {user_name}\n"
+                     f"📅 <b>Sana:</b> {today}\n"
+                     f"⏰ <b>Vaqt:</b> {current_time}\n"
+                     f"💬 <b>Matn:</b> {text_content[:500]}",
+                parse_mode="HTML"
+            )
+    except Exception as e:
+        logging.error(f"Isbotni guruhga yuborishda xatolik: {e}")
+        # Xatolik bo'lsa ham davom etamiz — isbot bazaga saqlandi
+    
+    await state.clear()
+    
+    # Xodimga tasdiqlash xabari
+    await message.answer(
+        f"✅ <b>Vazifa muvaffaqiyatli bajarildi!</b>\n\n"
+        f"📌 <b>Vazifa:</b> {task['task_name']}\n"
+        f"📅 <b>Sana:</b> {today}\n"
+        f"⏰ <b>Vaqt:</b> {current_time}\n\n"
+        f"📸 Isbotingiz rahbarga yuborildi.",
+        parse_mode="HTML",
+        reply_markup=get_main_menu(user_info.get("role", ""))
+    )
+
+@monitoring_router.message(TaskStates.waiting_for_task_proof, F.text == "🏠 Bosh sahifa")
+async def task_proof_home(message: types.Message, state: FSMContext):
+    await state.clear()
+    await set_user_free(str(message.from_user.id))
+    role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
+    await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
+
+@monitoring_router.message(TaskStates.waiting_for_task_proof, F.text == "⬅️ Ortga")
+async def task_proof_back(message: types.Message, state: FSMContext):
+    await state.clear()
+    await set_user_free(str(message.from_user.id))
+    role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
+    await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
+

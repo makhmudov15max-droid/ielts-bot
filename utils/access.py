@@ -1,5 +1,5 @@
-import json
-import os
+import logging
+from utils.database import get_pool
 
 
 def check_user_access(users_roles, user_id: int) -> bool:
@@ -23,17 +23,21 @@ def check_user_access(users_roles, user_id: int) -> bool:
     return True
 
 
-def is_admin(user_id: int) -> bool:
-    """Foydalanuvchi Admin, Owner yoki Manager rolida ekanligini tekshiradi"""
-    USERS_FILE = "users.json"
+async def is_admin(user_id: int) -> bool:
+    """Foydalanuvchi Admin, Owner yoki Manager rolida ekanligini tekshiradi (PostgreSQL orqali)"""
+    pool = get_pool()
+    if not pool:
+        logging.error("Database pool mavjud emas!")
+        return False
     try:
-        if os.path.exists(USERS_FILE):
-            with open(USERS_FILE, "r", encoding="utf-8") as f:
-                users = json.load(f)
-                user_info = users.get(str(user_id))
-                if user_info:
-                    role = user_info.get("role")
-                    return role in ["Admin", "Owner", "Manager"]
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT role FROM users WHERE user_id = $1",
+                str(user_id)
+            )
+            if row:
+                role = row["role"]
+                return role in ["Admin", "Owner", "Manager"]
     except Exception as e:
-        print(f"is_admin() xatosi: {e}")
+        logging.error(f"is_admin() xatosi: {e}")
     return False
