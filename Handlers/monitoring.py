@@ -13,6 +13,7 @@ from aiogram.fsm.state import State, StatesGroup
 from Handlers.states import TaskStates
 from datetime import datetime, timedelta, timezone
 import calendar
+import asyncio
 import logging
 
 from config import REPORTS_GROUP_ID
@@ -644,8 +645,6 @@ async def send_all_employees_report(message: types.Message, start_date: str, end
     if not employees:
         await message.answer("📭 Xodimlar topilmadi.", reply_markup=get_period_keyboard())
         return
-
-    full_text = f"👥 <b>{title}</b>\n\n"
     
     start = datetime.strptime(start_date, "%Y-%m-%d")
     end = datetime.strptime(end_date, "%Y-%m-%d")
@@ -658,21 +657,99 @@ async def send_all_employees_report(message: types.Message, start_date: str, end
     # Bayram kunlarini olish
     holidays_set = await get_holiday_dates()
     
+    # Sarlavha
+    await message.answer(f"👥 <b>{title}</b>\\n\\n📊 {len(employees)} ta xodim", parse_mode="HTML")
+    
     for uid, name in employees:
         records = await get_attendance_by_dates(uid, date_list)
+        user_work_start, user_work_end = await get_user_work_time(uid)
         
-        # Faqat bayram bo'lmagan kunlardagi kech qolishlarni hisoblash
-        total_min = 0
-        for r in records:
-            r_date = r.get("date", "")
-            if is_holiday_date(r_date, holidays_set):
+        # Kunlik batafsil hisobot
+        report_lines = []
+        checked_count = 0
+        missed_count = 0
+        total_late_min = 0
+        
+        for day in date_list:
+            day_records = [r for r in records if r.get("date") == day]
+            is_holiday = is_holiday_date(day, holidays_set)
+            
+            if is_holiday:
+                report_lines.append(f"   {day} — 🎉 Bayram")
                 continue
-            total_min += r.get("late_minutes", 0)
+            
+            if day_records:
+                r = day_records[0]
+                status = r.get("status", "pending")
+                arrived_at = r.get("arrived_at", "—")
+                late_min = r.get("late_minutes", 0)
+                
+                if status == "checked_in":
+                    checked_count += 1
+                    if late_min > 0:
+                        total_late_min += late_min
+                        reason = r.get("reason", "")
+                        reason_text = f" — {reason}" if reason and reason != "Ishga kelish tasdiqlandi" else ""
+                        report_lines.append(f"   {day} — ⚠️ Kech: {arrived_at} (+{late_min} daq){reason_text}")
+                    else:
+                        report_lines.append(f"   {day} — ✅ {arrived_at} (vaqtida)")
+                elif status == "missed":
+                    missed_count += 1
+                    report_lines.append(f"   {day} — ❌ Kelmagan")
+                else:
+                    missed_count += 1
+                    report_lines.append(f"   {day} — ❌ Tasdiqlanmagan")
+            else:
+                missed_count += 1
+                report_lines.append(f"   {day} — ❌ Ma'lumot yo'q")
         
-        h, m = divmod(total_min, 60)
-        full_text += f"👤 <b>{name}</b>\n   📌 Kech qolishlar: {len([r for r in records if not is_holiday_date(r.get('date'), holidays_set)])} ta\n   ⏱ Jami: {h} soat {m} daqiqa\n\n"
-
-    await message.answer(full_text, parse_mode="HTML", reply_markup=get_period_keyboard())
+        # Xulosa
+        h, m = divmod(total_late_min, 60)
+        total_days = len(date_list) - len([d for d in date_list if is_holiday_date(d, holidays_set)])
+        
+        report = (
+            f"👤 <b>{name}</b>\\n"
+            f"📋 Ish vaqti: {user_work_start} — {user_work_end}\\n"
+            f"{'─' * 20}\\n"
+        )
+        report += "\\n".join(report_lines)
+        report += (
+            f"\\n{'─' * 20}\\n"
+            f"📊 <b>Jami:</b> ✅ {checked_count}/{total_days} kun | "
+            f"⚠️ Kechikish: {h} soat {m} daq"
+        )
+        
+        # Telegram limiti: ~4000 belgi
+        if len(report) > 3800:
+            # Katta hisobotlarni 2 qismga bo'lish
+            mid = len(report_lines) // 2
+            part1 = (
+                f"👤 <b>{name}</b> (1/2)\\n"
+                f"📋 Ish vaqti: {user_work_start} — {user_work_end}\\n"
+                f"{'─' * 20}\\n"
+            )
+            part1 += "\\n".join(report_lines[:mid])
+            
+            part2 = (
+                f"👤 <b>{name}</b> (2/2)\\n"
+                f"{'─' * 20}\\n"
+            )
+            part2 += "\\n".join(report_lines[mid:])
+            part2 += (
+                f"\\n{'─' * 20}\\n"
+                f"📊 <b>Jami:</b> ✅ {checked_count}/{total_days} kun | "
+                f"⚠️ Kechikish: {h} soat {m} daq"
+            )
+            
+            await message.answer(part1, parse_mode="HTML")
+            await message.answer(part2, parse_mode="HTML")
+        else:
+            await message.answer(report, parse_mode="HTML")
+        
+        await asyncio.sleep(0.3)  # Rate limit uchun
+    
+    # Yakuniy menyu
+    await message.answer("📅 Boshqa davr uchun tanlang:", reply_markup=get_period_keyboard())
 
 
 # ================= KECH QOLISH =================
