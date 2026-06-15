@@ -548,7 +548,8 @@ async def monitoring_period_today(message: types.Message, state: FSMContext):
     today = datetime.now(TASHKENT_TZ).strftime("%Y-%m-%d")
 
     if uid == "ALL":
-        await send_all_employees_report(message, today, today, f"📅 Bugungi ({today}) hisobot")
+        role = data.get("selected_role", "Admin")
+        await send_all_employees_report(message, today, today, f"📅 Bugungi ({today}) hisobot", role)
     else:
         records = await get_attendance_by_user_today(uid)
         report = await format_attendance_report(records, f"📅 <b>{name} — Bugungi ({today}) hisobot</b>")
@@ -564,7 +565,8 @@ async def monitoring_period_this_month(message: types.Message, state: FSMContext
 
     if uid == "ALL":
         dates = get_all_days_in_current_month()
-        await send_all_employees_report(message, dates[0], dates[-1], f"📅 {now.year}-{now.month:02d} oylik hisobot")
+        role = data.get("selected_role", "Admin")
+        await send_all_employees_report(message, dates[0], dates[-1], f"📅 {now.year}-{now.month:02d} oylik hisobot", role)
     else:
         records = await get_attendance_by_user_and_month(uid, now.year, now.month)
         title = f"📅 <b>{name} — {now.year}-{now.month:02d} oylik hisobot</b>"
@@ -624,7 +626,8 @@ async def monitoring_custom_dates_entered(message: types.Message, state: FSMCont
     dates_str = ", ".join(dates)
 
     if uid == "ALL":
-        await send_all_employees_report(message, dates[0], dates[-1], f"📆 Tanlangan sanalar: {dates_str}")
+        role = data.get("selected_role", "Admin")
+        await send_all_employees_report(message, dates[0], dates[-1], f"📆 Tanlangan sanalar: {dates_str}", role)
     else:
         records = await get_attendance_by_dates(uid, dates)
         title = f"📆 <b>{name} — {dates_str}</b>"
@@ -635,13 +638,7 @@ async def monitoring_custom_dates_entered(message: types.Message, state: FSMCont
 
 
 # ================= BARCHA XODIMLAR UCHUN HISOBOT =================
-async def send_all_employees_report(message: types.Message, start_date: str, end_date: str, title: str):
-    state = await message.bot.get_state(message.from_user.id)
-    state_data = {}
-    if state and state.data:
-        state_data = state.data
-    
-    role = state_data.get("selected_role", "Admin")
+async def send_all_employees_report(message: types.Message, start_date: str, end_date: str, title: str, role: str = "Admin"):
     employees = get_all_users_by_role(role)
     
     if not employees:
