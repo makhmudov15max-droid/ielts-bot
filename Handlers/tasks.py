@@ -56,7 +56,7 @@ async def cancel_handler(message: types.Message, state: FSMContext):
 
 
 # ================= UNIVERSAL BACK/HOME HANDLER =================
-@tasks_router.message(F.text.in_(["🏠 Bosh sahifa", "⬅️ Ortga"]))
+@tasks_router.message(TaskStates(), F.text.in_(["🏠 Bosh sahifa", "⬅️ Ortga"]))
 async def handle_back_home_in_task_creation(message: types.Message, state: FSMContext):
     """Vazifa yaratish jarayonida Bosh sahifa va Ortga tugmalari"""
     print(f"DEBUG: handle_back_home_in_task_creation chaqirildi. Matn: '{message.text}'")
