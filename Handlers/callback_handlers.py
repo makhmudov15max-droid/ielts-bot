@@ -175,6 +175,32 @@ async def process_remove_task_callback(call: types.CallbackQuery):
             await call.answer(text="⚠️ Bajarilgan vazifani o'chirib bo'lmaydi!", show_alert=True)
             return
         
+        # Tasdiqlash so'rash
+        await call.message.edit_text(
+            text=f"⚠️ <b>Vazifani o'chirishni tasdiqlaysizmi?</b>\n\n"
+                 f"📌 <b>Vazifa:</b> {task_to_remove['task_name']}\n"
+                 f"👤 <b>Mas'ul:</b> {task_to_remove['assigned_to_name']}\n\n"
+                 f"<i>Bu amalni qaytarib bo'lmaydi!</i>",
+            parse_mode="HTML",
+            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
+                [types.InlineKeyboardButton(text="✅ Ha, o'chirish", callback_data=f"confirmremovetask_{task_id}")],
+                [types.InlineKeyboardButton(text="❌ Yo'q, bekor qilish", callback_data="remove_cancel")]
+            ])
+        )
+    else:
+        await call.answer(text="⚠️ Bu vazifa allaqachon oʻchirilgan yoki topilmadi!", show_alert=True)
+    await call.answer()
+
+
+@callback_router.callback_query(F.data.startswith("confirmremovetask_"))
+async def confirm_remove_task_callback(call: types.CallbackQuery):
+    task_id = int(call.data.split("_")[1])
+    global TASKS_DATABASE
+    
+    TASKS_DATABASE = await load_tasks()
+    task_to_remove = next((t for t in TASKS_DATABASE if t["id"] == task_id), None)
+    
+    if task_to_remove:
         deleted = await delete_task(task_id)
         if not deleted:
             await call.answer(text="⚠️ Bazadan o'chirishda xatolik!", show_alert=True)
@@ -182,19 +208,13 @@ async def process_remove_task_callback(call: types.CallbackQuery):
         TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
         
         await call.message.edit_text(
-            text=f"🗑 <b>Vazifa muvaffaqiyatli oʻchirildi!</b>\n\n"
-                 f"📌 <b>Nomi:</b> {task_to_remove['task_name']}\n"
-                 f"👤 <b>Masʻul boʻlgan xodim:</b> {task_to_remove['assigned_to_name']}",
-            parse_mode="HTML"
-        )
-        
-        await call.message.answer(
-            text="✅ Vazifa bazadan butunlay o'chirildi.\n\n"
-                 "📋 Yangilangan ro'yxatni ko'rish uchun '📋 Vazifalar roʻyxati' tugmasini bosing.",
+            text=f"✅ <b>Vazifa o'chirildi!</b>\n\n"
+                 f"📌 {task_to_remove['task_name']}\n"
+                 f"👤 {task_to_remove['assigned_to_name']}",
             parse_mode="HTML"
         )
     else:
-        await call.answer(text="⚠️ Bu vazifa allaqachon oʻchirilgan yoki topilmadi!", show_alert=True)
+        await call.answer(text="⚠️ Vazifa topilmadi!", show_alert=True)
     await call.answer()
 
 

@@ -794,7 +794,11 @@ async def remove_task_menu_handler(message: types.Message):
     pending_tasks = [t for t in TASKS_DATABASE if t.get("status") != "completed"]
     
     if not pending_tasks:
-        await message.answer(text="📭 Hozircha o'chiriladigan faol vazifalar mavjud emas (barcha vazifalar bajarilgan).")
+        await message.answer(
+            text="ℹ️ Hozircha o'chiriladigan faol vazifalar mavjud emas.\n\n"
+                 "Barcha vazifalar bajarilgan yoki tizimda vazifa yo'q.",
+            reply_markup=get_main_menu(USERS_ROLES[str(message.from_user.id)]["role"])
+        )
         return
     
     await message.answer(

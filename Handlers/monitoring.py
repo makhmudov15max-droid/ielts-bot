@@ -21,6 +21,7 @@ from config import REPORTS_GROUP_ID
 from Keyboards.main_menu import get_main_menu, get_back_home_keyboard
 from utils.tasks_db import load_tasks, update_task_status
 from utils.proofs_db import save_proof
+from utils.design import progress_bar
 # ================= 200 MOTIVATSION XABARLAR =================
 MOTIVATION_MESSAGES = [
     "✅ Ajoyib! Ish kunini intizom bilan boshladingiz.",
@@ -809,7 +810,8 @@ async def send_all_employees_report(message: types.Message, start_date: str, end
         
         report += (
             f"{'─' * 20}\n"
-            f"📊 <b>Jami:</b> ✅ {checked_count}/{total_work_days} kun | "
+            f"📊 <b>Jami:</b> ✅ {checked_count}/{total_work_days} kun\n"
+            f"   {progress_bar(checked_count, total_work_days)} | "
             f"⚠️ Kechikish: {h} soat {m} daq"
         )
         
@@ -933,6 +935,24 @@ async def late_reason_entered(message: types.Message, state: FSMContext):
         parse_mode="HTML",
         reply_markup=get_main_menu(role)
     )
+    
+    # Manager/Owner larga bildirishnoma yuborish
+    try:
+        for uid, uinfo in USERS_ROLES.items():
+            if isinstance(uinfo, dict) and uinfo.get("role") in ["Owner", "Manager"]:
+                await message.bot.send_message(
+                    chat_id=int(uid),
+                    text=f"⚠️ <b>Kechikish haqida xabar</b>\n\n"
+                         f"👤 <b>Xodim:</b> {user_name}\n"
+                         f"🎖 <b>Lavozim:</b> {role}\n"
+                         f"📅 <b>Sana:</b> {today}\n"
+                         f"⏰ <b>Kelgan vaqt:</b> {arrived_at}\n"
+                         f"⚠️ <b>Kechikish:</b> {late_minutes} daqiqa\n"
+                         f"✍️ <b>Sabab:</b> {reason}",
+                    parse_mode="HTML"
+                )
+    except Exception as e:
+        logging.error(f"Manager notification xatolik: {e}")
 
 
 # ============================================================
