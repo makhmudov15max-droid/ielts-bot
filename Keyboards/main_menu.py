@@ -7,39 +7,42 @@ def get_main_menu(role: str):
     role = str(role).strip()
     if role in ["Owner", "Manager"]:
         keyboard = [
+            [KeyboardButton(text="👥 Xodimlar"), KeyboardButton(text="🗄 Arxiv"), KeyboardButton(text="🎯 Monitoring")],
             [KeyboardButton(text="➕ Vazifa qoʻshish"), KeyboardButton(text="📋 Vazifalar roʻyxati"), KeyboardButton(text="🗑 Vazifani oʻchirish")],
-            [KeyboardButton(text="👥 Xodimlar"), KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball"), KeyboardButton(text="🎯 Monitoring")],
             [KeyboardButton(text="📊 Admin oylik"), KeyboardButton(text="💰 Kassir oylik"), KeyboardButton(text="📸 Isbotlar")],
-            [KeyboardButton(text="🗄 Arxiv"), KeyboardButton(text="📑 Guruh Report"), KeyboardButton(text="⚙️ Sozlamalar")]
+            [KeyboardButton(text="📑 Guruh Report"), KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball"), KeyboardButton(text="⚙️ Sozlamalar")]
         ]
     elif role == "Admin":
         keyboard = [
-            [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="📋 Vazifalar roʻyxati")],
-            [KeyboardButton(text="📊 Admin oylik"), KeyboardButton(text="📑 Guruh Report")]
+            [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="⏰ Kech qoldim")],
+            [KeyboardButton(text="📋 Vazifalar roʻyxati"), KeyboardButton(text="📊 Admin oylik")],
+            [KeyboardButton(text="📑 Guruh Report")]
         ]
     elif role == "Kassir":
         keyboard = [
-            [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="📋 Vazifalar roʻyxati")],
-            [KeyboardButton(text="💰 Kassir oylik")]
+            [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="⏰ Kech qoldim")],
+            [KeyboardButton(text="📋 Vazifalar roʻyxati"), KeyboardButton(text="💰 Kassir oylik")]
         ]
     elif role == "Sanitar":
         keyboard = [
-            [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="📋 Vazifalar roʻyxati")]
+            [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="⏰ Kech qoldim")],
+            [KeyboardButton(text="📋 Vazifalar roʻyxati")]
         ]
     elif role == "Maintenance":
         keyboard = [
-            [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="📋 Vazifalar roʻyxati")]
+            [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="⏰ Kech qoldim")],
+            [KeyboardButton(text="📋 Vazifalar roʻyxati")]
         ]
     elif role == "Head Admin":
         keyboard = [
-            [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="➕ Vazifa qoʻshish")], 
-            [KeyboardButton(text="📋 Vazifalar roʻyxati"), KeyboardButton(text="🗑 Vazifani oʻchirish")],
-            [KeyboardButton(text="📊 Admin oylik"), KeyboardButton(text="💰 Kassir oylik")],
-            [KeyboardButton(text="📑 Guruh Report")]
+            [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="⏰ Kech qoldim")],
+            [KeyboardButton(text="➕ Vazifa qoʻshish"), KeyboardButton(text="📋 Vazifalar roʻyxati"), KeyboardButton(text="🗑 Vazifani oʻchirish")],
+            [KeyboardButton(text="📊 Admin oylik"), KeyboardButton(text="💰 Kassir oylik"), KeyboardButton(text="📑 Guruh Report")]
         ]
     else:
         keyboard = [
-            [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="📋 Vazifalar roʻyxati")]
+            [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="⏰ Kech qoldim")],
+            [KeyboardButton(text="📋 Vazifalar roʻyxati")]
         ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 

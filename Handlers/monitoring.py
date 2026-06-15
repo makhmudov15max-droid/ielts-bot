@@ -427,7 +427,7 @@ async def monitoring_main_handler(message: types.Message, state: FSMContext):
     await state.clear()
     await state.set_state(MonitoringStates.waiting_for_role)
     await message.answer(
-        text="🎯 <b>Monitoring</b>\n\nQaysi bo'lim xodimlarini ko'rmoqchisiz?",
+        text="📍 <b>Monitoring</b>\n\nQaysi bo'lim xodimlarini ko'rmoqchisiz?",
         parse_mode="HTML",
         reply_markup=get_role_keyboard()
     )
@@ -461,7 +461,7 @@ async def monitoring_role_selected(message: types.Message, state: FSMContext):
     
     keyboard = get_employee_list_keyboard(role)
     await message.answer(
-        text=f"👤 <b>{role}lardan birini tanlang:</b>",
+        text=f"📍 <b>Monitoring › {role}</b>\n\n👤 Xodimlardan birini tanlang:",
         parse_mode="HTML",
         reply_markup=keyboard
     )
@@ -483,7 +483,7 @@ async def monitoring_employee_home(message: types.Message, state: FSMContext):
 @monitoring_router.message(MonitoringStates.waiting_for_employee_choice, F.text == "⬅️ Ortga")
 async def monitoring_employee_back(message: types.Message, state: FSMContext):
     await state.set_state(MonitoringStates.waiting_for_role)
-    await message.answer("Qaysi bo'lim xodimlarini ko'rmoqchisiz?", reply_markup=get_role_keyboard())
+    await message.answer("📍 <b>Monitoring</b>\n\nQaysi bo'lim xodimlarini ko'rmoqchisiz?", reply_markup=get_role_keyboard())
 
 
 @monitoring_router.message(MonitoringStates.waiting_for_employee_choice, F.text == "👥 Barcha xodimlar")
@@ -493,7 +493,7 @@ async def monitoring_all_employees_selected(message: types.Message, state: FSMCo
     await state.update_data(selected_user_id="ALL", selected_name=f"Barcha {role}lar")
     await state.set_state(MonitoringStates.waiting_for_period)
     await message.answer(
-        text="📅 <b>Qaysi davr uchun hisobot ko'rmoqchisiz?</b>",
+        text=f"📍 <b>Monitoring › {role} › Barcha xodimlar</b>\n\n📅 Qaysi davr uchun hisobot ko'rmoqchisiz?",
         parse_mode="HTML",
         reply_markup=get_period_keyboard()
     )
@@ -513,8 +513,10 @@ async def monitoring_employee_selected(message: types.Message, state: FSMContext
     name = text.replace("👤 ", "").strip()
     await state.update_data(selected_user_id=uid, selected_name=name)
     await state.set_state(MonitoringStates.waiting_for_period)
+    data = await state.get_data()
+    role = data.get("selected_role", "Admin")
     await message.answer(
-        text="📅 <b>Qaysi davr uchun hisobot ko'rmoqchisiz?</b>",
+        text=f"📍 <b>Monitoring › {role} › {name}</b>\n\n📅 Qaysi davr uchun hisobot ko'rmoqchisiz?",
         parse_mode="HTML",
         reply_markup=get_period_keyboard()
     )
@@ -540,7 +542,7 @@ async def monitoring_period_back(message: types.Message, state: FSMContext):
     data = await state.get_data()
     role = data.get("selected_role", "Admin")
     await state.set_state(MonitoringStates.waiting_for_employee_choice)
-    await message.answer(f"👤 {role}lardan birini tanlang:", reply_markup=get_employee_list_keyboard(role))
+    await message.answer(f"📍 <b>Monitoring › {role}</b>\n\n👤 Xodimlardan birini tanlang:", reply_markup=get_employee_list_keyboard(role))
 
 
 @monitoring_router.message(MonitoringStates.waiting_for_period, F.text == "📅 Bugun")

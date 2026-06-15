@@ -252,7 +252,7 @@ async def fire_staff_callback(call: types.CallbackQuery, state: FSMContext):
         try:
             await call.bot.send_message(
                 chat_id=int(target_user_id),
-                text="❌ <b>Siz administrator tomonidan Edu_Control tizimidan chetlashtirildingiz!</b>",
+                text="❌ <b>Siz administrator tomonidan ORBIT HQ tizimidan chetlashtirildingiz!</b>",
                 parse_mode="HTML",
                 reply_markup=types.ReplyKeyboardRemove()
             )

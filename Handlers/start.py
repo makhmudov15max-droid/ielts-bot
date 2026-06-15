@@ -43,8 +43,14 @@ async def command_start_handler(message: types.Message):
 
     if user_id not in USERS_ROLES:
         await message.answer(
-            text="Assalomu alaykum, Edu_Control tizimiga xush kelibsiz!\n"
-                 "Tizim administratoriga ruxsat soʻrovi yuborildi. Iltimos, soʻrovingiz tasdiqlanishini kuting. Rahmat!"
+            text="🌐 <b>ORBIT HQ</b> — Ish boshqaruv tizimiga xush kelibsiz!\n\n"
+                 "Bu bot orqali siz:\n"
+                 "✅ Ishga kelganingizni tasdiqlaysiz\n"
+                 "📋 Kundalik vazifalaringizni olasiz\n"
+                 "📊 O'z davomatingizni kuzatasiz\n\n"
+                 "⏳ So'rovingiz administratorga yuborildi.\n"
+                 "Tasdiqlangach sizga xabar beriladi.",
+            parse_mode="HTML"
         )
         
         full_name = message.from_user.full_name
@@ -79,9 +85,10 @@ async def command_start_handler(message: types.Message):
     role = user_info.get("role")
 
     await message.answer(
-        text=f"Assalomu alaykum, {saved_name}! "
-             f"Tizimga xush kelibsiz.\n"
-             f"Quyidagi tugmalar orqali botni boshqarishingiz mumkin 👇",
+        text=f"🌐 <b>ORBIT HQ</b> ga xush kelibsiz, {saved_name}!\n"
+             f"🎖 Lavozimingiz: <b>{role}</b>\n\n"
+             f"Quyidagi tugmalar orqali botni boshqaring 👇",
+        parse_mode="HTML",
         reply_markup=get_main_menu(role)
     )
 
@@ -106,8 +113,12 @@ async def get_user_real_name_handler(message: types.Message):
     await save_users(USERS_ROLES)
 
     await message.answer(
-        text=f"Hurmatli {first_name}, siz muvaffaqiyatli roʻyxatdan oʻtdingiz. "
-             f"Endi bot imkoniyatlaridan foydalanishingiz mumkin.",
+        text=f"🎉 <b>Tabriklaymiz, {first_name}!</b>\n\n"
+             f"Siz ORBIT HQ tizimida <b>{USERS_ROLES[user_id]['role']}</b> sifatida ro'yxatdan o'tdingiz.\n\n"
+             f"Endi quyidagi imkoniyatlardan foydalanishingiz mumkin:\n"
+             f"✅ <b>Ishga keldim</b> — har kuni ishga kelganingizni tasdiqlang\n"
+             f"📋 <b>Vazifalar ro'yxati</b> — kundalik topshiriqlaringizni ko'ring",
+        parse_mode="HTML",
         reply_markup=get_main_menu(USERS_ROLES[user_id]["role"])
     )
 
