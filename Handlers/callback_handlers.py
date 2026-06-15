@@ -207,12 +207,22 @@ async def confirm_remove_task_callback(call: types.CallbackQuery):
             return
         TASKS_DATABASE = [t for t in TASKS_DATABASE if t["id"] != task_id]
         
-        await call.message.edit_text(
-            text=f"✅ <b>Vazifa o'chirildi!</b>\n\n"
-                 f"📌 {task_to_remove['task_name']}\n"
-                 f"👤 {task_to_remove['assigned_to_name']}",
-            parse_mode="HTML"
-        )
+        # O'chirilganini qisqa ko'rsatib, qolgan vazifalar ro'yxatini chiqarish
+        remaining = [t for t in TASKS_DATABASE if t.get("status") != "completed"]
+        
+        if remaining:
+            await call.message.edit_text(
+                text=f"✅ <b>\"{task_to_remove['task_name']}\"</b> o'chirildi.\n\n"
+                     f"🗑 Qolgan vazifalardan o'chirishni davom ettiring yoki ❌ Bekor qilish:",
+                parse_mode="HTML",
+                reply_markup=get_remove_tasks_keyboard(remaining)
+            )
+        else:
+            await call.message.edit_text(
+                text=f"✅ <b>\"{task_to_remove['task_name']}\"</b> o'chirildi.\n\n"
+                     f"ℹ️ O'chiriladigan boshqa vazifa qolmadi.",
+                parse_mode="HTML"
+            )
     else:
         await call.answer(text="⚠️ Vazifa topilmadi!", show_alert=True)
     await call.answer()
