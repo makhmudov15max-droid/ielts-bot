@@ -674,7 +674,7 @@ async def send_all_employees_report(message: types.Message, start_date: str, end
     
     holidays_set = await get_holiday_dates()
     
-    await message.answer(f"👥 <b>{title}</b>\\n📊 {len(employees)} ta xodim", parse_mode="HTML")
+    await message.answer(f"👥 <b>{title}</b>\n📊 {len(employees)} ta xodim", parse_mode="HTML")
     
     for uid, name in employees:
         records = await get_attendance_by_dates(uid, date_list)
@@ -720,24 +720,24 @@ async def send_all_employees_report(message: types.Message, start_date: str, end
         h, m = divmod(total_late_min, 60)
         
         report = (
-            f"👤 <b>{name}</b>\\n"
-            f"📋 Ish vaqti: {user_work_start} — {user_work_end}\\n\\n"
+            f"👤 <b>{name}</b>\n"
+            f"📋 Ish vaqti: {user_work_start} — {user_work_end}\n\n"
         )
         
         if on_time:
-            report += f"✅ <b>VAQTIDA KELGAN ({len(on_time)} kun):</b>\\n"
-            report += "\\n".join(on_time) + "\\n\\n"
+            report += f"✅ <b>VAQTIDA KELGAN ({len(on_time)} kun):</b>\n"
+            report += "\n".join(on_time) + "\n\n"
         
         if late:
-            report += f"⚠️ <b>KECH QOLGAN ({len(late)} kun):</b>\\n"
-            report += "\\n".join(late) + "\\n\\n"
+            report += f"⚠️ <b>KECH QOLGAN ({len(late)} kun):</b>\n"
+            report += "\n".join(late) + "\n\n"
         
         if missed:
-            report += f"❌ <b>KELMAGAN ({len(missed)} kun):</b>\\n"
-            report += f"   {', '.join(missed)}\\n\\n"
+            report += f"❌ <b>KELMAGAN ({len(missed)} kun):</b>\n"
+            report += f"   {', '.join(missed)}\n\n"
         
         report += (
-            f"{'─' * 20}\\n"
+            f"{'─' * 20}\n"
             f"📊 <b>Jami:</b> ✅ {checked_count}/{total_work_days} kun | "
             f"⚠️ Kechikish: {h} soat {m} daq"
         )
