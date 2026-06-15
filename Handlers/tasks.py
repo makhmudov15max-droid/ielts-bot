@@ -109,7 +109,103 @@ async def handle_back_home_in_task_creation(message: types.Message, state: FSMCo
         return
 
 
-# ================= VAZIFA YARATISH (ADD) =================
+# ================= VAZIFA YARATISH YORDAMCHI FUNKSIYA =================
+async def create_and_save_task(message: types.Message, state: FSMContext, proof_type_display: str):
+    """Vazifani yaratish va saqlash — ham tezkor, ham to'liq rejim uchun"""
+    proof_mapping = {
+        "Dumaloq video": "Video message",
+        "Rasm yuborish": "Photo",
+        "✍️ Matn yuborish": "Text"
+    }
+
+    tashkent_tz = timezone(timedelta(hours=5))
+
+    user_data = await state.get_data()
+    task_id = len(TASKS_DATABASE) + 1
+
+    is_daily = user_data.get("task_type") == "Kunlik (Bir martalik)"
+    raw_times = user_data.get("task_times", "")
+    times_list = [t.strip() for t in raw_times.split(",") if t.strip()] if not is_daily else []
+
+    new_task = {
+        "id": task_id,
+        "task_type": user_data.get("task_type"),
+        "task_name": user_data.get("task_name"),
+        "task_description": user_data.get("task_description", "Mavjud emas"),
+        "task_days": user_data.get("task_days", "Kunlik vazifa"),
+        "task_frequency": user_data.get("task_frequency", "Bir martalik"),
+        "task_times": times_list,
+        "proof_type": proof_mapping.get(proof_type_display, "Video message"),
+        "assigned_to_id": user_data.get("assigned_to_id"),
+        "assigned_to_name": user_data.get("assigned_to_name"),
+        "sent_today_times": [],
+        "status": "pending",
+        "completed_at": None,
+        "completed_by": None,
+        "created_at": datetime.now(tashkent_tz).isoformat()
+    }
+
+    new_id = await insert_task(new_task)
+    if new_id:
+        new_task["id"] = new_id
+        TASKS_DATABASE.append(new_task)
+    else:
+        await message.answer("❌ Vazifani saqlashda xatolik yuz berdi. Qayta urinib ko'ring.")
+        await state.clear()
+        return None
+
+    task_mode = user_data.get("task_mode", "full")
+    mode_emoji = "⚡" if task_mode == "quick" else "📋"
+
+    report_text = (
+        f"{mode_emoji} <b>Yangi vazifa yaratildi!</b>\n\n"
+        f"📌 <b>Nomi:</b> {new_task['task_name']}\n"
+        f"📋 <b>Turi:</b> {new_task['task_type']}\n"
+        f"👤 <b>Mas'ul:</b> {new_task['assigned_to_name']}\n"
+        f"⏰ <b>Vaqt:</b> {', '.join(new_task['task_times']) if new_task['task_times'] else 'Kunlik'}\n"
+    )
+
+    if new_task['task_type'] != "Kunlik (Bir martalik)":
+        report_text += (
+            f"📅 <b>Kunlar:</b> {new_task['task_days']}\n"
+            f"🔢 <b>Chastota:</b> {new_task['task_frequency']}\n"
+        )
+
+    report_text += f"📸 <b>Isbot:</b> {proof_type_display}\n"
+
+    await message.answer(text=report_text, parse_mode="HTML")
+
+    role = USERS_ROLES[str(message.from_user.id)]["role"]
+    await message.answer(text="✅ Bosh menyuga qaytdingiz.", reply_markup=get_main_menu(role))
+
+    try:
+        if is_daily:
+            await message.bot.send_message(
+                chat_id=new_task["assigned_to_id"],
+                text=f"🔔 <b>Sizga yangi kunlik vazifa yuklatildi!</b>\n\n"
+                     f"📌 <b>Vazifa:</b> {new_task['task_name']}\n"
+                     f"📝 <b>Izoh:</b> {new_task['task_description']}\n\n"
+                     f"Bajarib, quyidagi tugma orqali isbot yuboring 👇",
+                parse_mode="HTML",
+                reply_markup=get_task_complete_keyboard(new_task["id"])
+            )
+        else:
+            await message.bot.send_message(
+                chat_id=new_task["assigned_to_id"],
+                text=f"🔔 <b>Sizga yangi muntazam vazifa yuklatildi!</b>\n\n"
+                     f"📌 <b>Vazifa:</b> {new_task['task_name']}\n"
+                     f"⏰ <b>Vaqt:</b> {', '.join(new_task['task_times'])}",
+                parse_mode="HTML"
+            )
+    except Exception as e:
+        logging.error(f"Xodimga bildirishnoma yuborishda xatolik: {e}")
+
+    await state.clear()
+    logging.info(f"Vazifa yaratildi. Task ID: {new_task['id']}")
+    return new_task
+
+
+# ================= VAZIFA REJIM TANLASH =================
 @tasks_router.message(F.text == "➕ Vazifa qoʻshish")
 async def add_task_handler(message: types.Message, state: FSMContext):
     if USERS_ROLES is None:
@@ -119,8 +215,52 @@ async def add_task_handler(message: types.Message, state: FSMContext):
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
     await state.clear()
+    await state.set_state(TaskStates.waiting_for_task_mode)
     await message.answer(
-        text="Qanday turdagi vazifa yaratmoqchisiz?",
+        text="➕ <b>Vazifa qo'shish</b>\n\n"
+             "Qaysi rejimda yaratmoqchisiz?\n\n"
+             "⚡ <b>Tezkor</b> — 3 qadamda: xodim, nom, vaqt\n"
+             "📋 <b>To'liq</b> — barcha sozlamalar bilan",
+        parse_mode="HTML",
+        reply_markup=types.ReplyKeyboardMarkup(
+            keyboard=[
+                [types.KeyboardButton(text="⚡ Tezkor vazifa"), types.KeyboardButton(text="📋 To'liq vazifa")],
+                [types.KeyboardButton(text="🏠 Bosh sahifa")]
+            ],
+            resize_keyboard=True
+        )
+    )
+
+
+@tasks_router.message(TaskStates.waiting_for_task_mode, F.text == "🏠 Bosh sahifa")
+async def task_mode_home(message: types.Message, state: FSMContext):
+    await state.clear()
+    role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
+    await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
+
+
+# ================= TEZKOR VAZIFA YARATISH =================
+@tasks_router.message(TaskStates.waiting_for_task_mode, F.text == "⚡ Tezkor vazifa")
+async def quick_task_start(message: types.Message, state: FSMContext):
+    await state.update_data(task_mode="quick")
+    await state.set_state(TaskStates.waiting_for_target_role)
+    await message.answer(
+        text="⚡ <b>Tezkor vazifa</b> (1/3)\n\n"
+             "Ushbu vazifa qaysi bo'lim xodimiga tegishli?",
+        parse_mode="HTML",
+        reply_markup=assign_role_keyboard
+    )
+
+
+# ================= TO'LIQ VAZIFA YARATISH =================
+@tasks_router.message(TaskStates.waiting_for_task_mode, F.text == "📋 To'liq vazifa")
+async def full_task_start(message: types.Message, state: FSMContext):
+    await state.update_data(task_mode="full", total_steps=9, current_step=1)
+    await state.set_state(TaskStates.waiting_for_target_role)  # Skip task type, go to role
+    await message.answer(
+        text="📋 <b>To'liq vazifa</b>\n━━━━━━━━━━━━━━━━━━━━\n"
+             "<b>Qadam 1:</b> Avvalo vazifa turini tanlang:",
+        parse_mode="HTML",
         reply_markup=task_type_keyboard
     )
 
@@ -131,10 +271,26 @@ async def task_type_selected_handler(message: types.Message, state: FSMContext):
         return
     
     await state.update_data(task_type=message.text)
-    await message.answer(
-        text="Ushbu vazifa qaysi boʻlim/unvon xodimiga tegishli?",
-        reply_markup=assign_role_keyboard
-    )
+    user_data = await state.get_data()
+    
+    if user_data.get("task_mode") == "full":
+        step = 2
+        await state.update_data(current_step=step)
+        bar = "━" * step + "┈" * (9 - step)
+        await message.answer(
+            text=f"📋 <b>To'liq vazifa</b>\n{bar} ({step}/9)\n\n"
+                 f"<b>Qadam {step}:</b> Vazifa qaysi bo'lim xodimiga tegishli?",
+            parse_mode="HTML",
+            reply_markup=assign_role_keyboard
+        )
+    else:
+        # Quick mode: just progress
+        await message.answer(
+            text="⚡ <b>Tezkor vazifa</b> (1/3)\n\n"
+                 "Ushbu vazifa qaysi bo'lim xodimiga tegishli?",
+            parse_mode="HTML",
+            reply_markup=assign_role_keyboard
+        )
     await state.set_state(TaskStates.waiting_for_target_role)
 
 
@@ -175,10 +331,28 @@ async def process_target_user_callback(call: types.CallbackQuery, state: FSMCont
     await state.update_data(assigned_to_id=int(target_user_id), assigned_to_name=employee_name)
     
     await call.message.delete()
-    await call.message.answer(
-        text="Iltimos, vazifa nomini kiriting:",
-        reply_markup=get_back_home_keyboard()
-    )
+    
+    user_data = await state.get_data()
+    
+    if user_data.get("task_mode") == "quick":
+        # Quick: skip to name
+        await call.message.answer(
+            text="⚡ <b>Tezkor vazifa</b> (2/3)\n\n"
+                 "Iltimos, vazifa nomini kiriting:",
+            parse_mode="HTML",
+            reply_markup=get_back_home_keyboard()
+        )
+    else:
+        # Full: show progress
+        step = 3
+        await state.update_data(current_step=step)
+        bar = "━" * step + "┈" * (9 - step)
+        await call.message.answer(
+            text=f"📋 <b>To'liq vazifa</b>\n{bar} ({step}/9)\n\n"
+                 f"<b>Qadam {step}:</b> Iltimos, vazifa nomini kiriting:",
+            parse_mode="HTML",
+            reply_markup=get_back_home_keyboard()
+        )
     await state.set_state(TaskStates.waiting_for_name)
     await call.answer()
 
@@ -191,15 +365,38 @@ async def get_task_name_handler(message: types.Message, state: FSMContext):
     await state.update_data(task_name=message.text.strip())
     user_data = await state.get_data()
     
-    if user_data.get("task_type") == "Kunlik (Bir martalik)":
+    if user_data.get("task_mode") == "quick":
+        # Quick: skip to time input
         await message.answer(
-            text="Izoh (bu yerda admin tomonidan yozilgan taskning izohi):",
+            text="⚡ <b>Tezkor vazifa</b> (3/3)\n\n"
+                 "⏰ Vazifa bajarilishi kerak bo'lgan vaqtni kiriting:\n"
+                 "Masalan: <code>09:00</code> yoki <code>14:30</code>",
+            parse_mode="HTML",
+            reply_markup=get_back_home_keyboard()
+        )
+        await state.set_state(TaskStates.waiting_for_once_time)
+        return
+    
+    # Full task flow
+    if user_data.get("task_type") == "Kunlik (Bir martalik)":
+        step = 4
+        await state.update_data(current_step=step)
+        bar = "━" * step + "┈" * (9 - step)
+        await message.answer(
+            text=f"📋 <b>To'liq vazifa</b>\n{bar} ({step}/9)\n\n"
+                 f"<b>Qadam {step}:</b> Izoh kiriting:",
+            parse_mode="HTML",
             reply_markup=get_back_home_keyboard()
         )
         await state.set_state(TaskStates.waiting_for_description)
     else:
+        step = 4
+        await state.update_data(current_step=step)
+        bar = "━" * step + "┈" * (9 - step)
         await message.answer(
-            text="Vazifa haftaning qaysi kunlari foydalanuvchiga koʻrinsin?",
+            text=f"📋 <b>To'liq vazifa</b>\n{bar} ({step}/9)\n\n"
+                 f"<b>Qadam {step}:</b> Vazifa haftaning qaysi kunlari ko'rinsin?",
+            parse_mode="HTML",
             reply_markup=days_keyboard
         )
         await state.set_state(TaskStates.waiting_for_days)
@@ -298,8 +495,35 @@ async def get_once_time_handler(message: types.Message, state: FSMContext):
         return
     
     await state.update_data(task_times=message.text.strip())
+    user_data = await state.get_data()
+    
+    if user_data.get("task_mode") == "quick":
+        # Quick: barcha default qiymatlar bilan vazifani yaratish
+        # Vaqt formatini tekshirish
+        time_text = message.text.strip()
+        if not re.match(r"^([0-1]?\d|2[0-3]):[0-5]\d$", time_text):
+            await message.answer("❌ Noto'g'ri vaqt formati! Masalan: <code>09:00</code>", parse_mode="HTML")
+            return
+        
+        await state.update_data(
+            task_type="Muntazam (Doimiy)",
+            task_days="Haftada 6 kun",
+            task_frequency="Kuniga 1 marta",
+            task_description="",
+            task_times=time_text,
+        )
+        
+        await create_and_save_task(message, state, "Dumaloq video")
+        return
+    
+    # Full task flow
+    step = user_data.get("current_step", 6) + 1
+    await state.update_data(current_step=step)
+    bar = "━" * step + "┈" * (9 - step)
     await message.answer(
-        text="Ushbu vazifani yakunlash uchun qanday turdagi isbot talab etiladi?",
+        text=f"📋 <b>To'liq vazifa</b>\n{bar} ({step}/9)\n\n"
+             f"<b>Qadam {step}:</b> Isbot turini tanlang:",
+        parse_mode="HTML",
         reply_markup=proof_type_keyboard
     )
     await state.set_state(TaskStates.waiting_for_proof_type)
@@ -338,115 +562,18 @@ async def get_multiple_times_handler(message: types.Message, state: FSMContext):
 # ================= ISBOT TURINI QABUL QILISH =================
 @tasks_router.message(TaskStates.waiting_for_proof_type)
 async def finalize_task_creation_handler(message: types.Message, state: FSMContext):
-    logging.info(f"finalize_task_creation_handler chaqirildi. Matn: {message.text}")
-    
     if not check_user_access(USERS_ROLES, message.from_user.id):
         return
-    
+
     if message.text not in ["Dumaloq video", "Rasm yuborish", "✍️ Matn yuborish"]:
         await message.answer(
             text="❌ Iltimos, quyidagi tugmalardan birini tanlang:\n\n"
-                 "• Dumaloq video\n"
-                 "• Rasm yuborish\n"
-                 "• ✍️ Matn yuborish",
+                 "• Dumaloq video\n• Rasm yuborish\n• ✍️ Matn yuborish",
             reply_markup=proof_type_keyboard
         )
         return
-    
-    proof_mapping = {
-        "Dumaloq video": "Video message", 
-        "Rasm yuborish": "Photo",
-        "✍️ Matn yuborish": "Text"
-    }
-    
-    tashkent_tz = timezone(timedelta(hours=5))
-    
-    user_data = await state.get_data()
-    task_id = len(TASKS_DATABASE) + 1
-    
-    is_daily = user_data.get("task_type") == "Kunlik (Bir martalik)"
-    raw_times = user_data.get("task_times", "")
-    times_list = [t.strip() for t in raw_times.split(",") if t.strip()] if not is_daily else []
-    
-    new_task = {
-        "id": task_id,
-        "task_type": user_data.get("task_type"),
-        "task_name": user_data.get("task_name"),
-        "task_description": user_data.get("task_description", "Mavjud emas"),
-        "task_days": user_data.get("task_days", "Kunlik vazifa"), 
-        "task_frequency": user_data.get("task_frequency", "Bir martalik"),
-        "task_times": times_list,
-        "proof_type": proof_mapping.get(message.text),
-        "assigned_to_id": user_data.get("assigned_to_id"),
-        "assigned_to_name": user_data.get("assigned_to_name"),
-        "sent_today_times": [],
-        "status": "pending",
-        "completed_at": None,
-        "completed_by": None,
-        "created_at": datetime.now(tashkent_tz).isoformat()
-    }
-    
-    new_id = await insert_task(new_task)
-    if new_id:
-        new_task["id"] = new_id
-        TASKS_DATABASE.append(new_task)
-    else:
-        await message.answer("❌ Vazifani saqlashda xatolik yuz berdi. Qayta urinib ko'ring.")
-        await state.clear()
-        return
-    
-        # TO'LIQ TOZALANGAN REPORT_TEXT (hech qanday HTML xatosi yo'q)
-    report_text = (
-        "🎉 <b>Yangi vazifa muvaffaqiyatli yaratildi!</b>\n\n"
-        f"📋 <b>Turi:</b> {new_task['task_type']}\n"
-        f"📌 <b>Nomi:</b> {new_task['task_name']}\n"
-    )
-    if is_daily:
-        report_text += f"📝 <b>Izoh:</b> {new_task['task_description']}\n"
-    else:
-        report_text += (
-            f"📅 <b>Amal qilish kunlari:</b> {new_task['task_days']}\n"
-            f"🔢 <b>Takrorlanish chastotasi:</b> {new_task['task_frequency']}\n"
-            f"⏰ <b>Belgilangan vaqt(lar)i:</b> {', '.join(new_task['task_times'])}\n"
-        )
-    report_text += (
-        f"📸 <b>Talab etiladigan isbot:</b> {message.text}\n"
-        f"👤 <b>Masul xodim:</b> {new_task['assigned_to_name']}\n"
-        f"📊 <b>Holat:</b> ⏳ Kutilmoqda"
-    )
-    
-    await message.answer(text=report_text, parse_mode="HTML")
 
-    role = USERS_ROLES[str(message.from_user.id)]["role"]
-    await message.answer(text="Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
-    
-    try:
-        if is_daily:
-            employee_text = (
-                f"🔔 <b>Sizga yangi kunlik vazifa yuklatildi!</b>\n\n"
-                f"📌 <b>Vazifa nomi:</b> {new_task['task_name']}\n"
-                f"📝 <b>Izoh (Admin eslatmasi):</b> {new_task['task_description']}\n\n"
-                f"Vazifani bajarib, quyidagi tugma orqali hisobot (isbot) yuboring 👇"
-            )
-            await message.bot.send_message(
-                chat_id=new_task["assigned_to_id"],
-                text=employee_text,
-                parse_mode="HTML",
-                reply_markup=get_task_complete_keyboard(new_task["id"])
-            )
-        else:
-            await message.bot.send_message(
-                chat_id=new_task["assigned_to_id"],
-                text=f"🔔 <b>Sizga yangi muntazam vazifa yuklatildi!</b>\n\n"
-                     f"📌 <b>Vazifa nomi:</b> {new_task['task_name']}\n"
-                     f"⏰ <b>Belgilangan vaqt(lar)i:</b> {', '.join(new_task['task_times'])}",
-                parse_mode="HTML"
-            )
-    except Exception as e:
-        print(f"Xodimga bildirishnoma yuborishda xatolik: {e}")
-        
-    await state.clear()
-    logging.info(f"Vazifa yaratildi, state tozalandi. Task ID: {task_id}")
+    await create_and_save_task(message, state, message.text)
 
 
 # ================= VAZIFALAR RO'YXATI =================

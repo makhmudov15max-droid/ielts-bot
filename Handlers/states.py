@@ -11,6 +11,7 @@ class TaskStates(StatesGroup):
     waiting_for_multiple_times = State()  # Bir nechta vaqtni vergul bilan kutish
     
     # ================= VAZIFA YARATISH BOSQICHLARI =================
+    waiting_for_task_mode = State()       # Tezkor yoki To'liq rejim tanlash
     waiting_for_proof_type = State()      # Isbot turini kutish (Photo/Video/Text)
     waiting_for_target_role = State()     # Qaysi unvonga biriktirishni kutish
     waiting_for_target_user = State()     # Aniq qaysi xodimga biriktirishni kutish
