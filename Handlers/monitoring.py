@@ -3,6 +3,7 @@ from utils.attendance_db import (
     get_attendance_by_user_and_month,
     get_attendance_by_user_today,
     get_attendance_by_dates,
+    get_attendance_by_user_and_date,
     has_checkin_today,
     get_missed_days,
 )
@@ -287,9 +288,10 @@ def get_employee_list_keyboard(role: str):
 def get_period_keyboard():
     return types.ReplyKeyboardMarkup(
         keyboard=[
-            [types.KeyboardButton(text="📅 Bugun"), types.KeyboardButton(text="📅 Bu oy")], 
-            [types.KeyboardButton(text="📆 Sana (multiple select)"), types.KeyboardButton(text="🏠 Bosh sahifa")],
-            [types.KeyboardButton(text="⬅️ Ortga")],
+            [types.KeyboardButton(text="📅 Bugun"), types.KeyboardButton(text="📅 Kecha")],
+            [types.KeyboardButton(text="📅 Bu oy"), types.KeyboardButton(text="📆 O'tgan oy")],
+            [types.KeyboardButton(text="📅 Shu hafta"), types.KeyboardButton(text="📆 Sana")],
+            [types.KeyboardButton(text="🏠 Bosh sahifa"), types.KeyboardButton(text="⬅️ Ortga")],
         ],
         resize_keyboard=True
     )
@@ -575,7 +577,74 @@ async def monitoring_period_this_month(message: types.Message, state: FSMContext
         await message.answer(report, parse_mode="HTML", reply_markup=get_period_keyboard())
 
 
-@monitoring_router.message(MonitoringStates.waiting_for_period, F.text == "📆 Sana (multiple select)")
+@monitoring_router.message(MonitoringStates.waiting_for_period, F.text == "📅 Kecha")
+async def monitoring_period_yesterday(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    uid = data.get("selected_user_id")
+    name = data.get("selected_name")
+    yesterday = (datetime.now(TASHKENT_TZ) - timedelta(days=1)).strftime("%Y-%m-%d")
+
+    if uid == "ALL":
+        role = data.get("selected_role", "Admin")
+        await send_all_employees_report(message, yesterday, yesterday, f"📅 Kechagi ({yesterday}) hisobot", role)
+    else:
+        records = await get_attendance_by_user_and_date(uid, yesterday)
+        title = f"📅 <b>{name} — Kechagi ({yesterday}) hisobot</b>"
+        report = await format_attendance_report(records, title)
+        await message.answer(report, parse_mode="HTML", reply_markup=get_period_keyboard())
+
+
+@monitoring_router.message(MonitoringStates.waiting_for_period, F.text == "📅 Shu hafta")
+async def monitoring_period_this_week(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    uid = data.get("selected_user_id")
+    name = data.get("selected_name")
+    now = datetime.now(TASHKENT_TZ)
+    # Dushanbadan bugungacha
+    weekday = now.weekday()  # 0=Dushanba, 6=Yakshanba
+    monday = now - timedelta(days=weekday)
+    start = monday.strftime("%Y-%m-%d")
+    end = now.strftime("%Y-%m-%d")
+
+    if uid == "ALL":
+        role = data.get("selected_role", "Admin")
+        await send_all_employees_report(message, start, end, f"📅 Shu hafta ({start} — {end})", role)
+    else:
+        date_list = []
+        d = monday
+        while d <= now:
+            date_list.append(d.strftime("%Y-%m-%d"))
+            d += timedelta(days=1)
+        records = await get_attendance_by_dates(uid, date_list)
+        title = f"📅 <b>{name} — Shu hafta ({start} — {end})</b>"
+        report = await format_attendance_report(records, title)
+        await message.answer(report, parse_mode="HTML", reply_markup=get_period_keyboard())
+
+
+@monitoring_router.message(MonitoringStates.waiting_for_period, F.text == "📆 O'tgan oy")
+async def monitoring_period_last_month(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    uid = data.get("selected_user_id")
+    name = data.get("selected_name")
+    now = datetime.now(TASHKENT_TZ)
+    first_day_this = now.replace(day=1)
+    last_day_prev = first_day_this - timedelta(days=1)
+    first_day_prev = last_day_prev.replace(day=1)
+    start = first_day_prev.strftime("%Y-%m-%d")
+    end = last_day_prev.strftime("%Y-%m-%d")
+    label = f"{first_day_prev.year}-{first_day_prev.month:02d}"
+
+    if uid == "ALL":
+        role = data.get("selected_role", "Admin")
+        await send_all_employees_report(message, start, end, f"📆 O'tgan oy ({label}) hisobot", role)
+    else:
+        records = await get_attendance_by_user_and_month(uid, first_day_prev.year, first_day_prev.month)
+        title = f"📆 <b>{name} — O'tgan oy ({label}) hisobot</b>"
+        report = await format_attendance_report(records, title)
+        await message.answer(report, parse_mode="HTML", reply_markup=get_period_keyboard())
+
+
+@monitoring_router.message(MonitoringStates.waiting_for_period, F.text == "📆 Sana")
 async def monitoring_period_custom(message: types.Message, state: FSMContext):
     await state.set_state(MonitoringStates.waiting_for_custom_dates)
     await message.answer(
