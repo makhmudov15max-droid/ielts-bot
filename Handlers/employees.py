@@ -243,11 +243,29 @@ async def fire_staff_callback(call: types.CallbackQuery, state: FSMContext):
         USERS_ROLES[target_user_id]["role"] = "rejected"
         await save_users(USERS_ROLES)
         
-        await call.message.edit_text(
-            text=f"❌ <b>Xodim botdan chetlashtirildi!</b>\n\n"
-                 f"👤 <b>{staff_name}</b> endi tizimga kira olmaydi va unga avtomatik vazifalar yuborilmaydi.",
-            parse_mode="HTML"
-        )
+        # Qolgan faol xodimlar ro'yxatini ko'rsatish
+        remaining = {
+            u_id: u_info for u_id, u_info in USERS_ROLES.items() 
+            if isinstance(u_info, dict) and u_info.get("name") and u_info.get("role") != "rejected" and u_id != str(ADMIN_ID)
+        }
+        
+        if remaining:
+            remaining_kb = []
+            for u_id, u_info in remaining.items():
+                remaining_kb.append([types.InlineKeyboardButton(text=f"⚙️ {u_info['name']}", callback_data=f"editstaff_{u_id}")])
+            
+            await call.message.edit_text(
+                text=f"❌ <b>{staff_name}</b> chetlashtirildi.\n\n"
+                     f"👥 Qolgan faol xodimlar:",
+                parse_mode="HTML",
+                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=remaining_kb)
+            )
+        else:
+            await call.message.edit_text(
+                text=f"❌ <b>{staff_name}</b> chetlashtirildi.\n\n"
+                     f"📭 Boshqa faol xodim qolmadi.",
+                parse_mode="HTML"
+            )
         
         try:
             await call.bot.send_message(
@@ -368,13 +386,32 @@ async def save_archive_role_callback(call: types.CallbackQuery, state: FSMContex
         has_name = USERS_ROLES[target_user_id].get("name") is not None
         display_name = USERS_ROLES[target_user_id]["name"] if has_name else "Xodim"
         
-        await call.message.edit_text(
-            text=f"✅ <b>Muvaffaqiyatli tiklandi!</b>\n\n"
-                 f"👤 Xodim: <b>{display_name}</b>\n"
-                 f"🎖 Yangi biriktirilgan lavozim: <b>{new_role}</b>\n\n"
-                 f"<i>Xodimga tizim qayta faollashtirilgani haqida xabarnoma yuborildi.</i>",
-            parse_mode="HTML"
-        )
+        # Qolgan arxiv foydalanuvchilarni yangilash
+        remaining = {
+            u_id: u_info for u_id, u_info in USERS_ROLES.items()
+            if isinstance(u_info, dict) and u_info.get("role") == "rejected"
+        }
+        
+        if remaining:
+            # Qolgan arxiv ro'yxatini qayta ko'rsatish
+            remaining_kb = []
+            for idx, (u_id, u_info) in enumerate(remaining.items(), 1):
+                dname = u_info.get("name") if u_info.get("name") else f"Foydalanuvchi [ID: {u_id}]"
+                remaining_kb.append([types.InlineKeyboardButton(text=f"🔄 {dname}", callback_data=f"restorestaff_{u_id}")])
+            
+            await call.message.edit_text(
+                text=f"✅ <b>{display_name}</b> — {new_role} sifatida tiklandi!\n\n"
+                     f"🗄 Qolgan arxiv foydalanuvchilar:\n"
+                     f"<i>(Davom ettirish uchun tanlang)</i>",
+                parse_mode="HTML",
+                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=remaining_kb)
+            )
+        else:
+            await call.message.edit_text(
+                text=f"✅ <b>{display_name}</b> — {new_role} sifatida tiklandi!\n\n"
+                     f"📭 Arxiv bo'sh — boshqa foydalanuvchi qolmadi.",
+                parse_mode="HTML"
+            )
         
         try:
             if has_name:
