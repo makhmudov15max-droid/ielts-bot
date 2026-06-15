@@ -639,6 +639,19 @@ async def monitoring_custom_dates_entered(message: types.Message, state: FSMCont
 
 
 # ================= BARCHA XODIMLAR UCHUN HISOBOT =================
+MONTHS_UZ = {
+    1: "yanvar", 2: "fevral", 3: "mart", 4: "aprel", 5: "may", 6: "iyun",
+    7: "iyul", 8: "avgust", 9: "sentabr", 10: "oktabr", 11: "noyabr", 12: "dekabr"
+}
+
+def format_short_date(date_str: str) -> str:
+    """YYYY-MM-DD -> DD-oy"""
+    try:
+        y, m, d = date_str.split("-")
+        return f"{int(d):02d}-{MONTHS_UZ.get(int(m), m)}"
+    except:
+        return date_str
+
 async def send_all_employees_report(message: types.Message, start_date: str, end_date: str, title: str, role: str = "Admin"):
     employees = get_all_users_by_role(role)
     
@@ -648,35 +661,39 @@ async def send_all_employees_report(message: types.Message, start_date: str, end
     
     start = datetime.strptime(start_date, "%Y-%m-%d")
     end = datetime.strptime(end_date, "%Y-%m-%d")
+    today = datetime.now(TASHKENT_TZ).strftime("%Y-%m-%d")
+    
+    # Faqat bugungacha bo'lgan sanalar
     date_list = []
     current = start
     while current <= end:
-        date_list.append(current.strftime("%Y-%m-%d"))
+        d = current.strftime("%Y-%m-%d")
+        if d <= today:
+            date_list.append(d)
         current += timedelta(days=1)
     
-    # Bayram kunlarini olish
     holidays_set = await get_holiday_dates()
     
-    # Sarlavha
-    await message.answer(f"👥 <b>{title}</b>\\n\\n📊 {len(employees)} ta xodim", parse_mode="HTML")
+    await message.answer(f"👥 <b>{title}</b>\\n📊 {len(employees)} ta xodim", parse_mode="HTML")
     
     for uid, name in employees:
         records = await get_attendance_by_dates(uid, date_list)
         user_work_start, user_work_end = await get_user_work_time(uid)
         
-        # Kunlik batafsil hisobot
-        report_lines = []
-        checked_count = 0
-        missed_count = 0
+        # Kategoriyalarga ajratish
+        on_time = []      # ✅ vaqtida
+        late = []         # ⚠️ kech
+        missed = []       # ❌ kelmagan
+        holiday_days = [] # 🎉 bayram
         total_late_min = 0
+        checked_count = 0
         
         for day in date_list:
             day_records = [r for r in records if r.get("date") == day]
-            is_holiday = is_holiday_date(day, holidays_set)
+            short = format_short_date(day)
             
-            if is_holiday:
-                report_lines.append(f"   {day} — 🎉 Bayram")
-                continue
+            if is_holiday_date(day, holidays_set):
+                continue  # Bayramlarni butunlay o'tkazib yuboramiz
             
             if day_records:
                 r = day_records[0]
@@ -690,65 +707,44 @@ async def send_all_employees_report(message: types.Message, start_date: str, end
                         total_late_min += late_min
                         reason = r.get("reason", "")
                         reason_text = f" — {reason}" if reason and reason != "Ishga kelish tasdiqlandi" else ""
-                        report_lines.append(f"   {day} — ⚠️ Kech: {arrived_at} (+{late_min} daq){reason_text}")
+                        late.append(f"   {short} — {arrived_at} (+{late_min} daq){reason_text}")
                     else:
-                        report_lines.append(f"   {day} — ✅ {arrived_at} (vaqtida)")
-                elif status == "missed":
-                    missed_count += 1
-                    report_lines.append(f"   {day} — ❌ Kelmagan")
+                        on_time.append(f"   {short} — {arrived_at}")
                 else:
-                    missed_count += 1
-                    report_lines.append(f"   {day} — ❌ Tasdiqlanmagan")
+                    missed.append(short)
             else:
-                missed_count += 1
-                report_lines.append(f"   {day} — ❌ Ma'lumot yo'q")
+                missed.append(short)
         
-        # Xulosa
+        # Hisobotni yig'ish
+        total_work_days = len(date_list) - len([d for d in date_list if is_holiday_date(d, holidays_set)])
         h, m = divmod(total_late_min, 60)
-        total_days = len(date_list) - len([d for d in date_list if is_holiday_date(d, holidays_set)])
         
         report = (
             f"👤 <b>{name}</b>\\n"
-            f"📋 Ish vaqti: {user_work_start} — {user_work_end}\\n"
-            f"{'─' * 20}\\n"
+            f"📋 Ish vaqti: {user_work_start} — {user_work_end}\\n\\n"
         )
-        report += "\\n".join(report_lines)
+        
+        if on_time:
+            report += f"✅ <b>VAQTIDA KELGAN ({len(on_time)} kun):</b>\\n"
+            report += "\\n".join(on_time) + "\\n\\n"
+        
+        if late:
+            report += f"⚠️ <b>KECH QOLGAN ({len(late)} kun):</b>\\n"
+            report += "\\n".join(late) + "\\n\\n"
+        
+        if missed:
+            report += f"❌ <b>KELMAGAN ({len(missed)} kun):</b>\\n"
+            report += f"   {', '.join(missed)}\\n\\n"
+        
         report += (
-            f"\\n{'─' * 20}\\n"
-            f"📊 <b>Jami:</b> ✅ {checked_count}/{total_days} kun | "
+            f"{'─' * 20}\\n"
+            f"📊 <b>Jami:</b> ✅ {checked_count}/{total_work_days} kun | "
             f"⚠️ Kechikish: {h} soat {m} daq"
         )
         
-        # Telegram limiti: ~4000 belgi
-        if len(report) > 3800:
-            # Katta hisobotlarni 2 qismga bo'lish
-            mid = len(report_lines) // 2
-            part1 = (
-                f"👤 <b>{name}</b> (1/2)\\n"
-                f"📋 Ish vaqti: {user_work_start} — {user_work_end}\\n"
-                f"{'─' * 20}\\n"
-            )
-            part1 += "\\n".join(report_lines[:mid])
-            
-            part2 = (
-                f"👤 <b>{name}</b> (2/2)\\n"
-                f"{'─' * 20}\\n"
-            )
-            part2 += "\\n".join(report_lines[mid:])
-            part2 += (
-                f"\\n{'─' * 20}\\n"
-                f"📊 <b>Jami:</b> ✅ {checked_count}/{total_days} kun | "
-                f"⚠️ Kechikish: {h} soat {m} daq"
-            )
-            
-            await message.answer(part1, parse_mode="HTML")
-            await message.answer(part2, parse_mode="HTML")
-        else:
-            await message.answer(report, parse_mode="HTML")
-        
-        await asyncio.sleep(0.3)  # Rate limit uchun
+        await message.answer(report, parse_mode="HTML")
+        await asyncio.sleep(0.3)
     
-    # Yakuniy menyu
     await message.answer("📅 Boshqa davr uchun tanlang:", reply_markup=get_period_keyboard())
 
 
