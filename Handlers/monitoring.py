@@ -484,7 +484,7 @@ async def monitoring_employee_home(message: types.Message, state: FSMContext):
 @monitoring_router.message(MonitoringStates.waiting_for_employee_choice, F.text == "⬅️ Ortga")
 async def monitoring_employee_back(message: types.Message, state: FSMContext):
     await state.set_state(MonitoringStates.waiting_for_role)
-    await message.answer("📍 <b>Monitoring</b>\n\nQaysi bo'lim xodimlarini ko'rmoqchisiz?", reply_markup=get_role_keyboard())
+    await message.answer("📍 <b>Monitoring</b>\n\nQaysi bo'lim xodimlarini ko'rmoqchisiz?", parse_mode="HTML", reply_markup=get_role_keyboard())
 
 
 @monitoring_router.message(MonitoringStates.waiting_for_employee_choice, F.text == "👥 Barcha xodimlar")
@@ -543,7 +543,7 @@ async def monitoring_period_back(message: types.Message, state: FSMContext):
     data = await state.get_data()
     role = data.get("selected_role", "Admin")
     await state.set_state(MonitoringStates.waiting_for_employee_choice)
-    await message.answer(f"📍 <b>Monitoring › {role}</b>\n\n👤 Xodimlardan birini tanlang:", reply_markup=get_employee_list_keyboard(role))
+    await message.answer(f"📍 <b>Monitoring › {role}</b>\n\n👤 Xodimlardan birini tanlang:", parse_mode="HTML", reply_markup=get_employee_list_keyboard(role))
 
 
 @monitoring_router.message(MonitoringStates.waiting_for_period, F.text == "📅 Bugun")
