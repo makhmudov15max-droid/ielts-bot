@@ -10,7 +10,7 @@ from aiogram.fsm.context import FSMContext
 from utils.users_db import save_users
 from utils.tasks_db import save_tasks, load_tasks, reset_sent_today_times
 from utils.access import check_user_access
-from utils.attendance_db import has_checkin_today, mark_missed_for_date
+from utils.attendance_db import has_checkin_today, mark_missed_for_date, get_attendance_by_user_and_date
 from utils.users_db import get_user_work_time
 from utils.holidays_db import is_today_global_holiday
 
@@ -259,6 +259,23 @@ async def auto_task_scheduler(bot):
                         if not await has_checkin_today(str(user_id)):
                             await mark_missed_for_date(str(user_id), today_str)
                     last_daily_check_date = today_str
+                
+                # ===== XAVFSIZLIK TARMOG'I: 00:05 da kechagi kun uchun tekshiruv =====
+                # Agar bot 23:59 da restart bo'lib qolgan bo'lsa, kechagi kun
+                # missed belgilanmagan bo'lishi mumkin. Shu yerda tekshiramiz.
+                if current_time_str == "00:05":
+                    yesterday = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+                    logging.info(f"Kechagi kun xavfsizlik tekshiruvi: {yesterday}")
+                    for user_id, user_info in USERS_ROLES.items():
+                        if not isinstance(user_info, dict):
+                            continue
+                        role = user_info.get("role")
+                        if role in ["Owner", "Manager"]:
+                            continue
+                        existing = await get_attendance_by_user_and_date(str(user_id), yesterday)
+                        if not existing:
+                            await mark_missed_for_date(str(user_id), yesterday)
+                            logging.info(f"Xavfsizlik: {user_id} kechagi kun ({yesterday}) missed belgilandi")
             
             if current_time_str != last_checked_minute:
                 for task in TASKS_DATABASE:

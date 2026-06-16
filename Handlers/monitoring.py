@@ -909,9 +909,40 @@ async def late_reason_back(message: types.Message, state: FSMContext):
 
 @monitoring_router.message(MonitoringStates.waiting_for_late_reason)
 async def late_reason_entered(message: types.Message, state: FSMContext):
+    reason = message.text.strip()
+    
+    # ===== MENU TUGMALARINI FILTRLASH =====
+    # Agar foydalanuvchi eski state'da qolib ketgan bo'lsa va
+    # "Ishga keldim" yoki boshqa menyu tugmasini bossa —
+    # uni sabab sifatida qabul qilmaymiz, state'ni tozalaymiz.
+    menu_buttons = [
+        "✅ Ishga keldim", "⏰ Kech qoldim",
+        "🏠 Bosh sahifa", "⬅️ Ortga",
+        "📊 Hisobot", "⚙️ Sozlamalar",
+        "📋 Vazifalar", "📝 Topshiriqlar",
+    ]
+    if reason in menu_buttons:
+        await state.clear()
+        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "")
+        await message.answer(
+            "🏠 Asosiy menyuga qaytdingiz.",
+            reply_markup=get_main_menu(role)
+        )
+        return
+    
     data = await state.get_data()
     attendance_id = data.get("pending_attendance_id")
-    reason = message.text.strip()
+    
+    # Agar state ma'lumotlari to'liq bo'lmasa
+    if not attendance_id:
+        await state.clear()
+        role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "")
+        await message.answer(
+            "⚠️ Oldingi amal bekor qilindi. Qaytadan urinib ko'ring.",
+            reply_markup=get_main_menu(role)
+        )
+        return
+    
     user_name = data.get("user_name")
     role = data.get("role")
     arrived_at = data.get("arrived_at")
@@ -965,7 +996,15 @@ class CheckInStates(StatesGroup):
 @monitoring_router.message(F.text == "✅ Ishga keldim")
 async def check_in_start_handler(message: types.Message, state: FSMContext):
     user_id = str(message.from_user.id)
-    today = datetime.now(TASHKENT_TZ).strftime("%Y-%m-%d")
+    now = datetime.now(TASHKENT_TZ)
+    today = now.strftime("%Y-%m-%d")
+    current_time = now.strftime("%H:%M")
+    
+    # ===== ESKI STATE'NI TOZALASH =====
+    # Agar oldingi kundan qolgan state bo'lsa (masalan, kechikish sababi
+    # kiritilmagan bo'lsa), uni tozalaymiz. Bu kechagi sana/vaqt bilan
+    # noto'g'ri xabar chiqishini oldini oladi.
+    await state.clear()
     
     # ===== BUGUN BAYRAM KUNI TEKSHIRISH =====
     is_holiday = await is_today_global_holiday()
@@ -985,6 +1024,96 @@ async def check_in_start_handler(message: types.Message, state: FSMContext):
             reply_markup=get_main_menu(USERS_ROLES.get(user_id, {}).get("role", ""))
         )
         return
+    
+    # ===== ISH VAQTI CHEKLOVI =====
+    # "Ishga keldim" tugmasini faqat ish vaqtidan 2 soat oldin bosish mumkin.
+    # Ish vaqti tugaganidan keyin ham bosib bo'lmaydi.
+    role = USERS_ROLES.get(user_id, {}).get("role", "")
+    work_start, work_end = await get_user_work_time(user_id)
+    if not work_start or not work_end:
+        await message.answer(
+            "❌ Ish vaqtingiz belgilanmagan. Iltimos, adminga murojaat qiling.",
+            reply_markup=get_main_menu(role)
+        )
+        return
+    
+    try:
+        ws_h, ws_m = map(int, work_start.split(":"))
+        we_h, we_m = map(int, work_end.split(":"))
+        now_h, now_m = map(int, current_time.split(":"))
+        
+        ws_minutes = ws_h * 60 + ws_m   # Ish boshlanish vaqti (daqiqada)
+        we_minutes = we_h * 60 + we_m   # Ish tugash vaqti (daqiqada)
+        now_minutes = now_h * 60 + now_m  # Hozirgi vaqt (daqiqada)
+        
+        # 2 soatlik oyna: ish boshlanishidan 120 daqiqa oldin
+        two_hours_before = ws_minutes - 120
+        if two_hours_before < 0:
+            two_hours_before += 24 * 60  # Tungi smena uchun
+        
+        # Ish vaqti tugaganidan keyin 60 daqiqa qo'shimcha vaqt
+        we_end_grace = we_minutes + 60
+        
+        if ws_minutes < we_minutes:
+            # ===== KUNDUZGI SMENA (masalan: 09:00 - 18:00) =====
+            if now_minutes < two_hours_before:
+                # Ishga 2 soatdan ko'proq vaqt bor → ruxsat YO'Q
+                diff = ws_minutes - now_minutes
+                hours_left = diff // 60
+                minutes_left = diff % 60
+                await message.answer(
+                    f"⏰ <b>Ish vaqtingizga hali {hours_left} soat {minutes_left} daqiqa bor.</b>\n\n"
+                    f"✅ 'Ishga keldim' tugmasini ish vaqtidan <b>2 soat oldin</b> bosishingiz mumkin.\n\n"
+                    f"📋 Ish vaqtingiz: {work_start} - {work_end}\n\n"
+                    f"💡 <b>Eslatma:</b> Agar bugun ishga kelishni unutsangiz, "
+                    f"bot avtomatik ravishda sizni 'kelmadi' deb belgilaydi.",
+                    parse_mode="HTML",
+                    reply_markup=get_main_menu(role)
+                )
+                return
+            
+            if now_minutes > we_end_grace:
+                # Ish vaqti tugagan → ruxsat YO'Q
+                await message.answer(
+                    f"❌ <b>Bugungi ish vaqti tugagan ({work_end}).</b>\n\n"
+                    f"Ertangi kun uchun ertaga belgilashingiz mumkin.",
+                    parse_mode="HTML",
+                    reply_markup=get_main_menu(role)
+                )
+                return
+        else:
+            # ===== TUNGI SMENA (masalan: 22:00 - 06:00) =====
+            # Tungi smenada "ish vaqtida" bo'lish: now >= ws yoki now < we
+            in_work_time = (now_minutes >= ws_minutes) or (now_minutes < we_minutes)
+            in_grace = (now_minutes >= we_minutes) and (now_minutes <= we_end_grace)
+            before_work = (now_minutes < ws_minutes) and (now_minutes >= we_end_grace)
+            
+            if before_work and now_minutes < two_hours_before:
+                diff = ws_minutes - now_minutes
+                if diff < 0:
+                    diff += 24 * 60
+                hours_left = diff // 60
+                minutes_left = diff % 60
+                await message.answer(
+                    f"⏰ <b>Ish vaqtingizga hali {hours_left} soat {minutes_left} daqiqa bor.</b>\n\n"
+                    f"✅ 'Ishga keldim' tugmasini ish vaqtidan <b>2 soat oldin</b> bosishingiz mumkin.\n\n"
+                    f"📋 Ish vaqtingiz: {work_start} - {work_end}",
+                    parse_mode="HTML",
+                    reply_markup=get_main_menu(role)
+                )
+                return
+            
+            # Tungi smena tugaganidan keyin 1 soatdan ko'p vaqt o'tgan
+            if not in_work_time and not in_grace and not before_work:
+                await message.answer(
+                    f"❌ <b>Bugungi ish vaqti tugagan ({work_end}).</b>\n\n"
+                    f"Ertangi kun uchun ertaga belgilashingiz mumkin.",
+                    parse_mode="HTML",
+                    reply_markup=get_main_menu(role)
+                )
+                return
+    except Exception as e:
+        logging.error(f"Ish vaqti cheklovini tekshirishda xatolik: {e}")
     
     await state.set_state(CheckInStates.waiting_for_video)
     await message.answer(
