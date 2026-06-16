@@ -1149,6 +1149,25 @@ async def check_in_video_handler(message: types.Message, state: FSMContext):
         )
         return
     
+    # ===== FORWARD QILINGAN VIDEOLARNI QABUL QILMASLIK =====
+    # Xodimlar oldindan olib qo'yilgan yoki boshqa chatdan
+    # forward qilingan videolarni isbot sifatida yubora olmaydi.
+    # Faqat shu yerda, hoziroq olingan video qabul qilinadi.
+    if message.forward_date or message.forward_from or message.forward_from_chat:
+        await message.answer(
+            text="🚫 <b>Qabul qilinmadi!</b>\n\n"
+                 "❌ Boshqa chatdan forward qilingan yoki eski video qabul qilinmaydi.\n\n"
+                 "📹 <b>Faqat hoziroq, shu chatda olingan dumaloq video yuboring:</b>\n"
+                 "1. Mikrofon tugmasini bosing va ushlab turing\n"
+                 "2. <b>Video</b> tugmasiga o'ting\n"
+                 "3. Yozish tugmasini bosing\n"
+                 "4. Yozib bo'lgach, jo'natish tugmasini bosing\n\n"
+                 "⚠️ <b>Saved Messages yoki boshqa chatlardagi videolar ishlamaydi.</b>",
+            parse_mode="HTML",
+            reply_markup=get_back_home_keyboard()
+        )
+        return
+    
     work_start, work_end = await get_user_work_time(user_id)
     
     try:
@@ -1345,6 +1364,18 @@ async def task_proof_handler(message: types.Message, state: FSMContext):
         await message.answer("❌ Vazifa topilmadi. Ehtimol o'chirilgan.")
         await state.clear()
         await set_user_free(user_id)
+        return
+    
+    # ===== FORWARD QILINGAN VIDEOLARNI QABUL QILMASLIK =====
+    if message.forward_date or message.forward_from or message.forward_from_chat:
+        await message.answer(
+            text="🚫 <b>Qabul qilinmadi!</b>\n\n"
+                 "❌ Boshqa chatdan forward qilingan yoki eski media qabul qilinmaydi.\n\n"
+                 "📹 <b>Faqat hoziroq, shu chatda olingan isbot yuboring.</b>\n\n"
+                 "⚠️ Saved Messages yoki boshqa chatlardagi fayllar ishlamaydi.",
+            parse_mode="HTML",
+            reply_markup=get_back_home_keyboard()
+        )
         return
     
     # Isbot turini tekshirish
