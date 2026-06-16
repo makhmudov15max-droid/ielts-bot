@@ -916,7 +916,7 @@ async def late_reason_entered(message: types.Message, state: FSMContext):
     # "Ishga keldim" yoki boshqa menyu tugmasini bossa —
     # uni sabab sifatida qabul qilmaymiz, state'ni tozalaymiz.
     menu_buttons = [
-        "✅ Ishga keldim", "⏰ Kech qoldim",
+        "✅ Ishga keldim",
         "🏠 Bosh sahifa", "⬅️ Ortga",
         "📊 Hisobot", "⚙️ Sozlamalar",
         "📋 Vazifalar", "📝 Topshiriqlar",

@@ -14,34 +14,34 @@ def get_main_menu(role: str):
         ]
     elif role == "Admin":
         keyboard = [
-            [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="⏰ Kech qoldim")],
+            [KeyboardButton(text="✅ Ishga keldim")],
             [KeyboardButton(text="📋 Vazifalar roʻyxati"), KeyboardButton(text="📊 Admin oylik")],
             [KeyboardButton(text="📑 Guruh Report")]
         ]
     elif role == "Kassir":
         keyboard = [
-            [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="⏰ Kech qoldim")],
+            [KeyboardButton(text="✅ Ishga keldim")],
             [KeyboardButton(text="📋 Vazifalar roʻyxati"), KeyboardButton(text="💰 Kassir oylik")]
         ]
     elif role == "Sanitar":
         keyboard = [
-            [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="⏰ Kech qoldim")],
+            [KeyboardButton(text="✅ Ishga keldim")],
             [KeyboardButton(text="📋 Vazifalar roʻyxati")]
         ]
     elif role == "Maintenance":
         keyboard = [
-            [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="⏰ Kech qoldim")],
+            [KeyboardButton(text="✅ Ishga keldim")],
             [KeyboardButton(text="📋 Vazifalar roʻyxati")]
         ]
     elif role == "Head Admin":
         keyboard = [
-            [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="⏰ Kech qoldim")],
+            [KeyboardButton(text="✅ Ishga keldim")],
             [KeyboardButton(text="➕ Vazifa qoʻshish"), KeyboardButton(text="📋 Vazifalar roʻyxati"), KeyboardButton(text="🗑 Vazifani oʻchirish")],
             [KeyboardButton(text="📊 Admin oylik"), KeyboardButton(text="💰 Kassir oylik"), KeyboardButton(text="📑 Guruh Report")]
         ]
     else:
         keyboard = [
-            [KeyboardButton(text="✅ Ishga keldim"), KeyboardButton(text="⏰ Kech qoldim")],
+            [KeyboardButton(text="✅ Ishga keldim")],
             [KeyboardButton(text="📋 Vazifalar roʻyxati")]
         ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
