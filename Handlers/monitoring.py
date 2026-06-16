@@ -1504,3 +1504,19 @@ async def task_proof_back(message: types.Message, state: FSMContext):
     role = USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
     await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
 
+
+# ============================================================
+#  /chatid — guruh chat ID'sini bilish uchun vaqtinchalik komanda
+# ============================================================
+@monitoring_router.message(F.text == "/chatid")
+async def chatid_handler(message: types.Message):
+    chat_id = message.chat.id
+    chat_type = message.chat.type
+    chat_title = message.chat.title or "Shaxsiy chat"
+    await message.answer(
+        f"📋 <b>Guruh ma'lumotlari:</b>\n\n"
+        f"🆔 <b>Chat ID:</b> <code>{chat_id}</code>\n"
+        f"📝 <b>Nomi:</b> {chat_title}\n"
+        f"📂 <b>Turi:</b> {chat_type}",
+        parse_mode="HTML"
+    )
