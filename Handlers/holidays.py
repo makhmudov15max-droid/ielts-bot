@@ -109,6 +109,7 @@ def parse_bulk_input(text: str):
 def get_holiday_action_keyboard():
     return types.ReplyKeyboardMarkup(
         keyboard=[
+            [types.KeyboardButton(text="🇺🇿 O'zbekiston bayramlari")],
             [types.KeyboardButton(text="📝 Ta'til kiritish"), types.KeyboardButton(text="✏️ Ta'til o'zgartirish")],
             [types.KeyboardButton(text="🗑 Barcha ta'tilni o'chirish")],
             [types.KeyboardButton(text="🏠 Bosh sahifa"), types.KeyboardButton(text="⬅️ Ortga")],
@@ -145,6 +146,40 @@ async def holidays_action_back(message: types.Message, state: FSMContext):
     await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
 
 
+# ================= O'ZBEKISTON BAYRAMLARI PRESET =================
+UZBEKISTAN_HOLIDAYS = [
+    # Qat'iy bayramlar (har yili takrorlanadi) — DD-MM format
+    ("Mustaqillik kuni", "01-09", True),
+    ("O'qituvchi va murabbiylar kuni", "01-10", True),
+    ("Yangi yil", "01-01", True),
+    ("Xotin-qizlar kuni", "08-03", True),
+    ("Xotira va qadrlash kuni", "09-05", True),
+    # Hayit bayramlari (2026 yil, taxminiy) — DD-MM-YYYY format
+    ("Ramazon Hayit (1-kun) ⚠️", "2026-03-20", False),
+    ("Ramazon Hayit (2-kun) ⚠️", "2026-03-21", False),
+    ("Ramazon Hayit (3-kun) ⚠️", "2026-03-22", False),
+    ("Qurbon Hayit (1-kun) ⚠️", "2026-05-25", False),
+    ("Qurbon Hayit (2-kun) ⚠️", "2026-05-26", False),
+    ("Qurbon Hayit (3-kun) ⚠️", "2026-05-27", False),
+]
+
+
+@holidays_router.message(HolidayStates.waiting_for_action, F.text == "🇺🇿 O'zbekiston bayramlari")
+async def holiday_preset_uzbekistan(message: types.Message, state: FSMContext):
+    """O'zbekiston bayramlarini bir klikda qo'shish"""
+    saved, skipped = await add_holidays_bulk(UZBEKISTAN_HOLIDAYS)
+
+    await message.answer(
+        text=(
+            f"🇺🇿 <b>O'zbekiston bayramlari qo'shildi!</b>\n\n"
+            f"✅ Yangi qo'shilgan: <b>{saved}</b> ta\n"
+            f"⏭ O'tkazib yuborilgan (allaqachon mavjud): <b>{skipped}</b> ta\n\n"
+            f"⚠️ <b>Hayit sanalari taxminiy.</b> Aniq sana e'lon qilingach,\n"
+            f"✏️ Ta'til o'zgartirish orqali yangilang."
+        ),
+        parse_mode="HTML",
+        reply_markup=get_holiday_action_keyboard()
+    )
 @holidays_router.message(HolidayStates.waiting_for_action, F.text == "📝 Ta'til kiritish")
 async def holiday_add_start(message: types.Message, state: FSMContext):
     await state.set_state(HolidayStates.waiting_for_holidays_bulk)
