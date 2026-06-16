@@ -7,4 +7,4 @@ BOT_TOKEN = os.getenv("BOT_TOKEN", "8679587093:***")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "6500594896"))
 
 # Nazoratchi Guruh ID raqami
-REPORTS_GROUP_ID = int(os.getenv("REPORTS_GROUP_ID", "-1003608063747"))
+REPORTS_GROUP_ID = -1003608063747
