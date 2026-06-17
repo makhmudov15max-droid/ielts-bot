@@ -69,7 +69,7 @@ ALL_LEVELS = IELTS_LEVELS + ["IELTS Novice", "General English", "Pre-IELTS"]
 
 
 def format_date_with_hint(date_str: str) -> str:
-    """Sanaga nisbatan hint so'z qo'shish: Ertaga, Ertadan keyin"""
+    """Sanaga nisbatan hint so'z qo'shish: Bugun, Ertaga, Ertadan keyin, X kundan keyin"""
     if not date_str:
         return date_str
     from datetime import datetime, date
@@ -84,6 +84,8 @@ def format_date_with_hint(date_str: str) -> str:
             return f"Ertaga ({date_str})"
         elif diff == 2:
             return f"Ertadan keyin ({date_str})"
+        elif diff > 2:
+            return f"{diff} kundan keyin ({date_str})"
         else:
             return date_str
     except:
