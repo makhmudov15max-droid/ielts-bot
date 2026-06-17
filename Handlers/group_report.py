@@ -273,6 +273,14 @@ async def cancel_teacher_groups(call: types.CallbackQuery, state: FSMContext):
     await call.answer()
 
 
+# ================= STATUS KATEGORIYALARI =================
+# I ustun (status) asosida kategoriyalash
+ACTIVE_STATUSES = ["Aktiv guruh", "Guruh tez orada yakunlanadi"]
+OPENING_SOON_STATUSES = ["Guruh tez orada ochiladi"]
+WAITLIST_STATUSES = ["Guruh kutish ro'yxatida"]
+# Ko'rsatilmaydi: "", "Guruh allaqachon tugagan", "Naborga yangi guruh qo'ying"
+
+
 @report_router.callback_query(ReportStates.waiting_for_teacher_choice, F.data.startswith("teachergroups_"))
 async def show_teacher_groups(call: types.CallbackQuery):
     teacher_name = call.data.replace("teachergroups_", "")
@@ -291,12 +299,13 @@ async def show_teacher_groups(call: types.CallbackQuery):
         await call.answer()
         return
     
-    # Faol (kun qolgan) va tugagan guruhlarga ajratish
-    active = [g for g in teacher_groups if g["days_left"] > 0]
-    ended = [g for g in teacher_groups if g["days_left"] <= 0]
+    # Status asosida 3 kategoriyaga ajratish
+    active_groups = [g for g in teacher_groups if g["status"] in ACTIVE_STATUSES]
+    opening_soon = [g for g in teacher_groups if g["status"] in OPENING_SOON_STATUSES]
+    waitlist = [g for g in teacher_groups if g["status"] in WAITLIST_STATUSES]
     
     text = f"👨🏻‍🏫 <b>{teacher_name}</b>\n"
-    text += f"📊 Jami: {len(teacher_groups)} ta guruh"
+    text += f"📊 Jami: {len(active_groups)} ta guruh"
     
     teacher_scores = get_teacher_scores()
     score = teacher_scores.get(teacher_name)
@@ -305,20 +314,44 @@ async def show_teacher_groups(call: types.CallbackQuery):
     else:
         text += "\n\n"
     
-    if active:
-        text += "✅ <b>FAOL GURUHLAR:</b>\n"
-        for g in active:
+    if active_groups:
+        text += "🟢 <b>AKTIV GURUHLAR:</b>\n"
+        for g in active_groups:
             days_info = f"({g['days_left']} kun qoldi)" if g["days_left"] <= 14 else f"({g['days_left']} kun)"
             text += (
                 f"   📚 {g['group_name']} — {g['level']}\n"
                 f"   📅 {g['end_date']} ⏳ {days_info}\n"
-                f"   📌 {g['status']}\n\n"
+                f"   📌 {g['status']}\n"
             )
+            if g["comment"]:
+                text += f"   📝 {g['comment']}\n"
+            text += "\n"
     
-    if ended:
-        text += "⚫ <b>TUGAGAN GURUHLAR:</b>\n"
-        for g in ended:
-            text += f"   📚 {g['group_name']} — {g['level']}\n"
+    if opening_soon:
+        text += "🟡 <b>TEZ ORADA OCHILADIGAN:</b>\n"
+        for g in opening_soon:
+            text += (
+                f"   📚 {g['group_name']} — {g['level']}\n"
+                f"   📅 {g['end_date']}\n"
+                f"   📌 {g['status']}\n"
+            )
+            if g["comment"]:
+                text += f"   📝 {g['comment']}\n"
+            text += "\n"
+    
+    if waitlist:
+        text += "🔵 <b>YIG'ILAYOTGAN:</b>\n"
+        for g in waitlist:
+            text += (
+                f"   📚 {g['group_name']} — {g['level']}\n"
+                f"   📌 {g['status']}\n"
+            )
+            if g["comment"]:
+                text += f"   📝 {g['comment']}\n"
+            text += "\n"
+    
+    if not active_groups and not opening_soon and not waitlist:
+        text += "📭 Ko'rsatiladigan guruhlar topilmadi.\n"
     
     # "Boshqa ustoz" tugmasi
     teachers = get_unique_teachers()
