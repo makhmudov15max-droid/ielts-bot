@@ -68,6 +68,28 @@ IELTS_LEVELS = [
 ALL_LEVELS = IELTS_LEVELS + ["IELTS Novice", "General English", "Pre-IELTS"]
 
 
+def format_date_with_hint(date_str: str) -> str:
+    """Sanaga nisbatan hint so'z qo'shish: Ertaga, Ertadan keyin"""
+    if not date_str:
+        return date_str
+    from datetime import datetime, date
+    try:
+        parsed = datetime.strptime(date_str.strip(), "%d.%m.%Y").date()
+        today = date.today()
+        diff = (parsed - today).days
+        
+        if diff == 0:
+            return f"Bugun ({date_str})"
+        elif diff == 1:
+            return f"Ertaga ({date_str})"
+        elif diff == 2:
+            return f"Ertadan keyin ({date_str})"
+        else:
+            return date_str
+    except:
+        return date_str
+
+
 def get_teacher_scores():
     if not teachers_sheet:
         return {}
@@ -336,7 +358,7 @@ async def show_teacher_groups(call: types.CallbackQuery):
                 f"   📚 {g['group_name']} — {g['level']}\n"
             )
             if g["start_date"]:
-                text += f"   📅 {g['start_date']}\n"
+                text += f"   📅 {format_date_with_hint(g['start_date'])}\n"
             text += f"   📌 {g['status']}\n"
             if g["comment"]:
                 text += f"   📝 {g['comment']}\n"
@@ -349,7 +371,7 @@ async def show_teacher_groups(call: types.CallbackQuery):
                 f"   📚 {g['group_name']} — {g['level']}\n"
             )
             if g["start_date"]:
-                text += f"   📅 {g['start_date']}\n"
+                text += f"   📅 {format_date_with_hint(g['start_date'])}\n"
             text += f"   📌 {g['status']}\n"
             if g["comment"]:
                 text += f"   📝 {g['comment']}\n"
