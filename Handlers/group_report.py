@@ -69,22 +69,24 @@ ALL_LEVELS = IELTS_LEVELS + ["IELTS Novice", "General English", "Pre-IELTS"]
 
 
 def format_date_with_hint(date_str: str) -> str:
-    """Sanaga nisbatan hint so'z qo'shish: Bugun, Ertaga, Ertadan keyin, X kundan keyin"""
+    """Sanaga nisbatan hint: Bugun, tomorrow, X kundan keyin"""
     if not date_str:
         return date_str
-    from datetime import datetime, date
+    from datetime import datetime, date, timezone, timedelta
+    
+    # O'zbekiston vaqti (UTC+5)
+    UZ_TZ = timezone(timedelta(hours=5))
+    
     try:
         parsed = datetime.strptime(date_str.strip(), "%d.%m.%Y").date()
-        today = date.today()
+        today = datetime.now(UZ_TZ).date()
         diff = (parsed - today).days
         
         if diff == 0:
             return f"Bugun ({date_str})"
         elif diff == 1:
-            return f"Ertaga ({date_str})"
-        elif diff == 2:
-            return f"Ertadan keyin ({date_str})"
-        elif diff > 2:
+            return f"tomorrow ({date_str})"
+        elif diff > 1:
             return f"{diff} kundan keyin ({date_str})"
         else:
             return date_str
