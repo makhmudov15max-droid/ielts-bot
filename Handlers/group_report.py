@@ -291,6 +291,29 @@ async def show_teachers_list(message: types.Message, state: FSMContext):
     )
 
 
+# ===== WAITING_FOR_TEACHER_CHOICE STATE UCHUN REPLY TUGMALAR =====
+@report_router.message(ReportStates.waiting_for_teacher_choice, F.text == "📊 Barcha muammoli guruhlar")
+async def switch_to_problematic(message: types.Message, state: FSMContext):
+    """Ustoz tanlash ekranidan muammoli guruhlarga o'tish"""
+    await state.set_state(ReportStates.waiting_for_report_choice)
+    await show_problematic_groups(message, state)
+
+
+@report_router.message(ReportStates.waiting_for_teacher_choice, F.text == "👨🏻‍🏫 Ustoz bo'yicha guruhlar")
+async def refresh_teachers(message: types.Message, state: FSMContext):
+    """Ustoz tanlash ekranini yangilash"""
+    await show_teachers_list(message, state)
+
+
+@report_router.message(ReportStates.waiting_for_teacher_choice, F.text == "🏠 Bosh sahifa")
+async def teacher_choice_home(message: types.Message, state: FSMContext):
+    """Asosiy menyuga qaytish"""
+    await state.clear()
+    from Keyboards.main_menu import get_main_menu
+    role = _USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner")
+    await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
+
+
 @report_router.callback_query(ReportStates.waiting_for_teacher_choice, F.data == "teachergroups_cancel")
 async def cancel_teacher_groups(call: types.CallbackQuery, state: FSMContext):
     await state.clear()
