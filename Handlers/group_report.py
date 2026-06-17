@@ -105,7 +105,8 @@ def get_all_groups():
             teacher = row[2].strip() if len(row) > 2 and row[2] else ""
             group_name = row[3].strip() if len(row) > 3 and row[3] else ""
             level = row[4].strip() if len(row) > 4 and row[4] else ""
-            end_date = row[6].strip() if len(row) > 6 and row[6] else ""
+            start_date = row[5].strip() if len(row) > 5 and row[5] else ""  # F ustun: ochilish sanasi
+            end_date = row[6].strip() if len(row) > 6 and row[6] else ""     # G ustun: tugash sanasi
             
             days_left_raw = row[7] if len(row) > 7 else "0"
             try:
@@ -121,6 +122,7 @@ def get_all_groups():
                     "teacher": teacher,
                     "group_name": group_name,
                     "level": level,
+                    "start_date": start_date,
                     "end_date": end_date,
                     "days_left": days_left,
                     "status": status,
@@ -332,9 +334,10 @@ async def show_teacher_groups(call: types.CallbackQuery):
         for g in opening_soon:
             text += (
                 f"   📚 {g['group_name']} — {g['level']}\n"
-                f"   📅 {g['end_date']}\n"
-                f"   📌 {g['status']}\n"
             )
+            if g["start_date"]:
+                text += f"   📅 {g['start_date']}\n"
+            text += f"   📌 {g['status']}\n"
             if g["comment"]:
                 text += f"   📝 {g['comment']}\n"
             text += "\n"
@@ -344,8 +347,10 @@ async def show_teacher_groups(call: types.CallbackQuery):
         for g in waitlist:
             text += (
                 f"   📚 {g['group_name']} — {g['level']}\n"
-                f"   📌 {g['status']}\n"
             )
+            if g["start_date"]:
+                text += f"   📅 {g['start_date']}\n"
+            text += f"   📌 {g['status']}\n"
             if g["comment"]:
                 text += f"   📝 {g['comment']}\n"
             text += "\n"
