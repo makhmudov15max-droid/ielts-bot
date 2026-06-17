@@ -83,7 +83,17 @@ async def command_start_handler(message: types.Message):
 
     saved_name = user_info.get("name", message.from_user.full_name)
     role = user_info.get("role")
-
+    
+    # ===== XAVFSIZLIK: Ism kiritilmagan bo'lsa, menyuni ko'rsatma =====
+    if not user_info.get("name"):
+        await message.answer(
+            text=f"Sizga administrator tomonidan <b>{role}</b> unvoni berilgan.\n\n"
+                 f"Iltimos, tizimdan foydalanish uchun avval <b>ism va familiyangizni</b> kiriting:",
+            parse_mode="HTML",
+            reply_markup=types.ReplyKeyboardRemove()
+        )
+        return
+    
     await message.answer(
         text=f"🌐 <b>ORBIT HQ</b> ga xush kelibsiz, {saved_name}!\n"
              f"🎖 Lavozimingiz: <b>{role}</b>\n\n"

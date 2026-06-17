@@ -995,7 +995,22 @@ class CheckInStates(StatesGroup):
 
 @monitoring_router.message(F.text == "✅ Ishga keldim")
 async def check_in_start_handler(message: types.Message, state: FSMContext):
+    # ===== XAVFSIZLIK: Ruxsat tekshiruvi =====
+    if not check_user_access(USERS_ROLES, message.from_user.id):
+        await message.answer("⚠️ Sizda bu amalni bajarish uchun ruxsat yo'q. Iltimos, avval ro'yxatdan o'ting.")
+        return
+    
     user_id = str(message.from_user.id)
+    
+    # ===== XAVFSIZLIK: Ism kiritilganligini tekshirish =====
+    user_info = USERS_ROLES.get(user_id, {})
+    if not user_info.get("name"):
+        await message.answer(
+            "⚠️ Iltimos, avval ism va familiyangizni kiriting.",
+            reply_markup=types.ReplyKeyboardRemove()
+        )
+        return
+    
     now = datetime.now(TASHKENT_TZ)
     today = now.strftime("%Y-%m-%d")
     current_time = now.strftime("%H:%M")
@@ -1126,6 +1141,11 @@ async def check_in_start_handler(message: types.Message, state: FSMContext):
 
 @monitoring_router.message(CheckInStates.waiting_for_video)
 async def check_in_video_handler(message: types.Message, state: FSMContext):
+    # ===== XAVFSIZLIK: Qo'shimcha ruxsat tekshiruvi (defense-in-depth) =====
+    if not check_user_access(USERS_ROLES, message.from_user.id):
+        await state.clear()
+        return
+    
     user_id = str(message.from_user.id)
     user_info = USERS_ROLES.get(user_id, {})
     user_name = user_info.get("name", message.from_user.full_name)
