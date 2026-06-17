@@ -301,6 +301,36 @@ async def cancel_teacher_groups(call: types.CallbackQuery, state: FSMContext):
     await call.answer()
 
 
+@report_router.callback_query(ReportStates.waiting_for_teacher_choice, F.data == "teachergroups_back")
+async def back_to_teachers_list(call: types.CallbackQuery, state: FSMContext):
+    """Ortga - ustozlar ro'yxatiga qaytish"""
+    await call.answer()
+    
+    teachers = get_unique_teachers()
+    if not teachers:
+        await call.message.edit_text("📭 Google Sheetsda o'qituvchilar topilmadi.")
+        return
+    
+    inline_kb = []
+    for t in teachers:
+        inline_kb.append([types.InlineKeyboardButton(
+            text=f"👨🏻‍🏫 {t}", 
+            callback_data=f"teachergroups_{t}"
+        )])
+    
+    inline_kb.append([types.InlineKeyboardButton(
+        text="🏠 Bosh sahifa", 
+        callback_data="teachergroups_cancel"
+    )])
+    
+    await call.message.edit_text(
+        text=f"👨🏻‍🏫 <b>Ustozni tanlang:</b>\n\n"
+             f"Jami {len(teachers)} ta o'qituvchi",
+        parse_mode="HTML",
+        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_kb)
+    )
+
+
 # ================= STATUS KATEGORIYALARI =================
 # I ustun (status) asosida kategoriyalash
 ACTIVE_STATUSES = ["Aktiv guruh", "Guruh tez orada yakunlanadi"]
@@ -310,8 +340,11 @@ WAITLIST_STATUSES = ["Guruh kutish ro'yxatida"]
 
 
 @report_router.callback_query(ReportStates.waiting_for_teacher_choice, F.data.startswith("teachergroups_"))
-async def show_teacher_groups(call: types.CallbackQuery):
+async def show_teacher_groups(call: types.CallbackQuery, state: FSMContext):
     teacher_name = call.data.replace("teachergroups_", "")
+    
+    # Callback'ni darhol javob berish (timeout oldini olish)
+    await call.answer()
     
     await call.message.edit_text(f"⏳ <b>{teacher_name}</b> guruhlari yuklanmoqda...", parse_mode="HTML")
     
@@ -324,7 +357,6 @@ async def show_teacher_groups(call: types.CallbackQuery):
                  f"📭 Hozirda faol guruhlari topilmadi.",
             parse_mode="HTML"
         )
-        await call.answer()
         return
     
     # Status asosida 3 kategoriyaga ajratish
@@ -384,7 +416,7 @@ async def show_teacher_groups(call: types.CallbackQuery):
     if not active_groups and not opening_soon and not waitlist:
         text += "📭 Ko'rsatiladigan guruhlar topilmadi.\n"
     
-    # "Boshqa ustoz" tugmasi
+    # Tugmalar: ustozlar + Ortga + Bosh sahifa
     teachers = get_unique_teachers()
     inline_kb = []
     for t in teachers:
@@ -393,14 +425,13 @@ async def show_teacher_groups(call: types.CallbackQuery):
             callback_data=f"teachergroups_{t}"
         )])
     
-    inline_kb.append([types.InlineKeyboardButton(
-        text="🏠 Bosh sahifa", 
-        callback_data="teachergroups_cancel"
-    )])
+    inline_kb.append([
+        types.InlineKeyboardButton(text="⬅️ Ortga", callback_data="teachergroups_back"),
+        types.InlineKeyboardButton(text="🏠 Bosh sahifa", callback_data="teachergroups_cancel"),
+    ])
     
     await call.message.edit_text(
         text=text,
         parse_mode="HTML",
         reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_kb)
     )
-    await call.answer()
