@@ -2,8 +2,10 @@ import os
 import json
 import gspread
 from aiogram import Router, F, types
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from collections import Counter
 import config
 
 report_router = Router()
@@ -173,7 +175,7 @@ async def report_back_home(message: types.Message, state: FSMContext):
     await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
 
 
-# ================= BARCHA MUAMMOLI GURUHLAR (ESKI HISOBOT) =================
+# ================= BARCHA MUAMMOLI GURUHLAR =================
 @report_router.message(ReportStates.waiting_for_report_choice, F.text == "📊 Barcha muammoli guruhlar")
 async def show_problematic_groups(message: types.Message, state: FSMContext):
     await message.answer("⏳ Guruhlar tekshirilyapti...")
@@ -193,7 +195,6 @@ async def show_problematic_groups(message: types.Message, state: FSMContext):
         days_left = g["days_left"]
         teacher = g["teacher"]
         
-        # IELTS guruh tugamoqda
         if level in IELTS_LEVELS and 0 < days_left <= 14:
             found = True
             report += (
@@ -207,7 +208,6 @@ async def show_problematic_groups(message: types.Message, state: FSMContext):
                 f"\n━━━━━━━━━━\n\n"
             )
 
-        # Ustoz almashtirish kerak
         if level == "IELTS Novice" and 0 < days_left <= 14:
             teacher_score = teacher_scores.get(teacher, 0)
             if teacher_score <= 8:
@@ -242,7 +242,6 @@ async def show_teachers_list(message: types.Message, state: FSMContext):
     
     await state.set_state(ReportStates.waiting_for_teacher_choice)
     
-    # Inline tugmalar - har bir ustoz uchun
     inline_kb = []
     for t in teachers:
         inline_kb.append([types.InlineKeyboardButton(
@@ -291,7 +290,6 @@ async def show_teacher_groups(call: types.CallbackQuery):
         await call.answer()
         return
     
-    # Faol (kun qolgan) va tugagan guruhlarga ajratish
     active = [g for g in teacher_groups if g["days_left"] > 0]
     ended = [g for g in teacher_groups if g["days_left"] <= 0]
     
@@ -320,7 +318,6 @@ async def show_teacher_groups(call: types.CallbackQuery):
         for g in ended:
             text += f"   📚 {g['group_name']} — {g['level']}\n"
     
-    # "Boshqa ustoz" tugmasi
     teachers = get_unique_teachers()
     inline_kb = []
     for t in teachers:
@@ -340,3 +337,54 @@ async def show_teacher_groups(call: types.CallbackQuery):
         reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_kb)
     )
     await call.answer()
+
+
+# ================= DEBUG: I COLUMN ANALYTICS (ADMIN ONLY) =================
+@report_router.message(Command("debug_column_i"))
+async def debug_column_i_handler(message: types.Message):
+    """Admin uchun: EduControl sheet I column dagi unikal reasonlarni ko'rsatish"""
+    
+    if str(message.from_user.id) != str(ADMIN_ID):
+        await message.answer("⛔ Faqat admin uchun!")
+        return
+    
+    if not edu_sheet:
+        await message.answer("❌ Google Sheets ulanmagan")
+        return
+    
+    await message.answer("⏳ EduControl I column tahlil qilinmoqda...")
+    
+    try:
+        data = edu_sheet.get_all_values()
+        
+        if len(data) <= 2:
+            await message.answer("📭 Sheetda ma'lumot qatorlari yo'q")
+            return
+        
+        reasons = []
+        for row in data[2:]:
+            if len(row) > 8:
+                val = row[8].strip()
+                if val:
+                    reasons.append(val)
+        
+        counter = Counter(reasons)
+        
+        text = f"📊 <b>EduControl — I Column Tahlili</b>\n\n"
+        text += f"📋 Jami ma'lumot qatorlari: <b>{len(data) - 2}</b>\n"
+        text += f"📝 Bo'sh bo'lmagan I qiymatlar: <b>{len(reasons)}</b>\n"
+        text += f"🔢 Unikal reasonlar soni: <b>{len(counter)}</b>\n\n"
+        text += "<b>Reasonlar ro'yxati:</b>\n"
+        
+        for reason, count in counter.most_common():
+            text += f"  [{count}×] {reason}\n"
+        
+        if len(text) > 4000:
+            parts = [text[i:i+3900] for i in range(0, len(text), 3900)]
+            for part in parts:
+                await message.answer(part, parse_mode="HTML")
+        else:
+            await message.answer(text, parse_mode="HTML")
+            
+    except Exception as e:
+        await message.answer(f"❌ Xatolik: {e}")
