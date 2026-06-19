@@ -19,7 +19,6 @@ from Handlers.proofs import proofs_router, init_proofs_handler
 from Handlers.monitoring import monitoring_router, init_monitoring_handler
 from Handlers.settings import settings_router, init_settings_handler
 from Handlers.holidays import holidays_router, init_holidays_handler
-from Handlers.waiting_list import waitlist_router
 from utils.database import init_db, close_db
 from utils.users_db import load_users
 from utils.tasks_db import load_tasks
@@ -98,7 +97,6 @@ async def main():
         dp.include_router(report_router)
         dp.include_router(settings_router)
         dp.include_router(holidays_router)
-        dp.include_router(waitlist_router)
 
         logging.info("✅ Barcha routerlar ulandi")
 
