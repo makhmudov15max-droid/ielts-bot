@@ -144,7 +144,7 @@ def get_all_groups():
                 continue
 
             status = ws.cell(row_idx, status_col).value
-            if status not in [1, 3]:  # Faqat aktiv va waiting guruhlar
+            if status != 2:  # Faqat aktiv/waiting guruhlar (1=draft, 2=aktiv, 3=arxiv)
                 continue
 
             end_str = str(ws.cell(row_idx, end_col).value or "")
@@ -183,7 +183,7 @@ def get_all_groups():
                 "start_date": start_fmt,
                 "end_date": end_fmt,
                 "days_left": days_left,
-                "status": "Aktiv guruh" if status == 3 else "Guruh",
+                "status": "Aktiv guruh",  # status=2 = aktiv/waiting
                 "comment": "",
             })
 
