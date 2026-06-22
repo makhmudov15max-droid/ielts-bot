@@ -144,7 +144,7 @@ def get_all_groups():
                 continue
 
             status = ws.cell(row_idx, status_col).value
-            if status not in [2, 3]:
+            if status not in [1, 3]:  # Faqat aktiv va waiting guruhlar
                 continue
 
             end_str = str(ws.cell(row_idx, end_col).value or "")
