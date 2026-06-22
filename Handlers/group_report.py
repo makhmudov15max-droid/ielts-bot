@@ -1,4 +1,4 @@
-import os, io, re, json, logging
+import os, io, re, json, logging, asyncio
 from datetime import datetime, timezone, timedelta
 from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
@@ -264,7 +264,7 @@ async def report_back_home(message: types.Message, state: FSMContext):
 async def show_problematic_groups(message: types.Message, state: FSMContext):
     await message.answer("⏳ LMSdan guruhlar yuklanmoqda...")
 
-    groups = get_all_groups()
+    groups = await asyncio.to_thread(get_all_groups)
 
     if not groups:
         await message.answer("📭 LMSda ma'lumotlar topilmadi yoki ulanib bo'lmadi.")
@@ -301,7 +301,7 @@ async def show_problematic_groups(message: types.Message, state: FSMContext):
 # ================= USTOZ BO'YICHA GURUHLAR =================
 @report_router.message(ReportStates.waiting_for_report_choice, F.text == "👨🏻‍🏫 Ustoz bo'yicha guruhlar")
 async def show_teachers_list(message: types.Message, state: FSMContext):
-    teachers = get_unique_teachers()
+    teachers = await asyncio.to_thread(get_unique_teachers)
 
     if not teachers:
         await message.answer("📭 LMSda o'qituvchilar topilmadi.")
@@ -389,7 +389,7 @@ async def show_teacher_groups(call: types.CallbackQuery, state: FSMContext):
     await call.answer()
     await call.message.edit_text(f"⏳ <b>{teacher_name}</b> guruhlari yuklanmoqda...", parse_mode="HTML")
 
-    groups = get_all_groups()
+    groups = await asyncio.to_thread(get_all_groups)
     teacher_groups = [g for g in groups if g["teacher"] == teacher_name]
 
     if not teacher_groups:
