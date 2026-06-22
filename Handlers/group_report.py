@@ -161,7 +161,9 @@ def get_all_groups():
                 continue
 
             tid = ws.cell(row_idx, teacher_col).value
-            tname = _teacher_map.get(tid, f"ID#{tid}" if tid else "Noma'lum")
+            if not tid:  # O'qituvchisi yo'q bo'sh guruhlarni o'tkazib yuborish
+                continue
+            tname = _teacher_map.get(tid, f"ID#{tid}")
             cname = _course_map.get(cid, f"ID#{cid}")
 
             start_str = str(ws.cell(row_idx, start_col).value or "")
