@@ -278,7 +278,7 @@ async def show_problematic_groups(message: types.Message, state: FSMContext):
         days_left = g["days_left"]
 
         # IELTS guruh tugamoqda
-        if level in IELTS_LEVELS and 0 < days_left <= 14:
+        if level in IELTS_LEVELS and 0 <= days_left <= 14:
             found = True
             report += (
                 f"🚨 <b>IELTS guruh tugamoqda</b>\n\n"
