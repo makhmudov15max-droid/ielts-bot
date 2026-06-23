@@ -202,8 +202,29 @@ def get_unique_teachers():
 
 
 def get_teacher_scores():
-    """LMSda teacher IELTS score yo'q — bo'sh dict"""
-    return {}
+    """Google Sheets 'Ustozlar' varag'idan {ism: IELTS ball} lug'atini qaytaradi"""
+    try:
+        import gspread
+        creds_json = os.getenv("GOOGLE_CREDS")
+        if not creds_json:
+            logger.warning("GOOGLE_CREDS topilmadi — ustoz IELTS ballari tekshirilmaydi")
+            return {}
+        creds = json.loads(creds_json)
+        client = gspread.service_account_from_dict(creds)
+        ws = client.open("EduControl").worksheet("Ustozlar")
+        vals = ws.get_all_values()
+        scores = {}
+        for row in vals[1:]:
+            if len(row) >= 3:
+                name = row[1].strip()
+                try:
+                    scores[name] = float(row[2])
+                except ValueError:
+                    pass
+        return scores
+    except Exception as e:
+        logger.warning(f"Google Sheets IELTS scores olishda xato: {e}")
+        return {}
 
 
 def format_date_with_hint(date_str: str) -> str:
@@ -265,6 +286,7 @@ async def show_problematic_groups(message: types.Message, state: FSMContext):
     await message.answer("⏳ LMSdan guruhlar yuklanmoqda...")
 
     groups = await asyncio.to_thread(get_all_groups)
+    teacher_scores = await asyncio.to_thread(get_teacher_scores)
 
     if not groups:
         await message.answer("📭 LMSda ma'lumotlar topilmadi yoki ulanib bo'lmadi.")
@@ -291,6 +313,27 @@ async def show_problematic_groups(message: types.Message, state: FSMContext):
             if g["comment"]:
                 report += f"📝 {g['comment']}\n"
             report += "\n━━━━━━━━━━\n\n"
+
+        # Ustoz almashtirish kerak (Novice + IELTS ≤ 8.0)
+        if "Novice" in level and 0 <= days_left <= 14:
+            teacher_score = teacher_scores.get(g["teacher"])
+            if teacher_score is not None and teacher_score <= 8.0:
+                found = True
+                report += (
+                    f"⚠️ <b>Ustoz almashtirish kerak</b>\n\n"
+                    f"👨🏻‍🏫 {g['teacher']}\n"
+                    f"📚 {g['group_name']} — {g['level']}\n"
+                    f"📅 {g['end_date']}\n"
+                    f"⏳ {days_left} kun qoldi\n"
+                    f"📌 {g['status']}\n"
+                )
+                if g["comment"]:
+                    report += f"📝 {g['comment']}\n"
+                report += (
+                    f"🎯 IELTS: {teacher_score}\n"
+                    f"Kerak: 8.5 yoki 9.0\n"
+                    f"\n━━━━━━━━━━\n\n"
+                )
 
     if not found:
         report += "✅ Hozircha muammoli guruh topilmadi"
