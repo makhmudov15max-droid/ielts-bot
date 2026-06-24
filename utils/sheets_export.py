@@ -15,23 +15,27 @@ DRUJBA_BRANCH_ID = 3
 LMS_BASE = "https://main.ieltszoneapp.uz"
 UZ_TZ = timezone(timedelta(hours=5))
 
-# 2 soatlik vaqt bloklari
-TIME_SLOTS = ["08:00", "10:00", "14:00", "16:00", "18:00", "20:00"]
-TIME_TO_MATRIX_ROW = {t: i for i, t in enumerate(TIME_SLOTS)}  # 0-indexed
+# Vaqt bloklari — 18:30/19:00 → 18:00 ga birlashadi
+TIME_SLOTS = ["08:00", "10:00", "12:00", "14:00", "16:00", "18:00"]
+TIME_TO_MATRIX_ROW = {t: i for i, t in enumerate(TIME_SLOTS)}
 
-XONA_COUNT = 11
-ROOM_NAME_TO_COL = {
-    "101": 0, "102": 1, "103": 2, "104": 3, "105": 4,
-    "106": 5, "107": 6, "108": 7, "109": 8, "110": 9, "111": 10,
-}
+XONALAR = ["101", "102", "103", "104", "105", "106", "107", "108", "109", "110", "111"]
+XONA_COUNT = len(XONALAR)
+ROOM_NAME_TO_COL = {rn: i for i, rn in enumerate(XONALAR)}
 
-# Ranglar (muddatga qarab)
-COLOR_RED = {"red": 0.918, "green": 0.263, "blue": 0.208}        # #EA4335
-COLOR_YELLOW = {"red": 0.984, "green": 0.737, "blue": 0.020}     # #FBBC05
-COLOR_GREEN = {"red": 0.204, "green": 0.659, "blue": 0.325}      # #34A853
-COLOR_GRAY = {"red": 0.788, "green": 0.855, "blue": 0.973}        # #C9DAF8 bo'sh slot
-COLOR_HEADER_BG = {"red": 0.85, "green": 0.95, "blue": 1.0}      # och firuza
-COLOR_XONA_BG = {"red": 1.0, "green": 0.95, "blue": 0.7}         # och sarg'ish
+def _normalize_time(st: str) -> str:
+    """18:00 dan keyin boshlangan hamma dars → 18:00"""
+    st = st[:5]
+    if st >= "18:00":
+        return "18:00"
+    return st
+
+# Ranglar
+COLOR_RED = {"red": 0.918, "green": 0.263, "blue": 0.208}       # #EA4335
+COLOR_YELLOW = {"red": 0.984, "green": 0.737, "blue": 0.020}    # #FBBC05
+COLOR_GREEN = {"red": 0.204, "green": 0.659, "blue": 0.325}     # #34A853
+COLOR_BLUE = {"red": 0.788, "green": 0.855, "blue": 0.973}      # #C9DAF8 bo'sh slot
+COLOR_HEADER = {"red": 0.004, "green": 0.945, "blue": 0.698}    # #01F1B2 sarlavha
 
 BORDER_GRAY = {
     "top": {"style": "SOLID", "color": {"red": 0.8, "green": 0.8, "blue": 0.8}},
@@ -73,7 +77,7 @@ def _days_left(end_date_str: str) -> int:
 
 def _color_by_days(days: int) -> dict:
     if days < 0:
-        return COLOR_GRAY      # bo'sh slot
+        return COLOR_BLUE      # bo'sh slot
     elif days <= 14:
         return COLOR_RED
     elif days <= 30:
@@ -98,92 +102,186 @@ async def write_schedule_to_sheets() -> str:
         try:
             sheet = ss.worksheet(SHEET_NAME)
         except Exception:
-            sheet = ss.add_worksheet(SHEET_NAME, rows=30, cols=16)
+            sheet = ss.add_worksheet(SHEET_NAME, rows=30, cols=13)
 
         sheet.clear()
 
-        # ====== MATRITSA (0-indexed) ======
-        TOTAL_ROWS = 23  # 6+1+6+1+legend
-        MATRIX_COLS = 12  # A(vaqt) + B-L(xonalar 1-11)
+        sheet_id = sheet.id
+        MC = 1 + XONA_COUNT  # 12 cols: A(vaqt) + B-L(xonalar)
 
-        matrix = [[""] * MATRIX_COLS for _ in range(TOTAL_ROWS)]
-        data_cells = {}  # (row_idx, col_idx) -> {"text": str, "days_left": int}
+        # ====== MATRITSA ======
+        TIME_COUNT = len(TIME_SLOTS)
 
-        def fill_matrix(lessons, start_row: int, label_slot_row: int):
-            # Sarlavha
-            matrix[start_row][0] = "Dars\nvaqtlari"
-            matrix[label_slot_row][1] = "Dars xonalari"
-            for x in range(XONA_COUNT):
-                matrix[label_slot_row][1 + x] = f"{x+1} xona"
+        def build_section(lessons, base_row, section_label):
+            data = {}
+            # Section label
+            matrix[base_row][0] = section_label
+            # Soat / xona header
+            matrix[base_row + 1][0] = "Soat / xona"
+            for xi, xona in enumerate(XONALAR):
+                matrix[base_row + 1][1 + xi] = xona
+            # Time rows
+            for ti, tm in enumerate(TIME_SLOTS):
+                matrix[base_row + 2 + ti][0] = tm
 
-            # Vaqtlar
-            for i, t in enumerate(TIME_SLOTS):
-                matrix[start_row + 1 + i][0] = t
-
-            # Ma'lumot
             for lesson in lessons:
                 if lesson.get("status") != 2:
                     continue
-                st = str(lesson.get("lesson_start_time", ""))[:5]
+                st = _normalize_time(str(lesson.get("lesson_start_time", ""))[:5])
                 rn = str(lesson.get("room", {}).get("name", ""))
-                time_idx = TIME_TO_MATRIX_ROW.get(st)
-                col = ROOM_NAME_TO_COL.get(rn)
-                if time_idx is None or col is None:
+                ti = TIME_TO_MATRIX_ROW.get(st)
+                ci = ROOM_NAME_TO_COL.get(rn)
+                if ti is None or ci is None:
                     continue
 
-                row_idx = start_row + 1 + time_idx
+                ri = base_row + 2 + ti
+                dc = ci + 1
+
                 gid = lesson.get("id", "?")
                 teacher = (lesson.get("teacher") or {}).get("first_name", "")
-                course = (lesson.get("sub_course") or lesson.get("course") or {})
-                level = course.get("name", {}).get("uz", course.get("name", {}).get("en", "—"))
+                course_obj = lesson.get("sub_course") or lesson.get("course") or {}
+                level = course_obj.get("name", {}).get("uz", "?")
                 end_date = lesson.get("group_end_date", "")
                 dl = _days_left(end_date)
-
                 text = f"#{gid}\n{teacher}\n{level}"
 
-                if (row_idx, col + 1) in data_cells:
-                    data_cells[(row_idx, col + 1)]["text"] += "\n——\n" + text
+                key = (ri, dc)
+                if key in data:
+                    data[key]["text"] += f"\n——\n{text}"
+                    data[key]["days"] = min(data[key]["days"], dl)
                 else:
-                    data_cells[(row_idx, col + 1)] = {"text": text, "days_left": dl}
+                    data[key] = {"text": text, "days": dl}
 
-            # Bo'sh kataklarni to'ldirish — "Dars yo'q slot"
-            for ti in range(len(TIME_SLOTS)):
+            # Bo'sh kataklar
+            for ti in range(TIME_COUNT):
                 for xi in range(XONA_COUNT):
-                    ri = start_row + 1 + ti
-                    ci = xi + 1
-                    if (ri, ci) not in data_cells:
-                        matrix[ri][ci] = "Dars yo'q slot"
-                        data_cells[(ri, ci)] = {"text": "Dars yo'q slot", "days_left": -1}
+                    ri = base_row + 2 + ti
+                    dc = xi + 1
+                    if (ri, dc) not in data:
+                        s = "Dars yo'q slot"
+                        matrix[ri][dc] = s
+                        data[(ri, dc)] = {"text": s, "days": -1}
 
-        # Toq kunlar (row 0-7)
-        fill_matrix(schedule["odd"], start_row=0, label_slot_row=0)
-        # Juft kunlar (row 9-16)
-        fill_matrix(schedule["even"], start_row=9, label_slot_row=9)
+            return data
 
-        # Ajratuvchi
-        matrix[8][0] = ""
+        # Build TOQ + JUFT, track which time rows are fully empty
+        toq_base = 0
+        juft_base = TIME_COUNT + 3  # TOQ(label+header+data) + separator
 
-        # Ma'lumotlarni matritsaga yozish
-        for (ri, ci), info in data_cells.items():
-            if 0 <= ri < TOTAL_ROWS and 0 <= ci < MATRIX_COLS:
-                matrix[ri][ci] = info["text"]
-            else:
-                logger.warning(f"data_cells index xatosi: ri={ri}/{TOTAL_ROWS}, ci={ci}/{MATRIX_COLS}")
+        # First pass: collect data without full matrix (we'll build after removing empties)
+        def collect_raw(lessons):
+            """Collect lessons by (time_idx, room_col)"""
+            raw = {}
+            for lesson in lessons:
+                if lesson.get("status") != 2:
+                    continue
+                st = _normalize_time(str(lesson.get("lesson_start_time", ""))[:5])
+                rn = str(lesson.get("room", {}).get("name", ""))
+                ti = TIME_TO_MATRIX_ROW.get(st)
+                ci = ROOM_NAME_TO_COL.get(rn)
+                if ti is None or ci is None:
+                    continue
+                gid = lesson.get("id", "?")
+                teacher = (lesson.get("teacher") or {}).get("first_name", "")
+                course_obj = lesson.get("sub_course") or lesson.get("course") or {}
+                level = course_obj.get("name", {}).get("uz", "?")
+                end_date = lesson.get("group_end_date", "")
+                dl = _days_left(end_date)
+                text = f"#{gid}\n{teacher}\n{level}"
+                key = (ti, ci)
+                if key in raw:
+                    raw[key]["text"] += f"\n——\n{text}"
+                    raw[key]["days"] = min(raw[key]["days"], dl)
+                else:
+                    raw[key] = {"text": text, "days": dl}
+            return raw
+
+        raw_odd = collect_raw(schedule["odd"])
+        raw_even = collect_raw(schedule["even"])
+
+        # Determine which time slots have ANY data across both sections
+        active_times = set()
+        for (ti, _) in list(raw_odd.keys()) + list(raw_even.keys()):
+            active_times.add(ti)
+        # Also keep 18:00 as minimum (always show it)
+        active_times.add(TIME_TO_MATRIX_ROW.get("18:00", 5))
+
+        # Build filtered time slots (only active ones)
+        filtered_slots = [t for i, t in enumerate(TIME_SLOTS) if i in active_times]
+        filtered_count = len(filtered_slots)
+        # Remap time_idx to new row positions
+        old_to_new = {}
+        new_idx = 0
+        for i, t in enumerate(TIME_SLOTS):
+            if i in active_times:
+                old_to_new[i] = new_idx
+                new_idx += 1
+
+        # Calculate total rows
+        toq_end = 2 + filtered_count  # label(1) + header(1) + data
+        sep1_row = toq_end
+        juft_start = sep1_row + 1
+        juft_end = juft_start + 2 + filtered_count
+        sep2_row = juft_end
+        leg_start = sep2_row + 1
+        TOTAL_ROWS = leg_start + 4  # ranglar + qizil + sariq + yashil
+
+        matrix = [[""] * MC for _ in range(TOTAL_ROWS)]
+        all_data = {}
+
+        def fill_filtered(raw, base_row, section_label):
+            data = {}
+            # Section label
+            matrix[base_row][0] = section_label
+            # Soat / xona header
+            matrix[base_row + 1][0] = "Soat / xona"
+            for xi, xona in enumerate(XONALAR):
+                matrix[base_row + 1][1 + xi] = xona
+            # Time rows
+            for old_ti, new_ti in old_to_new.items():
+                matrix[base_row + 2 + new_ti][0] = TIME_SLOTS[old_ti]
+
+            # Fill data
+            for (old_ti, ci), info in raw.items():
+                new_ti = old_to_new.get(old_ti)
+                if new_ti is None:
+                    continue
+                ri = base_row + 2 + new_ti
+                dc = ci + 1
+                matrix[ri][dc] = info["text"]
+                data[(ri, dc)] = {"text": info["text"], "days": info["days"]}
+
+            # Bo'sh kataklar
+            for new_ti in range(filtered_count):
+                for xi in range(XONA_COUNT):
+                    ri = base_row + 2 + new_ti
+                    dc = xi + 1
+                    if (ri, dc) not in data:
+                        s = "Dars yo'q slot"
+                        matrix[ri][dc] = s
+                        data[(ri, dc)] = {"text": s, "days": -1}
+
+            return data
+
+        toq_data = fill_filtered(raw_odd, toq_base, "TOQ")
+        all_data.update(toq_data)
+        juft_data = fill_filtered(raw_even, juft_start, "JUFT")
+        all_data.update(juft_data)
 
         # Legend
-        matrix[19][1] = "Ranglar:"
-        matrix[20][1] = "Qizil — tugashiga 2 haftadan kam"
-        matrix[21][1] = "Sariq — 1 oydan 2 haftagacha"
-        matrix[22][1] = "Yashil — 1 oydan ko'p"
+        matrix[leg_start][0] = "Ranglar:"
+        matrix[leg_start + 1][0] = "Qizil — 2 haftadan kam"
+        matrix[leg_start + 2][0] = "Sariq — 1 oygacha"
+        matrix[leg_start + 3][0] = "Yashil — 1 oydan ko'p"
 
-        # ====== GOOGLE SHEETS GA YOZISH ======
-        sheet.update(f"A1:L{TOTAL_ROWS}", matrix)
+        # ====== WRITE DATA ======
+        last_col = chr(65 + MC - 1)
+        sheet.update(f"A1:{last_col}{TOTAL_ROWS}", matrix)
 
-        sheet_id = sheet.id
-
+        # ====== FORMATTING ======
         requests = []
 
-        def _fmt(sr, sc, er, ec, f):
+        def _fmt(sr, er, sc, ec, f):
             return {
                 "repeatCell": {
                     "range": {"sheetId": sheet_id,
@@ -194,106 +292,111 @@ async def write_schedule_to_sheets() -> str:
                 }
             }
 
-        def _fmt_merge(sr, er, sc, ec):
-            return {"mergeCells": {
-                "range": {"sheetId": sheet_id,
-                          "startRowIndex": sr, "endRowIndex": er,
-                          "startColumnIndex": sc, "endColumnIndex": ec},
-                "mergeType": "MERGE_ALL",
-            }}
-
-        # === MERGES ===
-        MC = MATRIX_COLS  # 12
-        # Dars xonalari (Toq) — B2:L2
-        requests.append(_fmt_merge(0, 1, 1, MC))
-        # Dars vaqtlari (Toq) — A2:A8
-        requests.append(_fmt_merge(0, 7, 0, 1))
-        # Dars xonalari (Juft) — B11:L11
-        requests.append(_fmt_merge(9, 10, 1, MC))
-        # Dars vaqtlari (Juft) — A11:A17
-        requests.append(_fmt_merge(9, 16, 0, 1))
-
-        # === FORMATS ===
-        # Sarlavha: Dars xonalari + xona raqamlari (B..L)
-        for label_row in [0, 9]:
-            requests.append(_fmt(label_row, 1, label_row + 1, MC, {
-                "backgroundColor": COLOR_HEADER_BG,
-                "textFormat": {"bold": True, "fontSize": 12},
+        # Section labels (TOQ/JUFT)
+        for sr in [toq_base, juft_start]:
+            requests.append(_fmt(sr, sr + 1, 0, MC, {
+                "textFormat": {"bold": True, "fontSize": 11},
                 "horizontalAlignment": "CENTER",
                 "verticalAlignment": "MIDDLE",
                 "borders": BORDER_GRAY,
             }))
 
-        # Dars vaqtlari (vertikal, bold)
-        for vaqt_row_start in [0, 9]:
-            requests.append(_fmt(vaqt_row_start, 0, vaqt_row_start + 7, 1, {
+        # Soat / xona headers
+        for sr in [toq_base + 1, juft_start + 1]:
+            requests.append(_fmt(sr, sr + 1, 0, MC, {
+                "backgroundColor": COLOR_HEADER,
                 "textFormat": {"bold": True, "fontSize": 10},
                 "horizontalAlignment": "CENTER",
                 "verticalAlignment": "MIDDLE",
                 "borders": BORDER_GRAY,
             }))
 
-        # Vaqt qiymatlari (A3:A8 va A12:A17)
-        for base in [1, 10]:
-            for i in range(6):
-                ri = base + i
-                requests.append(_fmt(ri, 0, ri + 1, 1, {
-                    "textFormat": {"fontSize": 10},
-                    "horizontalAlignment": "CENTER",
-                    "verticalAlignment": "MIDDLE",
-                    "borders": BORDER_GRAY,
-                }))
+        # Time labels (A column, bold)
+        for base in [toq_base + 2, juft_start + 2]:
+            requests.append(_fmt(base, base + filtered_count, 0, 1, {
+                "textFormat": {"bold": True, "fontSize": 10},
+                "horizontalAlignment": "CENTER",
+                "verticalAlignment": "MIDDLE",
+                "borders": BORDER_GRAY,
+            }))
 
-        # BARCHA MA'LUMOT KATAKLARIGA border + center (Toq: B3:L8, Juft: B12:L17)
-        requests.append(_fmt(1, 1, 8, MC, {
-            "horizontalAlignment": "CENTER",
-            "verticalAlignment": "MIDDLE",
-            "wrapStrategy": "WRAP",
-            "borders": BORDER_GRAY,
-        }))
-        requests.append(_fmt(10, 1, 17, MC, {
-            "horizontalAlignment": "CENTER",
-            "verticalAlignment": "MIDDLE",
-            "wrapStrategy": "WRAP",
-            "borders": BORDER_GRAY,
-        }))
+        # All data cells: base format
+        for base in [toq_base + 2, juft_start + 2]:
+            requests.append(_fmt(base, base + filtered_count, 0, MC, {
+                "horizontalAlignment": "CENTER",
+                "verticalAlignment": "MIDDLE",
+                "wrapStrategy": "WRAP",
+                "borders": BORDER_GRAY,
+            }))
 
-        # Data kataklari: rang + fontSize
-        for (ri, ci), info in data_cells.items():
-            color = _color_by_days(info["days_left"])
-            fmt = {
-                "backgroundColor": color,
+        # Individual cell colors
+        for (ri, dc), info in all_data.items():
+            clr = _color_by_days(info["days"])
+            cell_fmt = {
+                "backgroundColor": clr,
                 "textFormat": {"fontSize": 9},
                 "horizontalAlignment": "CENTER",
                 "verticalAlignment": "MIDDLE",
                 "borders": BORDER_GRAY,
             }
-            if info["days_left"] < 0:
-                fmt["textFormat"]["foregroundColor"] = {"red": 0.5, "green": 0.5, "blue": 0.5}
-            requests.append(_fmt(ri, ci, ri + 1, ci + 1, fmt))
+            if info["days"] < 0:
+                cell_fmt["textFormat"]["foregroundColor"] = {"red": 0.5, "green": 0.5, "blue": 0.5}
+            requests.append(_fmt(ri, ri + 1, dc, dc + 1, cell_fmt))
 
-        # Ustun kengliklari
+        # Legend: color blocks + borders
+        legend_colors = [
+            (leg_start, COLOR_BLUE),
+            (leg_start + 1, COLOR_RED),
+            (leg_start + 2, COLOR_YELLOW),
+            (leg_start + 3, COLOR_GREEN),
+        ]
+        for lr, clr in legend_colors:
+            requests.append(_fmt(lr, lr + 1, 0, 1, {
+                "backgroundColor": clr,
+                "textFormat": {"fontSize": 9},
+                "borders": BORDER_GRAY,
+            }))
+            requests.append(_fmt(lr, lr + 1, 1, MC, {
+                "textFormat": {"fontSize": 9},
+                "borders": BORDER_GRAY,
+            }))
+
+        # Column widths
         requests.append({
             "updateDimensionProperties": {
-                "range": {"sheetId": sheet_id, "dimension": "COLUMNS", "startIndex": 0, "endIndex": 1},
+                "range": {"sheetId": sheet_id, "dimension": "COLUMNS",
+                          "startIndex": 0, "endIndex": 1},
                 "properties": {"pixelSize": 80}, "fields": "pixelSize",
             }
         })
         for ci in range(1, MC):
             requests.append({
                 "updateDimensionProperties": {
-                    "range": {"sheetId": sheet_id, "dimension": "COLUMNS", "startIndex": ci, "endIndex": ci + 1},
+                    "range": {"sheetId": sheet_id, "dimension": "COLUMNS",
+                              "startIndex": ci, "endIndex": ci + 1},
                     "properties": {"pixelSize": 120}, "fields": "pixelSize",
                 }
             })
 
-        # Barcha so'rovlarni yuborish
+        # Row heights
+        for ri in range(TOTAL_ROWS):
+            is_label = ri in [toq_base, juft_start, toq_base + 1, juft_start + 1]
+            h = 50 if is_label else 45
+            requests.append({
+                "updateDimensionProperties": {
+                    "range": {"sheetId": sheet_id, "dimension": "ROWS",
+                              "startIndex": ri, "endIndex": ri + 1},
+                    "properties": {"pixelSize": h}, "fields": "pixelSize",
+                }
+            })
+
+        # Batch execute
         for i in range(0, len(requests), 50):
-            batch = requests[i:i+50]
+            batch = requests[i:i + 50]
             try:
                 ss.batch_update({"requests": batch})
             except Exception as e:
-                logger.warning(f"Batch {i//50}: {str(e)[:120]}")
+                logger.warning(f"Batch {i // 50}: {str(e)[:120]}")
 
         odd_count = len(schedule["odd"])
         even_count = len(schedule["even"])
@@ -301,7 +404,8 @@ async def write_schedule_to_sheets() -> str:
             f"✅ Dars jadvali Google Sheets ga yozildi!\n\n"
             f"📊 Toq kunlar: {odd_count} ta dars\n"
             f"📊 Juft kunlar: {even_count} ta dars\n"
-            f"📋 Sheet: {SHEET_NAME}"
+            f"📋 Sheet: {SHEET_NAME}\n"
+            f"⏰ Vaqtlar: {', '.join(TIME_SLOTS)}"
         )
 
     except Exception as e:
