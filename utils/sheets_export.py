@@ -9,7 +9,7 @@ from html import unescape
 logger = logging.getLogger(__name__)
 
 SHEET_ID = "1PpGWObeppzsSkaYgGz0fRYP_3zk-3YuxBOXStrn_PCc"
-SHEET_NAME = "sheet20"
+SHEET_NAME = "DarsJadval"
 DRUJBA_BRANCH_ID = 3
 LMS_BASE = "https://main.ieltszoneapp.uz"
 
