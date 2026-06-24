@@ -790,6 +790,29 @@ async def show_group_detail_handler(call: types.CallbackQuery, state: FSMContext
 @report_router.callback_query(F.data == "gdetail_back")
 async def back_to_report(call: types.CallbackQuery, state: FSMContext):
     """⬅️ Asosiy reportga qaytish."""
-    await call.answer()
+    try:
+        await call.answer()
+    except Exception:
+        pass  # callback eskirgan bo'lsa ham davom etamiz
+
     await state.set_state(ReportStates.waiting_for_report_choice)
-    await _refresh_report(call, state)
+
+    groups = await asyncio.to_thread(get_all_groups)
+    teacher_scores = await asyncio.to_thread(get_teacher_scores)
+    all_comments = await get_all_comments()
+
+    if not groups:
+        await call.message.edit_text("📭 LMSda ma'lumotlar topilmadi.")
+        return
+
+    report, found_groups, inline_kb = _build_report_data(groups, teacher_scores, all_comments)
+    await state.update_data(found_groups=found_groups)
+
+    if found_groups and inline_kb:
+        await call.message.edit_text(
+            report,
+            parse_mode="HTML",
+            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_kb),
+        )
+    else:
+        await call.message.edit_text(report, parse_mode="HTML")
