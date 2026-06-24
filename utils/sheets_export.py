@@ -103,7 +103,7 @@ async def write_schedule_to_sheets() -> str:
         sheet.clear()
 
         # ====== MATRITSA (0-indexed) ======
-        TOTAL_ROWS = 22  # 6+1+6+1+legend
+        TOTAL_ROWS = 23  # 6+1+6+1+legend
         MATRIX_COLS = 12  # A(vaqt) + B-L(xonalar 1-11)
 
         matrix = [[""] * MATRIX_COLS for _ in range(TOTAL_ROWS)]
@@ -174,7 +174,7 @@ async def write_schedule_to_sheets() -> str:
         matrix[22][1] = "Yashil — 1 oydan ko'p"
 
         # ====== GOOGLE SHEETS GA YOZISH ======
-        sheet.update("A1:L23", matrix)
+        sheet.update(f"A1:L{TOTAL_ROWS}", matrix)
 
         sheet_id = sheet.id
 
