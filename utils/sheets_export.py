@@ -165,7 +165,10 @@ async def write_schedule_to_sheets() -> str:
 
         # Ma'lumotlarni matritsaga yozish
         for (ri, ci), info in data_cells.items():
-            matrix[ri][ci] = info["text"]
+            if 0 <= ri < TOTAL_ROWS and 0 <= ci < MATRIX_COLS:
+                matrix[ri][ci] = info["text"]
+            else:
+                logger.warning(f"data_cells index xatosi: ri={ri}/{TOTAL_ROWS}, ci={ci}/{MATRIX_COLS}")
 
         # Legend
         matrix[19][1] = "Ranglar:"
