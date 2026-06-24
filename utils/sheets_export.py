@@ -157,8 +157,13 @@ async def write_schedule_to_sheets() -> str:
         # Sheet20 ni olish yoki yaratish
         try:
             sheet = spreadsheet.worksheet(SHEET_NAME)
-        except gspread.exceptions.WorksheetNotFound:
-            sheet = spreadsheet.add_worksheet(SHEET_NAME, rows=20, cols=15)
+        except Exception:
+            # Agar topilmasa yoki boshqa xatolik bo'lsa
+            try:
+                sheet = spreadsheet.add_worksheet(SHEET_NAME, rows=20, cols=15)
+            except Exception:
+                # Allaqachon mavjud bo'lsa
+                sheet = spreadsheet.worksheet(SHEET_NAME)
 
         # 3. Sheetni tozalash
         sheet.clear()
