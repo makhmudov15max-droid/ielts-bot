@@ -793,7 +793,7 @@ async def back_to_report(call: types.CallbackQuery, state: FSMContext):
     try:
         await call.answer()
     except Exception:
-        pass  # callback eskirgan bo'lsa ham davom etamiz
+        pass
 
     await state.set_state(ReportStates.waiting_for_report_choice)
 
@@ -802,17 +802,15 @@ async def back_to_report(call: types.CallbackQuery, state: FSMContext):
     all_comments = await get_all_comments()
 
     if not groups:
-        await call.message.edit_text("📭 LMSda ma'lumotlar topilmadi.")
+        await call.message.answer("📭 LMSda ma'lumotlar topilmadi.")
         return
 
     report, found_groups, inline_kb = _build_report_data(groups, teacher_scores, all_comments)
     await state.update_data(found_groups=found_groups)
 
-    if found_groups and inline_kb:
-        await call.message.edit_text(
-            report,
-            parse_mode="HTML",
-            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_kb),
-        )
-    else:
-        await call.message.edit_text(report, parse_mode="HTML")
+    markup = types.InlineKeyboardMarkup(inline_keyboard=inline_kb) if (found_groups and inline_kb) else None
+
+    try:
+        await call.message.edit_text(report, parse_mode="HTML", reply_markup=markup)
+    except Exception:
+        await call.message.answer(report, parse_mode="HTML", reply_markup=markup)
