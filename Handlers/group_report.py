@@ -534,7 +534,7 @@ def _build_report_data(groups: list, teacher_scores: dict, all_comments: dict) -
         label = f"{fg['idx'] + 1}{'📝' if has_comment else ''}"
         num_row.append(types.InlineKeyboardButton(
             text=label,
-            callback_data=f"gdetail_{fg['idx']}"
+            callback_data=f"grp_{fg['idx']}"
         ))
 
     inline_kb = [num_row]
@@ -768,7 +768,7 @@ async def _show_group_detail(call: types.CallbackQuery, state: FSMContext, idx: 
             types.InlineKeyboardButton(text="➕ Izoh qo'shish", callback_data=f"cmt_a_{idx}"),
         ])
     kb.append([
-        types.InlineKeyboardButton(text="⬅️ Asosiy report", callback_data="gdetail_back"),
+        types.InlineKeyboardButton(text="⬅️ Asosiy report", callback_data="report_back"),
     ])
 
     await call.message.edit_text(
@@ -778,7 +778,7 @@ async def _show_group_detail(call: types.CallbackQuery, state: FSMContext, idx: 
     )
 
 
-@report_router.callback_query(F.data.startswith("gdetail_"))
+@report_router.callback_query(F.data.startswith("grp_"))
 async def show_group_detail_handler(call: types.CallbackQuery, state: FSMContext):
     """Raqamli tugma bosilganda — guruh detalini ko'rsatish."""
     await call.answer()
@@ -787,7 +787,7 @@ async def show_group_detail_handler(call: types.CallbackQuery, state: FSMContext
     await _show_group_detail(call, state, idx)
 
 
-@report_router.callback_query(F.data == "gdetail_back")
+@report_router.callback_query(F.data == "report_back")
 async def back_to_report(call: types.CallbackQuery, state: FSMContext):
     """⬅️ Asosiy reportga qaytish."""
     try:
