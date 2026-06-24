@@ -550,6 +550,48 @@ def _find_group(state_data: dict, idx: int) -> dict | None:
     return None
 
 
+def _render_report_from_cache(found_groups: list, all_comments: dict) -> tuple:
+    """State dagi found_groups va DB izohlardan report + markup yasaydi.
+    LMS/Google Sheets ga bormaydi — tez.
+    Qaytaradi: (report_text, found_groups, markup)
+    """
+    report = "📄 <b>MUAMMOLI GURUHLAR</b>\n\n"
+
+    for fg in found_groups:
+        g = fg["data"]
+        group_name = g["group_name"]
+        comment = all_comments.get(group_name, "")
+        g["comment"] = comment
+
+        num = fg["idx"] + 1
+        problem_type = g.get("_problem_type", "ending")
+        icon = "⚠️" if problem_type == "teacher_swap" else "🚨"
+        comment_mark = " 📝" if comment else ""
+
+        report += f"<b>{num}. {icon} {g['group_name']} — {g['level']}{comment_mark}</b>\n"
+        report += f"   👨🏻‍🏫 {g['teacher']} | 📅 {g['end_date']} | ⏳ {g['days_left']} kun"
+
+        if problem_type == "teacher_swap":
+            report += f" | 🎯 {g.get('_teacher_score', '?')} → 8.5+"
+        elif comment:
+            report += f"\n   📝 {comment[:60]}{'...' if len(comment) > 60 else ''}"
+
+        report += "\n\n"
+
+    # Raqamli tugmalar
+    num_row = []
+    for fg in found_groups:
+        has_comment = bool(all_comments.get(fg["data"]["group_name"], ""))
+        label = f"{fg['idx'] + 1}{'📝' if has_comment else ''}"
+        num_row.append(types.InlineKeyboardButton(
+            text=label,
+            callback_data=f"grp_{fg['idx']}"
+        ))
+
+    markup = types.InlineKeyboardMarkup(inline_keyboard=[num_row])
+    return report, found_groups, markup
+
+
 async def _refresh_report(call: types.CallbackQuery, state: FSMContext):
     """Reportni qayta yuklab, xabarni yangilaydi."""
     groups = await asyncio.to_thread(get_all_groups)
@@ -634,22 +676,18 @@ async def save_comment(message: types.Message, state: FSMContext):
 
     await state.set_state(ReportStates.waiting_for_report_choice)
 
-    # Reportni qayta yuklab, yangi xabar sifatida chiqaramiz
-    groups = await asyncio.to_thread(get_all_groups)
-    teacher_scores = await asyncio.to_thread(get_teacher_scores)
+    # State cache dan foydalanamiz — LMS/Google Sheets ga bormaymiz
+    state_data = await state.get_data()
+    found_groups = state_data.get("found_groups", [])
+
+    if not found_groups:
+        await message.answer("📭 Ma'lumot topilmadi. Iltimos, reportni qayta oching.")
+        return
+
     all_comments = await get_all_comments()
-
-    report, found_groups, inline_kb = _build_report_data(groups, teacher_scores, all_comments)
+    report, found_groups, markup = _render_report_from_cache(found_groups, all_comments)
     await state.update_data(found_groups=found_groups)
-
-    if found_groups and inline_kb:
-        await message.answer(
-            report,
-            parse_mode="HTML",
-            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_kb),
-        )
-    else:
-        await message.answer(report, parse_mode="HTML")
+    await message.answer(report, parse_mode="HTML", reply_markup=markup)
 
 
 @report_router.callback_query(F.data.startswith("cmt_d_"))
@@ -806,41 +844,7 @@ async def back_to_report(call: types.CallbackQuery, state: FSMContext):
 
     # Faqat izohlarni yangilaymiz — LMS va Google Sheets ga bormaymiz
     all_comments = await get_all_comments()
-
-    # State dagi ma'lumotlardan report quramiz
-    report = "📄 <b>MUAMMOLI GURUHLAR</b>\n\n"
-    for fg in found_groups:
-        g = fg["data"]
-        group_name = g["group_name"]
-        comment = all_comments.get(group_name, "")
-        g["comment"] = comment
-
-        num = fg["idx"] + 1
-        problem_type = g.get("_problem_type", "ending")
-        icon = "⚠️" if problem_type == "teacher_swap" else "🚨"
-        comment_mark = " 📝" if comment else ""
-
-        report += f"<b>{num}. {icon} {g['group_name']} — {g['level']}{comment_mark}</b>\n"
-        report += f"   👨🏻‍🏫 {g['teacher']} | 📅 {g['end_date']} | ⏳ {g['days_left']} kun"
-
-        if problem_type == "teacher_swap":
-            report += f" | 🎯 {g.get('_teacher_score', '?')} → 8.5+"
-        elif comment:
-            report += f"\n   📝 {comment[:60]}{'...' if len(comment) > 60 else ''}"
-
-        report += "\n\n"
-
-    # Raqamli tugmalar
-    num_row = []
-    for fg in found_groups:
-        has_comment = bool(all_comments.get(fg["data"]["group_name"], ""))
-        label = f"{fg['idx'] + 1}{'📝' if has_comment else ''}"
-        num_row.append(types.InlineKeyboardButton(
-            text=label,
-            callback_data=f"grp_{fg['idx']}"
-        ))
-
-    markup = types.InlineKeyboardMarkup(inline_keyboard=[num_row])
+    report, found_groups, markup = _render_report_from_cache(found_groups, all_comments)
     await state.update_data(found_groups=found_groups)
 
     try:
