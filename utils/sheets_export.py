@@ -53,11 +53,11 @@ def fetch_schedule_from_lms() -> list[dict]:
             group_num = name.split()[0] if name else "—"
 
             # Kurs nomi
-            course = g.get("course", {})
+            course = g.get("course") or {}
             level = course.get("name", {}).get("uz", course.get("name", {}).get("en", "—"))
 
             # Teacher to'liq ismi
-            teacher = g.get("teacher", {})
+            teacher = g.get("teacher") or {}
             teacher_name = f"{teacher.get('first_name', '')} {teacher.get('last_name', '')}".strip()
             if not teacher_name:
                 teacher_name = "—"
