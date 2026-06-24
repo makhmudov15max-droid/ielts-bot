@@ -114,7 +114,7 @@ async def write_schedule_to_sheets() -> str:
             matrix[start_row][0] = "Dars\nvaqtlari"
             matrix[label_slot_row][1] = "Dars xonalari"
             for x in range(XONA_COUNT):
-                matrix[label_slot_row][2 + x] = f"{x+1} xona"
+                matrix[label_slot_row][1 + x] = f"{x+1} xona"
 
             # Vaqtlar
             for i, t in enumerate(TIME_SLOTS):
@@ -203,29 +203,22 @@ async def write_schedule_to_sheets() -> str:
             }}
 
         # === MERGES ===
-        # Dars xonalari (Toq) — C2:L2
-        requests.append(_fmt_merge(0, 1, 2, 12))
-        # Dars vaqtlari (Toq) — A2:A7
+        MC = MATRIX_COLS  # 12
+        # Dars xonalari (Toq) — B2:L2
+        requests.append(_fmt_merge(0, 1, 1, MC))
+        # Dars vaqtlari (Toq) — A2:A8
         requests.append(_fmt_merge(0, 7, 0, 1))
-        # Dars xonalari (Juft) — C11:L11
-        requests.append(_fmt_merge(9, 10, 2, 12))
-        # Dars vaqtlari (Juft) — A11:A16
+        # Dars xonalari (Juft) — B11:L11
+        requests.append(_fmt_merge(9, 10, 1, MC))
+        # Dars vaqtlari (Juft) — A11:A17
         requests.append(_fmt_merge(9, 16, 0, 1))
 
         # === FORMATS ===
-        # Sarlavha: Dars xonalari
+        # Sarlavha: Dars xonalari + xona raqamlari (B..L)
         for label_row in [0, 9]:
-            requests.append(_fmt(label_row, 1, label_row + 1, 12, {
+            requests.append(_fmt(label_row, 1, label_row + 1, MC, {
                 "backgroundColor": COLOR_HEADER_BG,
                 "textFormat": {"bold": True, "fontSize": 12},
-                "horizontalAlignment": "CENTER",
-                "verticalAlignment": "MIDDLE",
-                "borders": BORDER_GRAY,
-            }))
-            # Xona raqamlari
-            requests.append(_fmt(label_row, 2, label_row + 1, 12, {
-                "backgroundColor": COLOR_XONA_BG,
-                "textFormat": {"bold": True, "fontSize": 10},
                 "horizontalAlignment": "CENTER",
                 "verticalAlignment": "MIDDLE",
                 "borders": BORDER_GRAY,
@@ -252,13 +245,13 @@ async def write_schedule_to_sheets() -> str:
                 }))
 
         # BARCHA MA'LUMOT KATAKLARIGA border + center (Toq: B3:L8, Juft: B12:L17)
-        requests.append(_fmt(1, 1, 8, 12, {
+        requests.append(_fmt(1, 1, 8, MC, {
             "horizontalAlignment": "CENTER",
             "verticalAlignment": "MIDDLE",
             "wrapStrategy": "WRAP",
             "borders": BORDER_GRAY,
         }))
-        requests.append(_fmt(10, 1, 17, 12, {
+        requests.append(_fmt(10, 1, 17, MC, {
             "horizontalAlignment": "CENTER",
             "verticalAlignment": "MIDDLE",
             "wrapStrategy": "WRAP",
@@ -286,7 +279,7 @@ async def write_schedule_to_sheets() -> str:
                 "properties": {"pixelSize": 80}, "fields": "pixelSize",
             }
         })
-        for ci in range(1, 12):
+        for ci in range(1, MC):
             requests.append({
                 "updateDimensionProperties": {
                     "range": {"sheetId": sheet_id, "dimension": "COLUMNS", "startIndex": ci, "endIndex": ci + 1},
