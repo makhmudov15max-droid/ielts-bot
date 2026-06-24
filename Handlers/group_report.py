@@ -9,6 +9,8 @@ logger = logging.getLogger(__name__)
 
 report_router = Router()
 
+from utils.group_comments_db import get_comment, set_comment, delete_comment, get_all_comments
+
 try:
     ADMIN_ID = int(config.ADMIN_ID)
 except:
@@ -19,6 +21,8 @@ except:
 class ReportStates(StatesGroup):
     waiting_for_report_choice = State()
     waiting_for_teacher_choice = State()
+    waiting_for_comment_input = State()
+    waiting_for_comment_delete_confirm = State()
 
 
 # ================= GLOBAL O'ZGARUVCHI =================
@@ -287,58 +291,24 @@ async def show_problematic_groups(message: types.Message, state: FSMContext):
 
     groups = await asyncio.to_thread(get_all_groups)
     teacher_scores = await asyncio.to_thread(get_teacher_scores)
+    all_comments = await get_all_comments()
 
     if not groups:
         await message.answer("📭 LMSda ma'lumotlar topilmadi yoki ulanib bo'lmadi.")
         return
 
-    report = "📄 <b>MUAMMOLI GURUHLAR</b>\n\n"
-    found = False
+    report, found_groups, inline_kb = _build_report_data(groups, teacher_scores, all_comments)
 
-    for g in groups:
-        level = g["level"]
-        days_left = g["days_left"]
+    await state.update_data(found_groups=found_groups)
 
-        # IELTS guruh tugamoqda
-        if level in IELTS_LEVELS and 0 <= days_left <= 14:
-            found = True
-            report += (
-                f"🚨 <b>IELTS guruh tugamoqda</b>\n\n"
-                f"👨🏻‍🏫 {g['teacher']}\n"
-                f"📚 {g['group_name']} — {g['level']}\n"
-                f"📅 {g['end_date']}\n"
-                f"⏳ {days_left} kun qoldi\n"
-                f"📌 {g['status']}\n"
-            )
-            if g["comment"]:
-                report += f"📝 {g['comment']}\n"
-            report += "\n━━━━━━━━━━\n\n"
-
-        # Ustoz almashtirish kerak (Novice + IELTS ≤ 8.0)
-        if "Novice" in level and 0 <= days_left <= 14:
-            teacher_score = teacher_scores.get(g["teacher"])
-            if teacher_score is not None and teacher_score <= 8.0:
-                found = True
-                report += (
-                    f"⚠️ <b>Ustoz almashtirish kerak</b>\n\n"
-                    f"👨🏻‍🏫 {g['teacher']}\n"
-                    f"📚 {g['group_name']} — {g['level']}\n"
-                    f"📅 {g['end_date']}\n"
-                    f"⏳ {days_left} kun qoldi\n"
-                    f"📌 {g['status']}\n"
-                )
-                if g["comment"]:
-                    report += f"📝 {g['comment']}\n"
-                report += (
-                    f"🎯 IELTS: {teacher_score}\n"
-                    f"Kerak: 8.5 yoki 9.0\n"
-                    f"\n━━━━━━━━━━\n\n"
-                )
-
-    if not found:
-        report += "✅ Hozircha muammoli guruh topilmadi"
-
-    await message.answer(report, parse_mode="HTML")
+    if found_groups and inline_kb:
+        await message.answer(
+            report,
+            parse_mode="HTML",
+            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_kb),
+        )
+    else:
+        await message.answer(report, parse_mode="HTML")
 
 
 # ================= USTOZ BO'YICHA GURUHLAR =================
@@ -492,3 +462,324 @@ async def show_teacher_groups(call: types.CallbackQuery, state: FSMContext):
         parse_mode="HTML",
         reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_kb),
     )
+
+
+# ================= GURUH IZOHLARI HANDLERLARI =================
+
+def _build_report_data(groups: list, teacher_scores: dict, all_comments: dict) -> tuple:
+    """Report matni, found_groups ro'yxati va inline keyboard yasaydi.
+    Qaytaradi: (report_text, found_groups, inline_keyboard_buttons)
+    """
+    report = "📄 <b>MUAMMOLI GURUHLAR</b>\n\n"
+    found_groups = []
+    inline_kb = []
+    idx = 0
+
+    for g in groups:
+        level = g["level"]
+        days_left = g["days_left"]
+        group_name = g["group_name"]
+
+        comment = all_comments.get(group_name, "")
+        if comment:
+            g["comment"] = comment
+
+        should_show = False
+        problem_type = None
+
+        if level in IELTS_LEVELS and 0 <= days_left <= 14:
+            should_show = True
+            problem_type = "ending"
+
+        if "Novice" in level and 0 <= days_left <= 14:
+            teacher_score = teacher_scores.get(g["teacher"])
+            if teacher_score is not None and teacher_score <= 8.0:
+                should_show = True
+                problem_type = "teacher_swap"
+
+        if not should_show:
+            continue
+
+        found_groups.append({"name": group_name, "idx": idx, "data": g})
+
+        if problem_type == "ending":
+            report += (
+                f"🚨 <b>IELTS guruh tugamoqda</b>\n\n"
+                f"👨🏻‍🏫 {g['teacher']}\n"
+                f"📚 {g['group_name']} — {g['level']}\n"
+                f"📅 {g['end_date']}\n"
+                f"⏳ {days_left} kun qoldi\n"
+                f"📌 {g['status']}\n"
+            )
+        elif problem_type == "teacher_swap":
+            teacher_score = teacher_scores.get(g["teacher"])
+            report += (
+                f"⚠️ <b>Ustoz almashtirish kerak</b>\n\n"
+                f"👨🏻‍🏫 {g['teacher']}\n"
+                f"📚 {g['group_name']} — {g['level']}\n"
+                f"📅 {g['end_date']}\n"
+                f"⏳ {days_left} kun qoldi\n"
+                f"📌 {g['status']}\n"
+                f"🎯 IELTS: {teacher_score}\n"
+                f"Kerak: 8.5 yoki 9.0\n"
+            )
+
+        if comment:
+            report += f"📝 <b>Izoh:</b> {comment}\n"
+            inline_kb.append([
+                types.InlineKeyboardButton(text="✏️ Tahrirlash", callback_data=f"cmt_e_{idx}"),
+                types.InlineKeyboardButton(text="🗑 O'chirish", callback_data=f"cmt_d_{idx}"),
+            ])
+        else:
+            inline_kb.append([
+                types.InlineKeyboardButton(text="➕ Izoh qo'shish", callback_data=f"cmt_a_{idx}"),
+            ])
+
+        report += "━━━━━━━━━━\n\n"
+        idx += 1
+
+    if not found_groups:
+        report += "✅ Hozircha muammoli guruh topilmadi"
+
+    return report, found_groups, inline_kb
+
+def _find_group(state_data: dict, idx: int) -> dict | None:
+    """State ichidan indeks bo'yicha guruhni topadi."""
+    found_groups = state_data.get("found_groups", [])
+    for fg in found_groups:
+        if fg["idx"] == idx:
+            return fg
+    return None
+
+
+async def _refresh_report(call: types.CallbackQuery, state: FSMContext):
+    """Reportni qayta yuklab, xabarni yangilaydi."""
+    await call.answer()
+    
+    groups = await asyncio.to_thread(get_all_groups)
+    teacher_scores = await asyncio.to_thread(get_teacher_scores)
+    all_comments = await get_all_comments()
+
+    if not groups:
+        await call.message.edit_text("📭 LMSda ma'lumotlar topilmadi.")
+        return
+
+    report, found_groups, inline_kb = _build_report_data(groups, teacher_scores, all_comments)
+    await state.update_data(found_groups=found_groups)
+
+    if found_groups and inline_kb:
+        await call.message.edit_text(
+            report,
+            parse_mode="HTML",
+            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_kb),
+        )
+    else:
+        await call.message.edit_text(report, parse_mode="HTML")
+
+
+@report_router.callback_query(F.data.startswith("cmt_a_"))
+@report_router.callback_query(F.data.startswith("cmt_e_"))
+async def start_comment_input(call: types.CallbackQuery, state: FSMContext):
+    """➕ Izoh qo'shish yoki ✏️ tahrirlash — matn kiritishni so'rash."""
+    await call.answer()
+    
+    idx = int(call.data.split("_")[-1])
+    state_data = await state.get_data()
+    fg = _find_group(state_data, idx)
+    
+    if not fg:
+        await call.message.edit_text("⚠️ Guruh topilmadi. Iltimos, reportni qayta oching.")
+        return
+
+    group_name = fg["name"]
+    old_comment = fg["data"].get("comment", "")
+
+    await state.update_data(comment_group_idx=idx, comment_group_name=group_name)
+    await state.set_state(ReportStates.waiting_for_comment_input)
+
+    hint = f"✏️ <b>{group_name}</b>\n\n"
+    if old_comment:
+        hint += f"📝 Joriy izoh: {old_comment}\n\n"
+    hint += "Yangi izoh matnini kiriting (yoki ❌ Bekor qilish):"
+
+    await call.message.edit_text(
+        hint,
+        parse_mode="HTML",
+        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
+            [types.InlineKeyboardButton(text="❌ Bekor qilish", callback_data="cmt_cancel")]
+        ]),
+    )
+
+
+@report_router.callback_query(F.data == "cmt_cancel")
+async def cancel_comment_input(call: types.CallbackQuery, state: FSMContext):
+    """Izoh kiritishni bekor qilish."""
+    await call.answer()
+    await state.set_state(ReportStates.waiting_for_report_choice)
+    await _refresh_report(call, state)
+
+
+@report_router.message(ReportStates.waiting_for_comment_input)
+async def save_comment(message: types.Message, state: FSMContext):
+    """Admin izoh matnini yozganda saqlash."""
+    state_data = await state.get_data()
+    group_name = state_data.get("comment_group_name")
+    user_id = str(message.from_user.id)
+
+    if not group_name:
+        await message.answer("⚠️ Xatolik: guruh topilmadi.")
+        await state.set_state(ReportStates.waiting_for_report_choice)
+        return
+
+    comment_text = message.text.strip()
+    await set_comment(group_name, comment_text, user_id)
+
+    await state.set_state(ReportStates.waiting_for_report_choice)
+
+    # Reportni qayta yuklab, yangi xabar sifatida chiqaramiz
+    groups = await asyncio.to_thread(get_all_groups)
+    teacher_scores = await asyncio.to_thread(get_teacher_scores)
+    all_comments = await get_all_comments()
+
+    report = "📄 <b>MUAMMOLI GURUHLAR</b>\n\n"
+    found_groups = []
+    inline_kb = []
+    idx = 0
+
+    for g in groups:
+        level = g["level"]
+        days_left = g["days_left"]
+        group_name_g = g["group_name"]
+        comment = all_comments.get(group_name_g, "")
+
+        should_show = False
+        problem_type = None
+
+        if level in IELTS_LEVELS and 0 <= days_left <= 14:
+            should_show = True
+            problem_type = "ending"
+
+        if "Novice" in level and 0 <= days_left <= 14:
+            teacher_score = teacher_scores.get(g["teacher"])
+            if teacher_score is not None and teacher_score <= 8.0:
+                should_show = True
+                problem_type = "teacher_swap"
+
+        if not should_show:
+            continue
+
+        found_groups.append({"name": group_name_g, "idx": idx, "data": g})
+
+        if problem_type == "ending":
+            report += (
+                f"🚨 <b>IELTS guruh tugamoqda</b>\n\n"
+                f"👨🏻‍🏫 {g['teacher']}\n"
+                f"📚 {g['group_name']} — {g['level']}\n"
+                f"📅 {g['end_date']}\n"
+                f"⏳ {days_left} kun qoldi\n"
+                f"📌 {g['status']}\n"
+            )
+        elif problem_type == "teacher_swap":
+            teacher_score = teacher_scores.get(g["teacher"])
+            report += (
+                f"⚠️ <b>Ustoz almashtirish kerak</b>\n\n"
+                f"👨🏻‍🏫 {g['teacher']}\n"
+                f"📚 {g['group_name']} — {g['level']}\n"
+                f"📅 {g['end_date']}\n"
+                f"⏳ {days_left} kun qoldi\n"
+                f"📌 {g['status']}\n"
+                f"🎯 IELTS: {teacher_score}\n"
+                f"Kerak: 8.5 yoki 9.0\n"
+            )
+
+        if comment:
+            report += f"📝 <b>Izoh:</b> {comment}\n"
+            inline_kb.append([
+                types.InlineKeyboardButton(text="✏️ Tahrirlash", callback_data=f"cmt_e_{idx}"),
+                types.InlineKeyboardButton(text="🗑 O'chirish", callback_data=f"cmt_d_{idx}"),
+            ])
+        else:
+            inline_kb.append([
+                types.InlineKeyboardButton(text="➕ Izoh qo'shish", callback_data=f"cmt_a_{idx}"),
+            ])
+
+        report += "━━━━━━━━━━\n\n"
+        idx += 1
+
+    if not found_groups:
+        report += "✅ Hozircha muammoli guruh topilmadi"
+
+    await state.update_data(found_groups=found_groups)
+
+    if found_groups and inline_kb:
+        await message.answer(
+            report,
+            parse_mode="HTML",
+            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_kb),
+        )
+    else:
+        await message.answer(report, parse_mode="HTML")
+
+
+@report_router.callback_query(F.data.startswith("cmt_d_"))
+async def confirm_delete_comment(call: types.CallbackQuery, state: FSMContext):
+    """🗑 O'chirish — tasdiqlash so'raydi."""
+    await call.answer()
+    
+    idx = int(call.data.split("_")[-1])
+    state_data = await state.get_data()
+    fg = _find_group(state_data, idx)
+
+    if not fg:
+        await call.message.edit_text("⚠️ Guruh topilmadi. Iltimos, reportni qayta oching.")
+        return
+
+    group_name = fg["name"]
+    await state.update_data(comment_group_idx=idx, comment_group_name=group_name)
+    await state.set_state(ReportStates.waiting_for_comment_delete_confirm)
+
+    await call.message.edit_text(
+        f"🗑 <b>Izohni o'chirish</b>\n\n"
+        f"📚 {group_name}\n\n"
+        f"Haqiqatan ham izohni o'chirishni xohlaysizmi?",
+        parse_mode="HTML",
+        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
+            [
+                types.InlineKeyboardButton(text="✅ Ha, o'chirilsin", callback_data=f"cmt_del_yes_{idx}"),
+                types.InlineKeyboardButton(text="❌ Yo'q", callback_data="cmt_del_no"),
+            ]
+        ]),
+    )
+
+
+@report_router.callback_query(F.data.startswith("cmt_del_yes_"))
+async def do_delete_comment(call: types.CallbackQuery, state: FSMContext):
+    """✅ Izohni o'chirishni tasdiqlash."""
+    await call.answer()
+    
+    idx = int(call.data.split("_")[-1])
+    state_data = await state.get_data()
+    fg = _find_group(state_data, idx)
+
+    if not fg:
+        await call.message.edit_text("⚠️ Guruh topilmadi.")
+        return
+
+    group_name = fg["name"]
+    deleted = await delete_comment(group_name)
+
+    if deleted:
+        await call.answer("✅ Izoh o'chirildi!", show_alert=False)
+    else:
+        await call.answer("ℹ️ Izoh allaqachon o'chirilgan.", show_alert=False)
+
+    await state.set_state(ReportStates.waiting_for_report_choice)
+    await _refresh_report(call, state)
+
+
+@report_router.callback_query(F.data == "cmt_del_no")
+async def cancel_delete_comment(call: types.CallbackQuery, state: FSMContext):
+    """❌ O'chirishni bekor qilish."""
+    await call.answer()
+    await state.set_state(ReportStates.waiting_for_report_choice)
+    await _refresh_report(call, state)

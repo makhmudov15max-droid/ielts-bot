@@ -140,6 +140,19 @@ async def init_db():
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_holidays_user ON holidays(user_id)")
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_holidays_date ON holidays(date)")
             
+            # ================= GROUP COMMENTS TABLE =================
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS group_comments (
+                    id SERIAL PRIMARY KEY,
+                    group_name TEXT UNIQUE NOT NULL,
+                    comment TEXT,
+                    created_by TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_group_comments_name ON group_comments(group_name)")
+
             # ================= MIGRATION: motivation_index ustuni =================
             await conn.execute("""
                 ALTER TABLE users ADD COLUMN IF NOT EXISTS motivation_index INTEGER DEFAULT 0
