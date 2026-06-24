@@ -76,8 +76,10 @@ def _days_left(end_date_str: str) -> int:
 
 
 def _color_by_days(days: int) -> dict:
-    if days < 0:
-        return COLOR_BLUE      # bo'sh slot
+    if days == -2:
+        return COLOR_HEADER           # ⏳ ochilishi kutilmoqda
+    elif days < 0:
+        return COLOR_BLUE              # bo'sh slot
     elif days <= 14:
         return COLOR_RED
     elif days <= 30:
@@ -170,10 +172,12 @@ async def write_schedule_to_sheets() -> str:
 
         # First pass: collect data without full matrix (we'll build after removing empties)
         def collect_raw(lessons):
-            """Collect lessons by (time_idx, room_col)"""
-            raw = {}
+            """Collect lessons by (time_idx, room_col). Returns (active, planned)."""
+            active = {}
+            planned = {}  # status=1 — kutilayotgan guruhlar
             for lesson in lessons:
-                if lesson.get("status") != 2:
+                status = lesson.get("status")
+                if status not in (1, 2):
                     continue
                 st = _normalize_time(str(lesson.get("lesson_start_time", ""))[:5])
                 rn = str(lesson.get("room", {}).get("name", ""))
@@ -181,27 +185,33 @@ async def write_schedule_to_sheets() -> str:
                 ci = ROOM_NAME_TO_COL.get(rn)
                 if ti is None or ci is None:
                     continue
-                gid = lesson.get("id", "?")
-                teacher = (lesson.get("teacher") or {}).get("first_name", "")
-                course_obj = lesson.get("sub_course") or lesson.get("course") or {}
-                level = course_obj.get("name", {}).get("uz", "?")
-                end_date = lesson.get("group_end_date", "")
-                dl = _days_left(end_date)
-                text = f"#{gid}\n{teacher}\n{level}"
                 key = (ti, ci)
-                if key in raw:
-                    raw[key]["text"] += f"\n——\n{text}"
-                    raw[key]["days"] = min(raw[key]["days"], dl)
-                else:
-                    raw[key] = {"text": text, "days": dl}
-            return raw
+                if status == 2:
+                    gid = lesson.get("id", "?")
+                    teacher = (lesson.get("teacher") or {}).get("first_name", "")
+                    course_obj = lesson.get("sub_course") or lesson.get("course") or {}
+                    level = course_obj.get("name", {}).get("uz", "?")
+                    end_date = lesson.get("group_end_date", "")
+                    dl = _days_left(end_date)
+                    text = f"#{gid}\n{teacher}\n{level}"
+                    if key in active:
+                        active[key]["text"] += f"\n——\n{text}"
+                        active[key]["days"] = min(active[key]["days"], dl)
+                    else:
+                        active[key] = {"text": text, "days": dl}
+                else:  # status == 1
+                    planned[key] = True
+            return active, planned
 
-        raw_odd = collect_raw(schedule["odd"])
-        raw_even = collect_raw(schedule["even"])
+        raw_odd, planned_odd = collect_raw(schedule["odd"])
+        raw_even, planned_even = collect_raw(schedule["even"])
 
         # Determine which time slots have ANY data across both sections
         active_times = set()
         for (ti, _) in list(raw_odd.keys()) + list(raw_even.keys()):
+            active_times.add(ti)
+        # Also include times from planned groups
+        for ti in list(planned_odd.keys()) + list(planned_even.keys()):
             active_times.add(ti)
         # Also keep 18:00 as minimum (always show it)
         active_times.add(TIME_TO_MATRIX_ROW.get("18:00", 5))
@@ -224,7 +234,7 @@ async def write_schedule_to_sheets() -> str:
         juft_end = juft_start + 2 + filtered_count
         sep2_row = juft_end
         leg_start = sep2_row + 1
-        TOTAL_ROWS = leg_start + 4  # ranglar + qizil + sariq + yashil
+        TOTAL_ROWS = leg_start + 5  # ranglar + qizil + sariq + yashil + ⏳
 
         matrix = [[""] * MC for _ in range(TOTAL_ROWS)]
         all_data = {}
@@ -268,11 +278,27 @@ async def write_schedule_to_sheets() -> str:
         juft_data = fill_filtered(raw_even, juft_start, "JUFT")
         all_data.update(juft_data)
 
+        # Planned guruhlarni overlay — faqat "Dars yo'q slot" kataklarga ⏳
+        planned_count = 0
+        for planned_dict, base_row in [(planned_odd, toq_base), (planned_even, juft_start)]:
+            for (old_ti, ci) in planned_dict:
+                new_ti = old_to_new.get(old_ti)
+                if new_ti is None:
+                    continue
+                ri = base_row + 2 + new_ti
+                dc = ci + 1
+                current = matrix[ri][dc] if ri < len(matrix) and dc < len(matrix[ri]) else ""
+                if current == "Dars yo'q slot":
+                    matrix[ri][dc] = "⏳"
+                    all_data[(ri, dc)] = {"text": "⏳", "days": -2}  # -2 = planned
+                    planned_count += 1
+
         # Legend
         matrix[leg_start][0] = "Ranglar:"
         matrix[leg_start + 1][0] = "Qizil — 2 haftadan kam"
         matrix[leg_start + 2][0] = "Sariq — 1 oygacha"
         matrix[leg_start + 3][0] = "Yashil — 1 oydan ko'p"
+        matrix[leg_start + 4][0] = "⏳ — ochilishi kutilmoqda"
 
         # ====== WRITE DATA ======
         last_col = chr(65 + MC - 1)
@@ -339,7 +365,7 @@ async def write_schedule_to_sheets() -> str:
                 "verticalAlignment": "MIDDLE",
                 "borders": BORDER_GRAY,
             }
-            if info["days"] < 0:
+            if info["days"] < 0 and info["days"] != -2:
                 cell_fmt["textFormat"]["foregroundColor"] = {"red": 0.5, "green": 0.5, "blue": 0.5}
             requests.append(_fmt(ri, ri + 1, dc, dc + 1, cell_fmt))
 
@@ -349,6 +375,7 @@ async def write_schedule_to_sheets() -> str:
             (leg_start + 1, COLOR_RED),
             (leg_start + 2, COLOR_YELLOW),
             (leg_start + 3, COLOR_GREEN),
+            (leg_start + 4, COLOR_HEADER),
         ]
         for lr, clr in legend_colors:
             requests.append(_fmt(lr, lr + 1, 0, 1, {
@@ -404,6 +431,7 @@ async def write_schedule_to_sheets() -> str:
             f"✅ Dars jadvali Google Sheets ga yozildi!\n\n"
             f"📊 Toq kunlar: {odd_count} ta dars\n"
             f"📊 Juft kunlar: {even_count} ta dars\n"
+            f"⏳ Kutilayotgan guruhlar: {planned_count} ta\n"
             f"📋 Sheet: {SHEET_NAME}\n"
             f"⏰ Vaqtlar: {', '.join(TIME_SLOTS)}"
         )
