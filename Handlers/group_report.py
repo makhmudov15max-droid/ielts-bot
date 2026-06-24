@@ -552,8 +552,6 @@ def _find_group(state_data: dict, idx: int) -> dict | None:
 
 async def _refresh_report(call: types.CallbackQuery, state: FSMContext):
     """Reportni qayta yuklab, xabarni yangilaydi."""
-    await call.answer()
-    
     groups = await asyncio.to_thread(get_all_groups)
     teacher_scores = await asyncio.to_thread(get_teacher_scores)
     all_comments = await get_all_comments()
