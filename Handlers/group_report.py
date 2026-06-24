@@ -269,6 +269,7 @@ async def group_report_menu(message: types.Message, state: FSMContext):
             keyboard=[
                 [types.KeyboardButton(text="📊 Barcha muammoli guruhlar")],
                 [types.KeyboardButton(text="👨🏻‍🏫 Ustoz bo'yicha guruhlar")],
+                [types.KeyboardButton(text="📋 Dars Jadval")],
                 [types.KeyboardButton(text="🏠 Bosh sahifa")],
             ],
             resize_keyboard=True,
@@ -282,6 +283,16 @@ async def report_back_home(message: types.Message, state: FSMContext):
     from Keyboards.main_menu import get_main_menu
     role = _USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner") if _USERS_ROLES else "Owner"
     await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
+
+
+@report_router.message(ReportStates.waiting_for_report_choice, F.text == "📋 Dars Jadval")
+async def export_schedule_to_sheets(message: types.Message, state: FSMContext):
+    """LMS dan dars jadvalini olib Google Sheets ga yozadi."""
+    await message.answer("⏳ LMS dan dars jadvali yuklanmoqda...\n\nBu biroz vaqt olishi mumkin (30-60 soniya).")
+
+    from utils.sheets_export import write_schedule_to_sheets
+    result = await write_schedule_to_sheets()
+    await message.answer(result, parse_mode="HTML")
 
 
 # ================= BARCHA MUAMMOLI GURUHLAR =================
