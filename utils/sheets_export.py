@@ -358,9 +358,10 @@ async def write_schedule_to_sheets() -> str:
         # Individual cell colors
         for (ri, dc), info in all_data.items():
             clr = _color_by_days(info["days"])
+            font_size = 15 if info["days"] == -2 else 9  # ⏳ kattaroq
             cell_fmt = {
                 "backgroundColor": clr,
-                "textFormat": {"fontSize": 9},
+                "textFormat": {"fontSize": font_size},
                 "horizontalAlignment": "CENTER",
                 "verticalAlignment": "MIDDLE",
                 "borders": BORDER_GRAY,
