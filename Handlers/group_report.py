@@ -255,7 +255,7 @@ ACTIVE_STATUSES = ["Aktiv guruh", "Guruh"]
 
 
 # ================= ASOSIY MENU =================
-@report_router.message(F.text == "LMS")
+@report_router.message(F.text == "🌐 LMS")
 async def group_report_menu(message: types.Message, state: FSMContext):
     if not await is_admin(message.from_user.id):
         await message.answer("⚠️ Bu buyruq faqat administrator va owner uchun!")
