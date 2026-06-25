@@ -489,7 +489,6 @@ async def show_cashboxes(message: types.Message, state: FSMContext):
 
         # Xabarda listing
         text = "🏦 <b>DRUJBA — CASHBOXLAR</b>\n\n"
-        inline_kb = types.InlineKeyboardMarkup(row_width=1)
         from_keyboard = []
 
         for idx, cb in enumerate(drujba_cbs, 1):
@@ -499,7 +498,7 @@ async def show_cashboxes(message: types.Message, state: FSMContext):
             from_keyboard.append([types.InlineKeyboardButton(text=f"{cb['name']} — {int(total)} so'm", callback_data=f"cb_{cb['id']}")])
 
         from_keyboard.append([types.InlineKeyboardButton(text="🏠 Ortga", callback_data="cb_back")])
-        inline_kb.inline_keyboard = from_keyboard
+        inline_kb = types.InlineKeyboardMarkup(inline_keyboard=from_keyboard)
 
         await state.set_state(ReportStates.waiting_for_cashbox_detail)
         await msg.edit_text(text, parse_mode="HTML", reply_markup=inline_kb)
@@ -534,7 +533,6 @@ async def cashbox_callback_handler(call: types.CallbackQuery, state: FSMContext)
             drujba_cbs = [cb for cb in cashboxes if cb.get("branch", {}).get("en") == "Drujba filial"]
 
             text = "🏦 <b>DRUJBA — CASHBOXLAR</b>\n\n"
-            inline_kb = types.InlineKeyboardMarkup(row_width=1)
             from_keyboard = []
 
             for idx, cb in enumerate(drujba_cbs, 1):
@@ -544,7 +542,7 @@ async def cashbox_callback_handler(call: types.CallbackQuery, state: FSMContext)
                 from_keyboard.append([types.InlineKeyboardButton(text=f"{cb['name']} — {int(total)} so'm", callback_data=f"cb_{cb['id']}")])
 
             from_keyboard.append([types.InlineKeyboardButton(text="🏠 Ortga", callback_data="cb_back")])
-            inline_kb.inline_keyboard = from_keyboard
+            inline_kb = types.InlineKeyboardMarkup(inline_keyboard=from_keyboard)
 
             await msg.edit_text(text, parse_mode="HTML", reply_markup=inline_kb)
         except Exception as e:
