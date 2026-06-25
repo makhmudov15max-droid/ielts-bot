@@ -61,6 +61,8 @@ _teacher_map = {}
 _course_map = {}
 _cached_groups = None
 _cached_groups_time = 0
+_cached_cashboxes = None
+_cached_cashboxes_time = 0
 CACHE_TTL = 60  # sekund
 
 
@@ -467,45 +469,12 @@ async def show_cashboxes(message: types.Message, state: FSMContext):
     msg = await message.answer("⏳ Cashboxlar yuklanmoqda...")
 
     try:
-        import json, re
-        from html import unescape
-
-        s = _get_lms_session()
-        r = s.get(f"{LMS_BASE}/admin/cashboxes", timeout=15)
-        match = re.search(r'data-page="([^"]*)"', r.text)
-        if not match:
-            logger.warning(f"Cashbox data-page not found. Status={r.status_code}, URL={r.url}, len={len(r.text)}")
-            await msg.edit_text("⚠️ Cashbox ma'lumotlari topilmadi.")
-            return
-
-        dp = json.loads(unescape(match.group(1)))
-        cashboxes = dp["props"]["cashboxes"]
-
+        cashboxes = await asyncio.to_thread(_get_cashboxes_cached)
         if not cashboxes:
-            await msg.edit_text("📭 Hech qanday cashbox topilmadi.")
-            return
-
-        # Faqat Drujba filialidagi cashboxlar (branch_id=3)
-        drujba_cbs = [cb for cb in cashboxes if cb.get("branch_id") == DRUJBA_BRANCH_ID]
-        logger.info(f"Cashboxes: total={len(cashboxes)}, drujba={len(drujba_cbs)}, ids={[c['id'] for c in cashboxes]}")
-
-        if not drujba_cbs:
             await msg.edit_text("📭 Drujba filialida cashbox topilmadi.")
             return
 
-        # Xabarda listing
-        text = "🏦 <b>DRUJBA — CASHBOXLAR</b>\n\n"
-        from_keyboard = []
-
-        for idx, cb in enumerate(drujba_cbs, 1):
-            bal = cb.get("balance", {}) if isinstance(cb.get("balance"), dict) else {}
-            total = sum(float(v or 0) for v in bal.values())
-            text += f"{idx}. <b>{cb['name']}</b> — 💰 {int(total)} so'm\n"
-            from_keyboard.append([types.InlineKeyboardButton(text=f"{cb['name']} — {int(total)} so'm", callback_data=f"cb_{cb['id']}")])
-
-        from_keyboard.append([types.InlineKeyboardButton(text="🏠 Ortga", callback_data="cb_back")])
-        inline_kb = types.InlineKeyboardMarkup(inline_keyboard=from_keyboard)
-
+        text, inline_kb = _build_cashboxes_list(cashboxes)
         await state.set_state(ReportStates.waiting_for_cashbox_detail)
         await msg.edit_text(text, parse_mode="HTML", reply_markup=inline_kb)
 
@@ -521,36 +490,14 @@ async def cashbox_callback_handler(call: types.CallbackQuery, state: FSMContext)
 
     data = call.data
     if data == "cb_back":
-        # Back to cashbox listing — re-fetch data
         msg = call.message
         try:
-            import json, re
-            from html import unescape
-
-            s = _get_lms_session()
-            r = s.get(f"{LMS_BASE}/admin/cashboxes", timeout=15)
-            match = re.search(r'data-page="([^"]*)"', r.text)
-            if not match:
-                logger.warning(f"Cashbox data-page not found. Status={r.status_code}, URL={r.url}, len={len(r.text)}")
-                await msg.edit_text("⚠️ Cashbox ma'lumotlari topilmadi.")
+            cashboxes = await asyncio.to_thread(_get_cashboxes_cached)
+            if not cashboxes:
+                await msg.edit_text("📭 Drujba filialida cashbox topilmadi.")
                 return
 
-            dp = json.loads(unescape(match.group(1)))
-            cashboxes = dp["props"]["cashboxes"]
-            drujba_cbs = [cb for cb in cashboxes if cb.get("branch_id") == DRUJBA_BRANCH_ID]
-
-            text = "🏦 <b>DRUJBA — CASHBOXLAR</b>\n\n"
-            from_keyboard = []
-
-            for idx, cb in enumerate(drujba_cbs, 1):
-                bal = cb.get("balance", {}) if isinstance(cb.get("balance"), dict) else {}
-                total = sum(float(v or 0) for v in bal.values())
-                text += f"{idx}. <b>{cb['name']}</b> — 💰 {int(total)} so'm\n"
-                from_keyboard.append([types.InlineKeyboardButton(text=f"{cb['name']} — {int(total)} so'm", callback_data=f"cb_{cb['id']}")])
-
-            from_keyboard.append([types.InlineKeyboardButton(text="🏠 Ortga", callback_data="cb_back")])
-            inline_kb = types.InlineKeyboardMarkup(inline_keyboard=from_keyboard)
-
+            text, inline_kb = _build_cashboxes_list(cashboxes)
             await msg.edit_text(text, parse_mode="HTML", reply_markup=inline_kb)
         except Exception as e:
             await msg.edit_text(f"⚠️ Xatolik: {e}")
@@ -561,19 +508,7 @@ async def cashbox_callback_handler(call: types.CallbackQuery, state: FSMContext)
     msg = call.message
 
     try:
-        import json, re
-        from html import unescape
-
-        s = _get_lms_session()
-        r = s.get(f"{LMS_BASE}/admin/cashboxes", timeout=15)
-        match = re.search(r'data-page="([^"]*)"', r.text)
-        if not match:
-            logger.warning(f"Cashbox data-page not found. Status={r.status_code}, URL={r.url}, len={len(r.text)}")
-            await msg.edit_text("⚠️ Cashbox ma'lumotlari topilmadi.")
-            return
-
-        dp = json.loads(unescape(match.group(1)))
-        cashboxes = dp["props"]["cashboxes"]
+        cashboxes = await asyncio.to_thread(_get_cashboxes_cached)
         cb = next((c for c in cashboxes if str(c["id"]) == cb_id), None)
 
         if not cb:
@@ -622,6 +557,51 @@ async def cashbox_callback_handler(call: types.CallbackQuery, state: FSMContext)
     except Exception as e:
         logger.error(f"Cashbox detail error: {e}")
         await msg.edit_text(f"⚠️ Xatolik: {e}")
+
+
+def _get_cashboxes_cached():
+    """Kesh bilan cashboxlarni oladi (60 soniya)"""
+    global _cached_cashboxes, _cached_cashboxes_time
+    now = datetime.now().timestamp()
+    if _cached_cashboxes is not None and (now - _cached_cashboxes_time) < CACHE_TTL:
+        return _cached_cashboxes
+
+    import json, re
+    from html import unescape
+
+    s = _get_lms_session()
+    r = s.get(f"{LMS_BASE}/admin/cashboxes", timeout=15)
+    match = re.search(r'data-page="([^"]*)"', r.text)
+    if not match:
+        logger.warning(f"Cashbox data-page not found. Status={r.status_code}, URL={r.url}, len={len(r.text)}")
+        return []
+
+    dp = json.loads(unescape(match.group(1)))
+    cashboxes = dp["props"]["cashboxes"]
+
+    # Faqat Drujba filialidagi cashboxlar (branch_id=3)
+    drujba_cbs = [cb for cb in cashboxes if cb.get("branch_id") == DRUJBA_BRANCH_ID]
+    logger.info(f"Cashboxes: total={len(cashboxes)}, drujba={len(drujba_cbs)}, ids={[c['id'] for c in cashboxes]}")
+
+    _cached_cashboxes = drujba_cbs
+    _cached_cashboxes_time = now
+    return _cached_cashboxes
+
+
+def _build_cashboxes_list(cashboxes: list) -> tuple:
+    """Cashbox ro'yxati matni va inline keyboard yaratadi"""
+    text = "🏦 <b>DRUJBA — CASHBOXLAR</b>\n\n"
+    from_keyboard = []
+
+    for idx, cb in enumerate(cashboxes, 1):
+        bal = cb.get("balance", {}) if isinstance(cb.get("balance"), dict) else {}
+        total = sum(float(v or 0) for v in bal.values())
+        text += f"{idx}. <b>{cb['name']}</b> — 💰 {int(total)} so'm\n"
+        from_keyboard.append([types.InlineKeyboardButton(text=f"{cb['name']} — {int(total)} so'm", callback_data=f"cb_{cb['id']}")])
+
+    from_keyboard.append([types.InlineKeyboardButton(text="🏠 Ortga", callback_data="cb_back")])
+    inline_kb = types.InlineKeyboardMarkup(inline_keyboard=from_keyboard)
+    return text, inline_kb
 
 
 # ================= WAITING GROUPS =================
