@@ -326,7 +326,7 @@ async def group_report_menu(message: types.Message, state: FSMContext):
         reply_markup=types.ReplyKeyboardMarkup(
             keyboard=[
                 [types.KeyboardButton(text="📊Finishing Groups"), types.KeyboardButton(text="👨🏻‍🏫 Ustoz bo'yicha guruhlar")],
-                [types.KeyboardButton(text="⏳ Waiting Groups"), types.KeyboardButton(text="📋 Dars Jadval")],
+                [types.KeyboardButton(text="⏳ Waiting Groups"), types.KeyboardButton(text="💰 Finance Report"), types.KeyboardButton(text="📋 Dars Jadval")],
                 [types.KeyboardButton(text="🏠 Bosh sahifa")],
             ],
             resize_keyboard=True,
@@ -350,6 +350,14 @@ async def export_schedule_to_sheets(message: types.Message, state: FSMContext):
     from utils.sheets_export import write_schedule_to_sheets
     result = await write_schedule_to_sheets()
     await message.answer(result, parse_mode="HTML")
+
+
+@report_router.message(ReportStates.waiting_for_report_choice, F.text == "💰 Finance Report")
+async def show_finance_report(message: types.Message, state: FSMContext):
+    if not await is_admin(message.from_user.id):
+        await message.answer("⚠️ Bu buyruq faqat administrator va owner uchun!")
+        return
+    await message.answer("⏳ Finance report tayyorlanmoqda...")
 
 
 # ================= WAITING GROUPS =================
