@@ -58,6 +58,9 @@ UZ_TZ = timezone(timedelta(hours=5))
 _lms_session = None
 _teacher_map = {}
 _course_map = {}
+_cached_groups = None
+_cached_groups_time = 0
+CACHE_TTL = 60  # sekund
 
 
 def _get_lms_session():
@@ -118,6 +121,15 @@ def _get_lms_session():
 
 def get_all_groups():
     """LMS export orqali barcha Drujba IELTS guruhlarni olish"""
+    global _cached_groups, _cached_groups_time
+    import time
+
+    # Cache ishlatish — 60 soniya davomida qayta yuklanmaydi
+    now = time.time()
+    if _cached_groups is not None and (now - _cached_groups_time) < CACHE_TTL:
+        logger.info(f"LMS cache: {len(_cached_groups)} groups ({(now - _cached_groups_time):.0f}s old)")
+        return _cached_groups
+
     import openpyxl
 
     try:
@@ -192,10 +204,16 @@ def get_all_groups():
             })
 
         logger.info(f"LMS: {len(groups)} Drujba IELTS groups loaded")
+        _cached_groups = groups
+        _cached_groups_time = time.time()
         return groups
 
     except Exception as e:
         logger.error(f"LMS get_all_groups error: {e}")
+        # Xato bo'lsa, eski cached ma'lumotni qaytarish (agar bor bo'lsa)
+        if _cached_groups is not None:
+            logger.info("Returning stale cache due to error")
+            return _cached_groups
         return []
 
 
