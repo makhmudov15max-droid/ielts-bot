@@ -23,6 +23,7 @@ class ReportStates(StatesGroup):
     waiting_for_teacher_choice = State()
     waiting_for_comment_input = State()
     waiting_for_comment_delete_confirm = State()
+    waiting_for_cashbox_detail = State()
 
 
 # ================= GLOBAL O'ZGARUVCHI =================
@@ -324,17 +325,19 @@ async def group_report_menu(message: types.Message, state: FSMContext):
 
     await state.set_state(ReportStates.waiting_for_report_choice)
 
-    # Finance Report tugmasi faqat Owner uchun
+    # Finance Report va Cashbox tugmalari faqat Owner uchun
     if role == "Owner":
         lms_buttons = [
             [types.KeyboardButton(text="📊Finishing Groups"), types.KeyboardButton(text="👨🏻‍🏫 Ustoz bo'yicha guruhlar")],
-            [types.KeyboardButton(text="⏳ Waiting Groups"), types.KeyboardButton(text="💰 Finance Report"), types.KeyboardButton(text="📋 Dars Jadval")],
+            [types.KeyboardButton(text="⏳ Waiting Groups"), types.KeyboardButton(text="🏦 Cashbox"), types.KeyboardButton(text="💰 Finance Report")],
+            [types.KeyboardButton(text="📋 Dars Jadval")],
             [types.KeyboardButton(text="🏠 Bosh sahifa")],
         ]
     else:
         lms_buttons = [
             [types.KeyboardButton(text="📊Finishing Groups"), types.KeyboardButton(text="👨🏻‍🏫 Ustoz bo'yicha guruhlar")],
-            [types.KeyboardButton(text="⏳ Waiting Groups"), types.KeyboardButton(text="📋 Dars Jadval")],
+            [types.KeyboardButton(text="⏳ Waiting Groups"), types.KeyboardButton(text="🏦 Cashbox")],
+            [types.KeyboardButton(text="📋 Dars Jadval")],
             [types.KeyboardButton(text="🏠 Bosh sahifa")],
         ]
 
@@ -350,6 +353,14 @@ async def group_report_menu(message: types.Message, state: FSMContext):
 
 @report_router.message(ReportStates.waiting_for_report_choice, F.text == "🏠 Bosh sahifa")
 async def report_back_home(message: types.Message, state: FSMContext):
+    await state.clear()
+    from Keyboards.main_menu import get_main_menu
+    role = _USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner") if _USERS_ROLES else "Owner"
+    await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
+
+
+@report_router.message(ReportStates.waiting_for_cashbox_detail, F.text == "🏠 Bosh sahifa")
+async def cashbox_back_home(message: types.Message, state: FSMContext):
     await state.clear()
     from Keyboards.main_menu import get_main_menu
     role = _USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner") if _USERS_ROLES else "Owner"
@@ -442,6 +453,165 @@ async def show_finance_report(message: types.Message, state: FSMContext):
     except Exception as e:
         logger.error(f"Finance report error: {e}")
         await msg.edit_text(f"⚠️ Xatolik yuz berdi: {e}")
+
+
+# ================= CASHBOX =================
+
+@report_router.message(ReportStates.waiting_for_report_choice, F.text == "🏦 Cashbox")
+async def show_cashboxes(message: types.Message, state: FSMContext):
+    """Barcha cashboxlarni listing qiladi"""
+    msg = await message.answer("⏳ Cashboxlar yuklanmoqda...")
+
+    try:
+        import json, re
+        from html import unescape
+
+        s = _get_lms_session()
+        r = s.get(f"{LMS_BASE}/admin/cashboxes", timeout=15)
+        match = re.search(r'data-page="([^"]*)"', r.text)
+        if not match:
+            await msg.edit_text("⚠️ Cashbox ma'lumotlari topilmadi.")
+            return
+
+        dp = json.loads(unescape(match.group(1)))
+        cashboxes = dp["props"]["cashboxes"]
+
+        if not cashboxes:
+            await msg.edit_text("📭 Hech qanday cashbox topilmadi.")
+            return
+
+        # Faqat Drujba filialidagi cashboxlar
+        drujba_cbs = [cb for cb in cashboxes if cb.get("branch", {}).get("en") == "Drujba filial"]
+
+        # Xabarda listing
+        text = "🏦 <b>DRUJBA — CASHBOXLAR</b>\n\n"
+        inline_kb = types.InlineKeyboardMarkup(row_width=1)
+        from_keyboard = []
+
+        for idx, cb in enumerate(drujba_cbs, 1):
+            bal = cb.get("balance", {}) if isinstance(cb.get("balance"), dict) else {}
+            total = sum(float(v or 0) for v in bal.values())
+            text += f"{idx}. <b>{cb['name']}</b> — 💰 {int(total)} so'm\n"
+            from_keyboard.append([types.InlineKeyboardButton(text=f"{cb['name']} — {int(total)} so'm", callback_data=f"cb_{cb['id']}")])
+
+        from_keyboard.append([types.InlineKeyboardButton(text="🏠 Ortga", callback_data="cb_back")])
+        inline_kb.inline_keyboard = from_keyboard
+
+        await state.set_state(ReportStates.waiting_for_cashbox_detail)
+        await msg.edit_text(text, parse_mode="HTML", reply_markup=inline_kb)
+
+    except Exception as e:
+        logger.error(f"Cashbox list error: {e}")
+        await msg.edit_text(f"⚠️ Xatolik yuz berdi: {e}")
+
+
+@report_router.callback_query(ReportStates.waiting_for_cashbox_detail, F.data.startswith("cb_"))
+async def cashbox_callback_handler(call: types.CallbackQuery, state: FSMContext):
+    """Cashbox tanlanganda yoki orqaga qaytganda"""
+    await call.answer()
+
+    data = call.data
+    if data == "cb_back":
+        # Back to cashbox listing — re-fetch data
+        msg = call.message
+        try:
+            import json, re
+            from html import unescape
+
+            s = _get_lms_session()
+            r = s.get(f"{LMS_BASE}/admin/cashboxes", timeout=15)
+            match = re.search(r'data-page="([^"]*)"', r.text)
+            if not match:
+                await msg.edit_text("⚠️ Cashbox ma'lumotlari topilmadi.")
+                return
+
+            dp = json.loads(unescape(match.group(1)))
+            cashboxes = dp["props"]["cashboxes"]
+            drujba_cbs = [cb for cb in cashboxes if cb.get("branch", {}).get("en") == "Drujba filial"]
+
+            text = "🏦 <b>DRUJBA — CASHBOXLAR</b>\n\n"
+            inline_kb = types.InlineKeyboardMarkup(row_width=1)
+            from_keyboard = []
+
+            for idx, cb in enumerate(drujba_cbs, 1):
+                bal = cb.get("balance", {}) if isinstance(cb.get("balance"), dict) else {}
+                total = sum(float(v or 0) for v in bal.values())
+                text += f"{idx}. <b>{cb['name']}</b> — 💰 {int(total)} so'm\n"
+                from_keyboard.append([types.InlineKeyboardButton(text=f"{cb['name']} — {int(total)} so'm", callback_data=f"cb_{cb['id']}")])
+
+            from_keyboard.append([types.InlineKeyboardButton(text="🏠 Ortga", callback_data="cb_back")])
+            inline_kb.inline_keyboard = from_keyboard
+
+            await msg.edit_text(text, parse_mode="HTML", reply_markup=inline_kb)
+        except Exception as e:
+            await msg.edit_text(f"⚠️ Xatolik: {e}")
+        return
+
+    # Cashbox detail
+    cb_id = data.replace("cb_", "")
+    msg = call.message
+
+    try:
+        import json, re
+        from html import unescape
+
+        s = _get_lms_session()
+        r = s.get(f"{LMS_BASE}/admin/cashboxes", timeout=15)
+        match = re.search(r'data-page="([^"]*)"', r.text)
+        if not match:
+            await msg.edit_text("⚠️ Cashbox ma'lumotlari topilmadi.")
+            return
+
+        dp = json.loads(unescape(match.group(1)))
+        cashboxes = dp["props"]["cashboxes"]
+        cb = next((c for c in cashboxes if str(c["id"]) == cb_id), None)
+
+        if not cb:
+            await msg.edit_text("⚠️ Cashbox topilmadi.")
+            return
+
+        bal = cb.get("balance", {})
+        if not isinstance(bal, dict):
+            bal = {}
+
+        # Jami
+        total = sum(float(v or 0) for v in bal.values())
+
+        text = f"🏦 <b>{cb['name']}</b>\n\n"
+        text += f"💰 <b>Jami:</b> {int(total)} so'm\n"
+        text += f"━━━━━━━━━━━━━━━━\n\n"
+
+        # Categorized breakdown (user so'ragan tartibda)
+        cash_v = float(bal.get('cash', 0) or 0)
+        terminal_v = float(bal.get('terminal', 0) or 0)
+        qr_v = float(bal.get('qrcode', 0) or 0)
+        plastic_v = float(bal.get('card', 0) or 0)
+        perech_v = float(bal.get('uzum', 0) or 0) + float(bal.get('payme', 0) or 0) + float(bal.get('click', 0) or 0)
+        mchj_v = float(bal.get('llcaccounts', 0) or 0)
+        bank_v = float(bal.get('bank', 0) or 0)
+
+        if cash_v: text += f"💵 <b>Naqd:</b> {int(cash_v)} so'm\n"
+        if terminal_v: text += f"💳 <b>Terminal:</b> {int(terminal_v)} so'm\n"
+        if qr_v: text += f"📱 <b>QR:</b> {int(qr_v)} so'm\n"
+        if plastic_v: text += f"💳 <b>Plastic:</b> {int(plastic_v)} so'm\n"
+        if perech_v: text += f"📲 <b>Perchesleniya:</b> {int(perech_v)} so'm\n"
+        if mchj_v: text += f"🏛 <b>MCHJ hisob raqamlar:</b> {int(mchj_v)} so'm\n"
+        if bank_v: text += f"🏦 <b>Bank:</b> {int(bank_v)} so'm\n"
+
+        if total == 0:
+            text += "📭 Bu cashboxda pul mavjud emas.\n"
+
+        inline_kb = types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [types.InlineKeyboardButton(text="🏦 Ortga (Cashboxlar)", callback_data="cb_back")]
+            ]
+        )
+
+        await msg.edit_text(text, parse_mode="HTML", reply_markup=inline_kb)
+
+    except Exception as e:
+        logger.error(f"Cashbox detail error: {e}")
+        await msg.edit_text(f"⚠️ Xatolik: {e}")
 
 
 # ================= WAITING GROUPS =================
