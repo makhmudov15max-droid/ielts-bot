@@ -438,27 +438,177 @@ async def show_waiting_groups(message: types.Message, state: FSMContext):
 
     await message.answer("⏳ Kutilayotgan guruhlar yuklanmoqda...")
     groups = await asyncio.to_thread(_get_waiting_groups)
+    all_comments = await get_all_comments()
 
     if not groups:
         await message.answer("📭 Hozircha kutilayotgan guruhlar yo'q.")
         return
 
-    # Ustoz bo'yicha guruhlash
+    # State ga saqlaymiz
+    await state.update_data(waiting_groups=groups, report_type="waiting")
+
+    report, inline_kb = _render_waiting_groups_report(groups, all_comments)
+    await message.answer(report, parse_mode="HTML", reply_markup=inline_kb)
+
+
+def _render_waiting_groups_report(groups: list, all_comments: dict):
+    """Waiting groups reportni state cache dan tez yasaydi"""
+    text = f"⏳ <b>WAITING GROUPS</b> — {len(groups)} ta guruh\n\n"
+
+    # Raqamli inline tugmalar
+    num_row = []
+    for idx, g in enumerate(groups):
+        has_comment = bool(all_comments.get(g["name"], ""))
+        label = f"{idx + 1}{'📝' if has_comment else ''}"
+        num_row.append(types.InlineKeyboardButton(
+            text=label,
+            callback_data=f"wgp_{idx}"
+        ))
+
+    inline_kb = types.InlineKeyboardMarkup(inline_keyboard=[num_row]) if num_row else None
+
+    # Ustoz bo'yicha guruhlab chiqamiz
     by_teacher = {}
     for g in groups:
         by_teacher.setdefault(g["teacher"], []).append(g)
 
-    text = "⏳ <b>WAITING GROUPS</b>\n\n"
     for teacher, gs in sorted(by_teacher.items()):
         text += f"👨🏻‍🏫 <b>{teacher}</b>\n"
         for g in gs:
+            comment = all_comments.get(g["name"], "")
+            comment_line = f" 📝" if comment else ""
             text += (
-                f"   📚 {g['name']} — {g['level']}\n"
+                f"   📚 {g['name']} — {g['level']}{comment_line}\n"
                 f"   👥 {g['active']} + {g['trial']} + {g['frozen']} / {g['capacity']}\n"
                 f"   🏠 Xona: {g['room']}\n\n"
             )
 
-    await message.answer(text, parse_mode="HTML")
+    return text, inline_kb
+
+
+@report_router.callback_query(F.data.startswith("wgp_"))
+async def show_waiting_group_detail_handler(call: types.CallbackQuery, state: FSMContext):
+    await call.answer()
+    idx = int(call.data.split("_")[-1])
+    await state.set_state(ReportStates.waiting_for_report_choice)
+    await _show_waiting_group_detail(call, state, idx)
+
+
+async def _show_waiting_group_detail(call: types.CallbackQuery, state: FSMContext, idx: int):
+    state_data = await state.get_data()
+    groups = state_data.get("waiting_groups", [])
+    report_type = state_data.get("report_type", "waiting")
+
+    if idx >= len(groups):
+        await call.message.edit_text("⚠️ Guruh topilmadi.")
+        return
+
+    g = groups[idx]
+    all_comments = await get_all_comments()
+    comment = all_comments.get(g["name"], "")
+
+    detail = f"⏳ <b>{g['name']} — {g['level']}</b>\n\n"
+    detail += f"👨🏻‍🏫 {g['teacher']}\n"
+    detail += f"👥 {g['active']} + {g['trial']} + {g['frozen']} / {g['capacity']}\n"
+    detail += f"🏠 Xona: {g['room']}\n"
+
+    if comment:
+        detail += f"\n📝 <b>Izoh:</b> {comment}\n"
+
+    # Eski izoh uchun callback data tayyorlaymiz
+    kb = []
+    if comment:
+        kb.append([
+            types.InlineKeyboardButton(text="✏️ Tahrirlash", callback_data=f"wcmt_e_{idx}"),
+            types.InlineKeyboardButton(text="🗑 O'chirish", callback_data=f"wcmt_d_{idx}"),
+        ])
+    else:
+        kb.append([
+            types.InlineKeyboardButton(text="➕ Izoh qo'shish", callback_data=f"wcmt_a_{idx}"),
+        ])
+    kb.append([
+        types.InlineKeyboardButton(text="⬅️ Waiting Groups", callback_data="wgp_back"),
+    ])
+
+    # State ga saqlaymiz
+    await state.update_data(comment_group_name=g["name"], comment_group_idx=idx)
+
+    await call.message.edit_text(
+        detail,
+        parse_mode="HTML",
+        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=kb),
+    )
+
+
+@report_router.callback_query(F.data == "wgp_back")
+async def back_to_waiting_groups(call: types.CallbackQuery, state: FSMContext):
+    await call.answer()
+    state_data = await state.get_data()
+    groups = state_data.get("waiting_groups", [])
+    all_comments = await get_all_comments()
+    report, inline_kb = _render_waiting_groups_report(groups, all_comments)
+    await state.set_state(ReportStates.waiting_for_report_choice)
+    await call.message.edit_text(report, parse_mode="HTML", reply_markup=inline_kb)
+
+
+# Waiting groups uchun izoh callbacklari
+@report_router.callback_query(F.data.startswith("wcmt_a_"))
+@report_router.callback_query(F.data.startswith("wcmt_e_"))
+async def start_waiting_comment_input(call: types.CallbackQuery, state: FSMContext):
+    """➕ Izoh qo'shish yoki ✏️ tahrirlash"""
+    await call.answer()
+    idx = int(call.data.split("_")[-1])
+    state_data = await state.get_data()
+    groups = state_data.get("waiting_groups", [])
+
+    if idx >= len(groups):
+        await call.message.edit_text("⚠️ Guruh topilmadi.")
+        return
+
+    g = groups[idx]
+    group_name = g["name"]
+    all_comments = await get_all_comments()
+    old_comment = all_comments.get(group_name, "")
+
+    await state.update_data(comment_group_name=group_name, comment_group_idx=idx)
+    await state.set_state(ReportStates.waiting_for_comment_input)
+
+    hint = f"✏️ <b>{group_name}</b>\n\n"
+    if old_comment:
+        hint += f"📝 Joriy izoh: {old_comment}\n\n"
+    hint += "Yangi izoh matnini kiriting (yoki ❌ Bekor qilish):"
+
+    await call.message.edit_text(
+        hint,
+        parse_mode="HTML",
+        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
+            [types.InlineKeyboardButton(text="❌ Bekor qilish", callback_data=f"wcmt_cancel_{idx}")]
+        ]),
+    )
+
+
+@report_router.callback_query(F.data.startswith("wcmt_cancel_"))
+async def cancel_waiting_comment(call: types.CallbackQuery, state: FSMContext):
+    await call.answer()
+    idx = int(call.data.split("_")[-1])
+    await _show_waiting_group_detail(call, state, idx)
+
+
+@report_router.callback_query(F.data.startswith("wcmt_d_"))
+async def delete_waiting_comment(call: types.CallbackQuery, state: FSMContext):
+    """Izohni o'chirish"""
+    await call.answer()
+    idx = int(call.data.split("_")[-1])
+    state_data = await state.get_data()
+    groups = state_data.get("waiting_groups", [])
+
+    if idx >= len(groups):
+        await call.message.edit_text("⚠️ Guruh topilmadi.")
+        return
+
+    group_name = groups[idx]["name"]
+    await delete_comment(group_name)
+    await _show_waiting_group_detail(call, state, idx)
 
 
 # ================= BARCHA MUAMMOLI GURUHLAR =================
@@ -856,6 +1006,20 @@ async def save_comment(message: types.Message, state: FSMContext):
 
     # State cache dan foydalanamiz — LMS/Google Sheets ga bormaymiz
     state_data = await state.get_data()
+    report_type = state_data.get("report_type", "finishing")
+
+    if report_type == "waiting":
+        # Waiting Groups reportini qayta render qilish
+        groups = state_data.get("waiting_groups", [])
+        if not groups:
+            await message.answer("📭 Ma'lumot topilmadi. Iltimos, reportni qayta oching.")
+            return
+        all_comments = await get_all_comments()
+        report, markup = _render_waiting_groups_report(groups, all_comments)
+        await message.answer(report, parse_mode="HTML", reply_markup=markup)
+        return
+
+    # Finishing Groups reportini qayta render qilish
     found_groups = state_data.get("found_groups", [])
 
     if not found_groups:
@@ -1014,6 +1178,21 @@ async def back_to_report(call: types.CallbackQuery, state: FSMContext):
     await state.set_state(ReportStates.waiting_for_report_choice)
 
     state_data = await state.get_data()
+    report_type = state_data.get("report_type", "finishing")
+
+    if report_type == "waiting":
+        groups = state_data.get("waiting_groups", [])
+        if not groups:
+            await call.message.answer("📭 Ma'lumot topilmadi. Iltimos, reportni qayta oching.")
+            return
+        all_comments = await get_all_comments()
+        report, markup = _render_waiting_groups_report(groups, all_comments)
+        try:
+            await call.message.edit_text(report, parse_mode="HTML", reply_markup=markup)
+        except Exception:
+            await call.message.answer(report, parse_mode="HTML", reply_markup=markup)
+        return
+
     found_groups = state_data.get("found_groups", [])
 
     if not found_groups:
