@@ -366,48 +366,60 @@ async def show_finance_report(message: types.Message, state: FSMContext):
 
         s = _get_lms_session()
 
-        # 1. Drujba ustozlarini olish (get_all_groups orqali)
-        groups = await asyncio.to_thread(get_all_groups)
-        drujba_teachers = set(g["teacher"] for g in groups if g["teacher"] and not g["teacher"].startswith("ID#"))
+        # 1. Drujba ustozlari (aniq ro'yxat)
+        DRUJBA_TEACHERS = [
+            "Sardor Komilov",
+            "Adhambek Ismoilov",
+            "Obidjon Rustamov",
+            "Ahmadali Turgunov",
+            "Odiljon Jaloliddinov",
+            "Farangiz Elamanova",
+            "Sevinch Ibrohimova",
+            "Xurshid Hazratqulov",
+            "Nilufar Karimova",
+            "Ibrohim Aliyev",
+        ]
 
         # 2. Balanslarni olish
         r = s.get(f"{LMS_BASE}/admin/calculated-salaries?per_page=200", timeout=15)
         match = re.search(r'data-page="([^"]*)"', r.text)
-        balances = {}
+        api_balances = {}
         if match:
             dp = json.loads(unescape(match.group(1)))
             for emp in dp["props"]["employees"]:
-                tid = emp["id"]
                 name = f"{emp.get('first_name','')} {emp.get('last_name','')}".strip()
                 eb = emp.get("employee_balance", "0")
                 try:
                     eb = float(eb)
                 except:
                     eb = 0
-                if name in drujba_teachers:
-                    balances[name] = {"id": tid, "balance": eb}
+                api_balances[name] = eb
 
-        # 3. Report tuzish
-        if not balances:
-            await msg.edit_text("📭 Drujba filialida faol ustozlar topilmadi.")
-            return
+        # 3. Nom moslash (API nomi -> expected nom)
+        def _match_teacher(expected_name, all_balances):
+            parts = expected_name.lower().split()
+            for api_name, bal in all_balances.items():
+                api_lower = api_name.lower()
+                if all(p in api_lower for p in parts):
+                    return bal, api_name
+            return 0, expected_name
 
-        # Saralash (balans kamayish bo'yicha)
-        sorted_teachers = sorted(balances.items(), key=lambda x: -x[1]["balance"])
-
+        # 4. Report tuzish (berilgan tartibda)
         text = "💰 <b>DRUJBA — USTOZLAR BALANSI</b>\n\n"
         total_balance = 0
-        for idx, (name, data) in enumerate(sorted_teachers, 1):
-            bal = data["balance"]
+        teacher_count = 0
+        for teacher in DRUJBA_TEACHERS:
+            bal, matched_name = _match_teacher(teacher, api_balances)
             total_balance += bal
+            teacher_count += 1
             if bal >= 0:
-                text += f"{idx}. 👨🏻‍🏫 {name}\n   💰 {int(bal)} soʻm\n\n"
+                text += f"{teacher_count}. 👨🏻‍🏫 {teacher}\n   💰 {int(bal)} so'm\n\n"
             else:
-                text += f"{idx}. 👨🏻‍🏫 {name}\n   🔴 {int(bal)} soʻm\n\n"
+                text += f"{teacher_count}. 👨🏻‍🏫 {teacher}\n   🔴 {int(bal)} so'm\n\n"
 
         text += f"━━━━━━━━━━━━━━━━\n"
-        text += f"📊 <b>Jami:</b> {len(balances)} ta ustoz\n"
-        text += f"💵 <b>Umumiy balans:</b> {int(total_balance)} soʻm"
+        text += f"📊 <b>Jami:</b> {teacher_count} ta ustoz\n"
+        text += f"💵 <b>Umumiy balans:</b> {int(total_balance)} so'm"
 
         await msg.edit_text(text, parse_mode="HTML")
 
