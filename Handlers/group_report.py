@@ -530,18 +530,12 @@ async def cashbox_callback_handler(call: types.CallbackQuery, state: FSMContext)
         cash_v = float(bal.get('cash', 0) or 0)
         terminal_v = float(bal.get('terminal', 0) or 0)
         qr_v = float(bal.get('qrcode', 0) or 0)
-        plastic_v = float(bal.get('card', 0) or 0)
-        perech_v = float(bal.get('uzum', 0) or 0) + float(bal.get('payme', 0) or 0) + float(bal.get('click', 0) or 0)
         mchj_v = float(bal.get('llcaccounts', 0) or 0)
-        bank_v = float(bal.get('bank', 0) or 0)
 
         text += f"💵 <b>Naqd:</b> {int(cash_v)} so'm\n"
         text += f"💳 <b>Terminal:</b> {int(terminal_v)} so'm\n"
         text += f"📱 <b>QR:</b> {int(qr_v)} so'm\n"
-        text += f"💳 <b>Plastic:</b> {int(plastic_v)} so'm\n"
-        text += f"📲 <b>Perchesleniya:</b> {int(perech_v)} so'm\n"
         text += f"🏛 <b>MCHJ hisob raqamlar:</b> {int(mchj_v)} so'm\n"
-        text += f"🏦 <b>Bank:</b> {int(bank_v)} so'm\n"
 
         if total == 0:
             text += "📭 Bu cashboxda pul mavjud emas.\n"
