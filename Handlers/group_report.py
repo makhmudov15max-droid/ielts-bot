@@ -369,7 +369,7 @@ async def cashbox_back_home(message: types.Message, state: FSMContext):
 
 @report_router.message(ReportStates.waiting_for_report_choice, F.text == "📋 Dars Jadval")
 async def show_schedule_inline(message: types.Message, state: FSMContext):
-    """LMS dan dars jadvalini olib chatda ko'rsatadi (ixcham)"""
+    """LMS dan dars jadvalini olib chatda ko'rsatadi"""
     msg = await message.answer("⏳ Dars jadvali yuklanmoqda...")
 
     try:
@@ -377,46 +377,77 @@ async def show_schedule_inline(message: types.Message, state: FSMContext):
 
         schedule = await asyncio.to_thread(fetch_branch_schedule)
 
+        # Vaqt bloklari
         time_slots = ["08:00", "10:00", "12:00", "14:00", "16:00", "18:00"]
+        room_order = ["101", "102", "103", "104", "105", "106", "107", "108", "109", "110", "111"]
 
-        def _norm_time(st):
+        def _normalize_time(st):
             st = (st or "")[:5]
-            return "18:00" if st >= "18:00" else st
+            if st >= "18:00":
+                return "18:00"
+            return st
 
         def build_section(lessons, label, emoji):
+            nonlocal schedule
+            # Faqat status=2 (aktiv) guruhlar
             active = [l for l in lessons if l.get("status") == 2]
 
-            # Vaqt bo'yicha guruhlash
+            # Vaqt bloki bo'yicha guruhlash
             by_time = {}
             for l in active:
-                tm = _norm_time(str(l.get("lesson_start_time", ""))[:5])
+                tm = _normalize_time(str(l.get("lesson_start_time", ""))[:5])
+                if tm not in by_time:
+                    by_time[tm] = {}
                 rn = str(l.get("room", {}).get("name", ""))
-                teacher = (l.get("teacher") or {}).get("first_name", "")
-                course_obj = l.get("sub_course") or l.get("course") or {}
-                level = course_obj.get("name", {}).get("uz", "?")
-                dl = _days_left(l.get("group_end_date", ""))
-                icon = "🔴" if dl <= 14 else ("🟡" if dl <= 30 else "🟢")
-                gid = l.get("id", "?")
-                by_time.setdefault(tm, []).append(f"🏠{rn} #{gid}|{teacher}|{icon}")
+                if rn not in by_time[tm]:
+                    by_time[tm][rn] = []
+                by_time[tm][rn].append(l)
 
-            text = f"\n{emoji} <b>{label}</b>\n━━━━━━━━━━━━━━━━\n"
+            text = f"\n{emoji} <b>{label}</b>\n"
+            text += "━━━━━━━━━━━━━━━━\n"
+
             has_any = False
             for tm in time_slots:
                 if tm not in by_time:
                     continue
-                entries = "  ".join(by_time[tm])
-                text += f"⏰ {tm} → {entries}\n"
-                has_any = True
+                rooms = by_time[tm]
+                text += f"<b>⏰ {tm}</b>\n"
+                for rn in room_order:
+                    if rn not in rooms:
+                        continue
+                    for lesson in rooms[rn]:
+                        gid = lesson.get("id", "?")
+                        teacher = (lesson.get("teacher") or {}).get("first_name", "")
+                        course_obj = lesson.get("sub_course") or lesson.get("course") or {}
+                        level = course_obj.get("name", {}).get("uz", "?")
+                        end_date = lesson.get("group_end_date", "")
+                        dl = _days_left(end_date)
+
+                        if dl <= 14:
+                            status_icon = "🔴"
+                        elif dl <= 30:
+                            status_icon = "🟡"
+                        else:
+                            status_icon = "🟢"
+
+                        text += f"  🏠 {rn} → #{gid} | {teacher} | {level} {status_icon}\n"
+                    has_any = True
+                text += "\n"
 
             if not has_any:
-                text += "📭 Faol darslar yo'q\n"
+                text += "  📭 Faol darslar yo'q\n"
+
             return text
 
+        # TOQ va JUFT bo'limlarini tuzish
         result = "📋 <b>DRUJBA — DARS JADVALI</b>\n"
         result += f"<i>{datetime.now(UZ_TZ).strftime('%d.%m.%Y %H:%M')}</i>\n"
+
         result += build_section(schedule.get("odd", []), "TOQ KUNLAR", "🔵")
         result += build_section(schedule.get("even", []), "JUFT KUNLAR", "🔴")
-        result += "\n━━━━━━━━━━━━━━━━\n🔴14 kun | 🟡30 kun | 🟢30+ kun"
+
+        result += "\n━━━━━━━━━━━━━━━━\n"
+        result += "🔴 14 kun | 🟡 30 kun | 🟢 30+ kun"
 
         await msg.edit_text(result, parse_mode="HTML")
 
