@@ -440,19 +440,24 @@ async def show_finance_report(message: types.Message, state: FSMContext):
             total_balance += bal
             teacher_count += 1
             if bal >= 0:
-                text += f"{teacher_count}. 👨🏻‍🏫 {teacher}\n   💰 {int(bal)} so'm\n\n"
+                text += f"{teacher_count}. 👨🏻‍🏫 {teacher}\n   💰 {_fmt(bal)} so'm\n\n"
             else:
-                text += f"{teacher_count}. 👨🏻‍🏫 {teacher}\n   🔴 {int(bal)} so'm\n\n"
+                text += f"{teacher_count}. 👨🏻‍🏫 {teacher}\n   🔴 {_fmt(bal)} so'm\n\n"
 
         text += f"━━━━━━━━━━━━━━━━\n"
         text += f"📊 <b>Jami:</b> {teacher_count} ta ustoz\n"
-        text += f"💵 <b>Umumiy balans:</b> {int(total_balance)} so'm"
+        text += f"💵 <b>Umumiy balans:</b> {_fmt(total_balance)} so'm"
 
         await msg.edit_text(text, parse_mode="HTML")
 
     except Exception as e:
         logger.error(f"Finance report error: {e}")
         await msg.edit_text(f"⚠️ Xatolik yuz berdi: {e}")
+
+
+def _fmt(n: float) -> str:
+    """Sonni probel bilan formatlash: 49109462 → 49 109 462"""
+    return f"{int(n):,}".replace(",", " ")
 
 
 # ================= CASHBOX =================
@@ -523,7 +528,7 @@ async def cashbox_callback_handler(call: types.CallbackQuery, state: FSMContext)
         total = sum(float(v or 0) for v in bal.values())
 
         text = f"🏦 <b>{cb['name']}</b>\n\n"
-        text += f"💰 <b>Jami:</b> {int(total)} so'm\n"
+        text += f"💰 <b>Jami:</b> {_fmt(total)} so'm\n"
         text += f"━━━━━━━━━━━━━━━━\n\n"
 
         # Categorized breakdown (user so'ragan tartibda - hamma vaqt ko'rinadi)
@@ -532,10 +537,10 @@ async def cashbox_callback_handler(call: types.CallbackQuery, state: FSMContext)
         qr_v = float(bal.get('qrcode', 0) or 0)
         mchj_v = float(bal.get('llcaccounts', 0) or 0)
 
-        text += f"💵 <b>Naqd:</b> {int(cash_v)} so'm\n"
-        text += f"💳 <b>Terminal:</b> {int(terminal_v)} so'm\n"
-        text += f"📱 <b>QR:</b> {int(qr_v)} so'm\n"
-        text += f"🏛 <b>MCHJ hisob raqamlar:</b> {int(mchj_v)} so'm\n"
+        text += f"💵 <b>Naqd:</b> {_fmt(cash_v)} so'm\n"
+        text += f"💳 <b>Terminal:</b> {_fmt(terminal_v)} so'm\n"
+        text += f"📱 <b>QR:</b> {_fmt(qr_v)} so'm\n"
+        text += f"🏛 <b>MCHJ hisob raqamlar:</b> {_fmt(mchj_v)} so'm\n"
 
         if total == 0:
             text += "📭 Bu cashboxda pul mavjud emas.\n"
@@ -590,8 +595,8 @@ def _build_cashboxes_list(cashboxes: list) -> tuple:
     for idx, cb in enumerate(cashboxes, 1):
         bal = cb.get("balance", {}) if isinstance(cb.get("balance"), dict) else {}
         total = sum(float(v or 0) for v in bal.values())
-        text += f"{idx}. <b>{cb['name']}</b> — 💰 {int(total)} so'm\n"
-        from_keyboard.append([types.InlineKeyboardButton(text=f"{cb['name']} — {int(total)} so'm", callback_data=f"cb_{cb['id']}")])
+        text += f"{idx}. <b>{cb['name']}</b> — 💰 {_fmt(total)} so'm\n"
+        from_keyboard.append([types.InlineKeyboardButton(text=f"{cb['name']} — {_fmt(total)} so'm", callback_data=f"cb_{cb['id']}")])
 
     from_keyboard.append([types.InlineKeyboardButton(text="🏠 Ortga", callback_data="cb_back")])
     inline_kb = types.InlineKeyboardMarkup(inline_keyboard=from_keyboard)
