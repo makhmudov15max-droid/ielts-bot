@@ -319,16 +319,30 @@ async def group_report_menu(message: types.Message, state: FSMContext):
         await message.answer("⚠️ Bu buyruq faqat administrator va owner uchun!")
         return
 
+    # Owner ro'li tekshirish
+    role = _USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner") if _USERS_ROLES else "Owner"
+
     await state.set_state(ReportStates.waiting_for_report_choice)
+
+    # Finance Report tugmasi faqat Owner uchun
+    if role == "Owner":
+        lms_buttons = [
+            [types.KeyboardButton(text="📊Finishing Groups"), types.KeyboardButton(text="👨🏻‍🏫 Ustoz bo'yicha guruhlar")],
+            [types.KeyboardButton(text="⏳ Waiting Groups"), types.KeyboardButton(text="💰 Finance Report"), types.KeyboardButton(text="📋 Dars Jadval")],
+            [types.KeyboardButton(text="🏠 Bosh sahifa")],
+        ]
+    else:
+        lms_buttons = [
+            [types.KeyboardButton(text="📊Finishing Groups"), types.KeyboardButton(text="👨🏻‍🏫 Ustoz bo'yicha guruhlar")],
+            [types.KeyboardButton(text="⏳ Waiting Groups"), types.KeyboardButton(text="📋 Dars Jadval")],
+            [types.KeyboardButton(text="🏠 Bosh sahifa")],
+        ]
+
     await message.answer(
         text="📑 <b>LMS Panel</b>\n\nQaysi turdagi hisobotni ko'rmoqchisiz?\n\n<i>Ma'lumot LMS platformasidan olinadi</i>",
         parse_mode="HTML",
         reply_markup=types.ReplyKeyboardMarkup(
-            keyboard=[
-                [types.KeyboardButton(text="📊Finishing Groups"), types.KeyboardButton(text="👨🏻‍🏫 Ustoz bo'yicha guruhlar")],
-                [types.KeyboardButton(text="⏳ Waiting Groups"), types.KeyboardButton(text="💰 Finance Report"), types.KeyboardButton(text="📋 Dars Jadval")],
-                [types.KeyboardButton(text="🏠 Bosh sahifa")],
-            ],
+            keyboard=lms_buttons,
             resize_keyboard=True,
         ),
     )
@@ -354,8 +368,10 @@ async def export_schedule_to_sheets(message: types.Message, state: FSMContext):
 
 @report_router.message(ReportStates.waiting_for_report_choice, F.text == "💰 Finance Report")
 async def show_finance_report(message: types.Message, state: FSMContext):
-    if not await is_admin(message.from_user.id):
-        await message.answer("⚠️ Bu buyruq faqat administrator va owner uchun!")
+    # Faqat Owner uchun
+    role = _USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner") if _USERS_ROLES else "Owner"
+    if role != "Owner":
+        await message.answer("⚠️ Bu buyruq faqat Owner uchun!")
         return
 
     msg = await message.answer("⏳ Finance report tayyorlanmoqda...")
