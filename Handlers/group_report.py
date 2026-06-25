@@ -120,7 +120,7 @@ def _get_lms_session():
 
 
 def get_all_groups():
-    """LMS export orqali barcha Drujba guruhlarni olish"""
+    """LMS export orqali barcha Drujba IELTS guruhlarni olish (aktiv + kutilayotgan)"""
     global _cached_groups, _cached_groups_time
     import time
 
@@ -155,15 +155,30 @@ def get_all_groups():
             if bid != DRUJBA_BRANCH_ID:
                 continue
 
+            cid = ws.cell(row_idx, course_col).value
+            if cid not in IELTS_COURSE_IDS:
+                continue
+
             status = ws.cell(row_idx, status_col).value
             if status not in {1, 2}:  # 1=draft/kutilmoqda, 2=aktiv
                 continue
 
+            # Teacher ID dan nom olish
             tid = ws.cell(row_idx, teacher_col).value
-            if not tid:
+            tname = _teacher_map.get(tid, f"ID#{tid}") if tid else ""
+
+            # Draft guruhlarda teacher=None bo'lsa, nomidan ajratish
+            if not tname or tname.startswith("ID#"):
+                gname = str(ws.cell(row_idx, name_col).value or "")
+                for _, map_name in sorted(_teacher_map.items(), key=lambda x: -len(x[1])):
+                    if map_name.lower() in gname.lower():
+                        tname = map_name
+                        break
+
+            # Agar teacher aniqlanmasa, guruhni tashlab ketamiz
+            if not tname:
                 continue
-            cid = ws.cell(row_idx, course_col).value
-            tname = _teacher_map.get(tid, f"ID#{tid}")
+
             cname = _course_map.get(cid, f"ID#{cid}")
 
             start_str = str(ws.cell(row_idx, start_col).value or "")
@@ -174,7 +189,7 @@ def get_all_groups():
                 except:
                     pass
 
-            # End date and days_left
+            # End date va days_left
             end_str = str(ws.cell(row_idx, end_col).value or "")
             end_fmt = ""
             days_left = 999
@@ -203,7 +218,7 @@ def get_all_groups():
                 "comment": "",
             })
 
-        logger.info(f"LMS: {len(groups)} Drujba IELTS groups loaded")
+        logger.info(f"LMS: {len(groups)} Drujba IELTS groups loaded (including upcoming)")
         _cached_groups = groups
         _cached_groups_time = time.time()
         return groups
@@ -218,9 +233,34 @@ def get_all_groups():
 
 
 def get_unique_teachers():
+    """Barcha Drujba IELTS ustozlarini qaytaradi: LMS teacher_map + export'dagilar."""
     groups = get_all_groups()
-    teachers = sorted(set(g["teacher"] for g in groups if g["teacher"] and not g["teacher"].startswith("ID#")))
-    return teachers
+    export_teachers = set(g["teacher"] for g in groups if g["teacher"] and not g["teacher"].startswith("ID#"))
+
+    # _teacher_map dan hamma ustozlarni olish (employees + teacherOptions)
+    map_teachers = set()
+    # employees da "Test" yoki "Demo" bilan boshlanadiganlarni filtrlab olamiz
+    # va faqat haqiqiy ism-familya bo'lganlarni
+    for tid, name in _teacher_map.items():
+        name = name.strip()
+        if not name or name == "None":
+            continue
+        # Test/Demo akkauntlarni o'tkazib yuborish
+        if name.lower().startswith(("test", "demo", "old", "call")):
+            continue
+        # "None" so'zi bilan tugaganlarni
+        if name.endswith(" None"):
+            name = name[:-5].strip()
+            if not name:
+                continue
+        # 1 so'zdan iborat bo'lganlar (faqat ism, familyasiz) — odatda test akkauntlar
+        if len(name.split()) == 1 and len(name) < 5:
+            continue
+        map_teachers.add(name)
+
+    # Hamma ustozlarni birlashtirish
+    all_teachers = sorted(set(list(export_teachers) + list(map_teachers)))
+    return all_teachers
 
 
 def get_teacher_scores():
@@ -286,7 +326,8 @@ async def group_report_menu(message: types.Message, state: FSMContext):
         reply_markup=types.ReplyKeyboardMarkup(
             keyboard=[
                 [types.KeyboardButton(text="📊Finishing Groups"), types.KeyboardButton(text="👨🏻‍🏫 Ustoz bo'yicha guruhlar")],
-                [types.KeyboardButton(text="📋 Dars Jadval"), types.KeyboardButton(text="🏠 Bosh sahifa")],
+                [types.KeyboardButton(text="⏳ Waiting Groups"), types.KeyboardButton(text="📋 Dars Jadval")],
+                [types.KeyboardButton(text="🏠 Bosh sahifa")],
             ],
             resize_keyboard=True,
         ),
@@ -309,6 +350,115 @@ async def export_schedule_to_sheets(message: types.Message, state: FSMContext):
     from utils.sheets_export import write_schedule_to_sheets
     result = await write_schedule_to_sheets()
     await message.answer(result, parse_mode="HTML")
+
+
+# ================= WAITING GROUPS =================
+def _get_waiting_groups():
+    """Drujba status=1 (kutilayotgan) guruhlarni xona va o'quvchilar soni bilan qaytaradi"""
+    import openpyxl
+    from html import unescape
+    s = _get_lms_session()
+    BASE = LMS_BASE
+
+    # Export dan status=1 guruh ID larini olish
+    r = s.get(f"{BASE}/admin/groups/export", timeout=30)
+    wb = openpyxl.load_workbook(io.BytesIO(r.content))
+    ws = wb.active
+
+    h = [ws.cell(1, c).value for c in range(1, ws.max_column + 1)]
+    id_col = h.index("Id") + 1
+    name_col = h.index("Ism") + 1
+    status_col = h.index("Status") + 1
+    teacher_col = h.index("craftable-pro.Teacher Id") + 1
+    course_col = h.index("Kurs Id") + 1
+    branch_col = h.index("Fillial Id") + 1
+
+    waiting = []
+    for row_idx in range(2, ws.max_row + 1):
+        bid = ws.cell(row_idx, branch_col).value
+        status = ws.cell(row_idx, status_col).value
+        if bid == 3 and status == 1:
+            gid = ws.cell(row_idx, id_col).value
+            gname = str(ws.cell(row_idx, name_col).value or "")
+            tid = ws.cell(row_idx, teacher_col).value
+            cid = ws.cell(row_idx, course_col).value
+            tname = _teacher_map.get(tid, "❌ Tayinlanmagan") if tid else "❌ Tayinlanmagan"
+            cname = _course_map.get(cid, f"ID#{cid}")
+
+            # Har bir guruh uchun detail so'rov
+            try:
+                r2 = s.get(f"{BASE}/admin/groups/{gid}", timeout=15)
+                m2 = re.search(r'data-page="([^"]*)"', r2.text)
+                if m2:
+                    dp = json.loads(unescape(m2.group(1)))
+                    gd = dp["props"]["group"]
+
+                    # Xona
+                    rooms = gd.get("rooms", [])
+                    room_name = rooms[0]["name"] if rooms else "❌"
+                    capacity = rooms[0]["capacity"] if rooms else 20
+
+                    # O'quvchilar
+                    students = gd.get("newly_added_trial_frozen_active_failed_students", [])
+                    active = sum(1 for s in students if s.get("pivot", {}).get("status") == 6)
+                    trial = sum(1 for s in students if s.get("pivot", {}).get("status") == 8)
+                    frozen = sum(1 for s in students if s.get("pivot", {}).get("status") == 9)
+
+                    waiting.append({
+                        "name": gname,
+                        "teacher": tname,
+                        "level": cname,
+                        "room": room_name,
+                        "capacity": capacity,
+                        "active": active,
+                        "trial": trial,
+                        "frozen": frozen,
+                    })
+            except Exception as e:
+                logger.warning(f"Waiting group #{gid} fetch error: {e}")
+                waiting.append({
+                    "name": gname,
+                    "teacher": tname,
+                    "level": cname,
+                    "room": "❌",
+                    "capacity": 0,
+                    "active": 0,
+                    "trial": 0,
+                    "frozen": 0,
+                })
+
+    return waiting
+
+
+@report_router.message(ReportStates.waiting_for_report_choice, F.text == "⏳ Waiting Groups")
+async def show_waiting_groups(message: types.Message, state: FSMContext):
+    if not await is_admin(message.from_user.id):
+        await message.answer("⚠️ Bu buyruq faqat administrator va owner uchun!")
+        return
+
+    await message.answer("⏳ Kutilayotgan guruhlar yuklanmoqda...")
+    groups = await asyncio.to_thread(_get_waiting_groups)
+
+    if not groups:
+        await message.answer("📭 Hozircha kutilayotgan guruhlar yo'q.")
+        return
+
+    # Ustoz bo'yicha guruhlash
+    by_teacher = {}
+    for g in groups:
+        by_teacher.setdefault(g["teacher"], []).append(g)
+
+    text = "⏳ <b>WAITING GROUPS</b>\n\n"
+    for teacher, gs in sorted(by_teacher.items()):
+        text += f"👨🏻‍🏫 <b>{teacher}</b>\n"
+        for g in gs:
+            text += (
+                f"   📚 {g['name']} — {g['level']}\n"
+                f"   👥 {g['active']} + {g['trial']} + {g['frozen']} / {g['capacity']}\n"
+                f"   🏠 Xona: {g['room']}\n\n"
+            )
+
+    await message.answer(text, parse_mode="HTML")
 
 
 # ================= BARCHA MUAMMOLI GURUHLAR =================
@@ -461,9 +611,10 @@ async def show_teacher_groups(call: types.CallbackQuery, state: FSMContext):
     if upcoming_groups:
         text += "🟡 <b>KUTILAYOTGAN GURUHLAR:</b>\n"
         for g in upcoming_groups:
+            start_hint = format_date_with_hint(g['start_date']) if g['start_date'] else "Noma'lum"
             text += (
                 f"   📚 {g['group_name']} — {g['level']}\n"
-                f"   📅 Boshlanishi: {g['start_date']}\n"
+                f"   📅 Boshlanishi: {start_hint}\n"
             )
             if g["comment"]:
                 text += f"   📝 {g['comment']}\n"
