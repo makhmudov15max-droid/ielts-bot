@@ -260,7 +260,7 @@ def get_role_keyboard():
         keyboard=[
             [types.KeyboardButton(text="Admin"), types.KeyboardButton(text="Kassir")],
             [types.KeyboardButton(text="Sanitar"), types.KeyboardButton(text="Manager")],
-            [types.KeyboardButton(text="Maintenance")],
+            [types.KeyboardButton(text="Maintenance"), types.KeyboardButton(text="Manager Assistant")],
             [types.KeyboardButton(text="🏠 Bosh sahifa"), types.KeyboardButton(text="⬅️ Ortga")],
         ],
         resize_keyboard=True
@@ -448,7 +448,7 @@ async def monitoring_role_back(message: types.Message, state: FSMContext):
     await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
 
 
-@monitoring_router.message(MonitoringStates.waiting_for_role, F.text.in_(["Admin", "Kassir", "Sanitar", "Manager", "Maintenance"]))
+@monitoring_router.message(MonitoringStates.waiting_for_role, F.text.in_(["Admin", "Kassir", "Sanitar", "Manager", "Maintenance", "Manager Assistant"]))
 async def monitoring_role_selected(message: types.Message, state: FSMContext):
     role = message.text
     employees = get_all_users_by_role(role)

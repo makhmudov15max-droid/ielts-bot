@@ -117,7 +117,7 @@ async def settings_role_back(message: types.Message, state: FSMContext):
     )
 
 
-VALID_ROLES_FOR_SETTINGS = ["Admin", "Kassir", "Sanitar", "Manager", "Maintenance", "Head Admin"]
+VALID_ROLES_FOR_SETTINGS = ["Admin", "Kassir", "Sanitar", "Manager", "Maintenance", "Head Admin", "Manager Assistant"]
 
 @settings_router.message(SettingsStates.waiting_for_role, F.text.in_(VALID_ROLES_FOR_SETTINGS))
 async def select_role_for_settings(message: types.Message, state: FSMContext):

@@ -194,7 +194,7 @@ async def proof_role_selected_handler(message: types.Message, state: FSMContext)
         )
         return
     
-    valid_roles = ["Admin", "Kassir", "Sanitar", "Manager", "Maintenance"]
+    valid_roles = ["Admin", "Kassir", "Sanitar", "Manager", "Maintenance", "Manager Assistant"]
     if role not in valid_roles:
         await message.answer("❌ Iltimos, tugmalardan birini tanlang!")
         return

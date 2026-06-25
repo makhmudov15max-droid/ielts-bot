@@ -18,6 +18,12 @@ def get_main_menu(role: str):
             [KeyboardButton(text="📋 Vazifalar roʻyxati"), KeyboardButton(text="📊 Admin oylik")],
             [KeyboardButton(text="🌐 LMS")]
         ]
+    elif role == "Manager Assistant":
+        keyboard = [
+            [KeyboardButton(text="✅ Ishga keldim")],
+            [KeyboardButton(text="📋 Vazifalar roʻyxati"), KeyboardButton(text="📊 Admin oylik"), KeyboardButton(text="💰 Kassir oylik")],
+            [KeyboardButton(text="🌐 LMS")]
+        ]
     elif role == "Kassir":
         keyboard = [
             [KeyboardButton(text="✅ Ishga keldim")],
@@ -175,7 +181,8 @@ def get_proof_role_keyboard():
         [KeyboardButton(text="Admin"), KeyboardButton(text="Kassir")],
         [KeyboardButton(text="Sanitar"), KeyboardButton(text="Manager")],
         [KeyboardButton(text="Maintenance"), KeyboardButton(text="Head Admin")],
-        [KeyboardButton(text="Barcha xodimlar"), KeyboardButton(text="🏠 Bosh sahifa")]
+        [KeyboardButton(text="Manager Assistant"), KeyboardButton(text="Barcha xodimlar")],
+        [KeyboardButton(text="🏠 Bosh sahifa")]
     ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 

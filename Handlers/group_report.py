@@ -38,11 +38,11 @@ async def is_admin(user_id: int) -> bool:
         user_info = _USERS_ROLES.get(str(user_id))
         if user_info:
             role = user_info.get("role")
-            if role in ["Admin", "Owner", "Manager"]:
+            if role in ["Admin", "Owner", "Manager", "Manager Assistant"]:
                 return True
     from utils.users_db import get_user_role
     role = await get_user_role(str(user_id))
-    return role in ["Admin", "Owner", "Manager"]
+    return role in ["Admin", "Owner", "Manager", "Manager Assistant"]
 
 
 # ================= LMS CONFIG =================
