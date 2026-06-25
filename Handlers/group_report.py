@@ -369,7 +369,7 @@ async def show_finance_report(message: types.Message, state: FSMContext):
         # 1. Drujba ustozlari (aniq ro'yxat)
         DRUJBA_TEACHERS = [
             "Sardor Komilov",
-            "Adhambek Ismoilov",
+            "Adxambek Ismoilov",
             "Obidjon Rustamov",
             "Ahmadali Turgunov",
             "Odiljon Jaloliddinov",
