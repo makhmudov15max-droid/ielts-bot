@@ -455,19 +455,26 @@ def _render_waiting_groups_report(groups: list, all_comments: dict):
     """Waiting groups reportni state cache dan tez yasaydi"""
     text = f"⏳ <b>WAITING GROUPS</b> — {len(groups)} ta guruh\n\n"
 
-    # Raqamli inline tugmalar
-    num_row = []
+    # Raqamli inline tugmalar — har qatorda 5 tadan
+    num_rows = []
+    row = []
     for idx, g in enumerate(groups):
         has_comment = bool(all_comments.get(g["name"], ""))
         label = f"{idx + 1}{'📝' if has_comment else ''}"
-        num_row.append(types.InlineKeyboardButton(
+        row.append(types.InlineKeyboardButton(
             text=label,
             callback_data=f"wgp_{idx}"
         ))
+        if len(row) >= 5:
+            num_rows.append(row)
+            row = []
+    if row:
+        num_rows.append(row)
 
-    inline_kb = types.InlineKeyboardMarkup(inline_keyboard=[num_row]) if num_row else None
+    inline_kb = types.InlineKeyboardMarkup(inline_keyboard=num_rows) if num_rows else None
 
     # Ustoz bo'yicha guruhlab chiqamiz
+    global_idx = 0
     by_teacher = {}
     for g in groups:
         by_teacher.setdefault(g["teacher"], []).append(g)
@@ -475,12 +482,13 @@ def _render_waiting_groups_report(groups: list, all_comments: dict):
     for teacher, gs in sorted(by_teacher.items()):
         text += f"👨🏻‍🏫 <b>{teacher}</b>\n"
         for g in gs:
+            global_idx += 1
             comment = all_comments.get(g["name"], "")
             comment_line = f" 📝" if comment else ""
             text += (
-                f"   📚 {g['name']} — {g['level']}{comment_line}\n"
-                f"   👥 {g['active']} + {g['trial']} + {g['frozen']} / {g['capacity']}\n"
-                f"   🏠 Xona: {g['room']}\n\n"
+                f"   <b>{global_idx}.</b> 📚 {g['name']} — {g['level']}{comment_line}\n"
+                f"       👥 {g['active']} + {g['trial']} + {g['frozen']} / {g['capacity']}\n"
+                f"       🏠 Xona: {g['room']}\n\n"
             )
 
     return text, inline_kb
@@ -527,7 +535,7 @@ async def _show_waiting_group_detail(call: types.CallbackQuery, state: FSMContex
             types.InlineKeyboardButton(text="➕ Izoh qo'shish", callback_data=f"wcmt_a_{idx}"),
         ])
     kb.append([
-        types.InlineKeyboardButton(text="⬅️ Waiting Groups", callback_data="wgp_back"),
+        types.InlineKeyboardButton(text="⬅️ Waiting Groups", callback_data="wg_back"),
     ])
 
     # State ga saqlaymiz
@@ -540,7 +548,7 @@ async def _show_waiting_group_detail(call: types.CallbackQuery, state: FSMContex
     )
 
 
-@report_router.callback_query(F.data == "wgp_back")
+@report_router.callback_query(F.data == "wg_back")
 async def back_to_waiting_groups(call: types.CallbackQuery, state: FSMContext):
     await call.answer()
     state_data = await state.get_data()
