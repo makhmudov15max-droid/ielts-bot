@@ -591,7 +591,7 @@ async def cashbox_callback_handler(call: types.CallbackQuery, state: FSMContext)
         text += f"💰 <b>Jami:</b> {int(total)} so'm\n"
         text += f"━━━━━━━━━━━━━━━━\n\n"
 
-        # Categorized breakdown (user so'ragan tartibda)
+        # Categorized breakdown (user so'ragan tartibda - hamma vaqt ko'rinadi)
         cash_v = float(bal.get('cash', 0) or 0)
         terminal_v = float(bal.get('terminal', 0) or 0)
         qr_v = float(bal.get('qrcode', 0) or 0)
@@ -600,13 +600,13 @@ async def cashbox_callback_handler(call: types.CallbackQuery, state: FSMContext)
         mchj_v = float(bal.get('llcaccounts', 0) or 0)
         bank_v = float(bal.get('bank', 0) or 0)
 
-        if cash_v: text += f"💵 <b>Naqd:</b> {int(cash_v)} so'm\n"
-        if terminal_v: text += f"💳 <b>Terminal:</b> {int(terminal_v)} so'm\n"
-        if qr_v: text += f"📱 <b>QR:</b> {int(qr_v)} so'm\n"
-        if plastic_v: text += f"💳 <b>Plastic:</b> {int(plastic_v)} so'm\n"
-        if perech_v: text += f"📲 <b>Perchesleniya:</b> {int(perech_v)} so'm\n"
-        if mchj_v: text += f"🏛 <b>MCHJ hisob raqamlar:</b> {int(mchj_v)} so'm\n"
-        if bank_v: text += f"🏦 <b>Bank:</b> {int(bank_v)} so'm\n"
+        text += f"💵 <b>Naqd:</b> {int(cash_v)} so'm\n"
+        text += f"💳 <b>Terminal:</b> {int(terminal_v)} so'm\n"
+        text += f"📱 <b>QR:</b> {int(qr_v)} so'm\n"
+        text += f"💳 <b>Plastic:</b> {int(plastic_v)} so'm\n"
+        text += f"📲 <b>Perchesleniya:</b> {int(perech_v)} so'm\n"
+        text += f"🏛 <b>MCHJ hisob raqamlar:</b> {int(mchj_v)} so'm\n"
+        text += f"🏦 <b>Bank:</b> {int(bank_v)} so'm\n"
 
         if total == 0:
             text += "📭 Bu cashboxda pul mavjud emas.\n"
