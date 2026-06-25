@@ -10,13 +10,13 @@ def get_main_menu(role: str):
             [KeyboardButton(text="👥 Xodimlar"), KeyboardButton(text="🗄 Arxiv"), KeyboardButton(text="🎯 Monitoring")],
             [KeyboardButton(text="➕ Vazifa qoʻshish"), KeyboardButton(text="📋 Vazifalar roʻyxati"), KeyboardButton(text="🗑 Vazifani oʻchirish")],
             [KeyboardButton(text="📊 Admin oylik"), KeyboardButton(text="💰 Kassir oylik"), KeyboardButton(text="📸 Isbotlar")],
-            [KeyboardButton(text="📑 Guruh Report"), KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball"), KeyboardButton(text="⚙️ Sozlamalar")]
+            [KeyboardButton(text="LMS"), KeyboardButton(text="👨🏻‍🏫 Ustoz/Ball"), KeyboardButton(text="⚙️ Sozlamalar")]
         ]
     elif role == "Admin":
         keyboard = [
             [KeyboardButton(text="✅ Ishga keldim")],
             [KeyboardButton(text="📋 Vazifalar roʻyxati"), KeyboardButton(text="📊 Admin oylik")],
-            [KeyboardButton(text="📑 Guruh Report")]
+            [KeyboardButton(text="LMS")]
         ]
     elif role == "Kassir":
         keyboard = [
@@ -37,7 +37,7 @@ def get_main_menu(role: str):
         keyboard = [
             [KeyboardButton(text="✅ Ishga keldim")],
             [KeyboardButton(text="➕ Vazifa qoʻshish"), KeyboardButton(text="📋 Vazifalar roʻyxati"), KeyboardButton(text="🗑 Vazifani oʻchirish")],
-            [KeyboardButton(text="📊 Admin oylik"), KeyboardButton(text="💰 Kassir oylik"), KeyboardButton(text="📑 Guruh Report")]
+            [KeyboardButton(text="📊 Admin oylik"), KeyboardButton(text="💰 Kassir oylik"), KeyboardButton(text="LMS")]
         ]
     else:
         keyboard = [

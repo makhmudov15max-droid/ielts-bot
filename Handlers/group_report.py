@@ -255,7 +255,7 @@ ACTIVE_STATUSES = ["Aktiv guruh", "Guruh"]
 
 
 # ================= ASOSIY MENU =================
-@report_router.message(F.text == "📑 Guruh Report")
+@report_router.message(F.text == "LMS")
 async def group_report_menu(message: types.Message, state: FSMContext):
     if not await is_admin(message.from_user.id):
         await message.answer("⚠️ Bu buyruq faqat administrator va owner uchun!")
@@ -263,14 +263,12 @@ async def group_report_menu(message: types.Message, state: FSMContext):
 
     await state.set_state(ReportStates.waiting_for_report_choice)
     await message.answer(
-        text="📑 <b>Guruh Report</b>\n\nQaysi turdagi hisobotni ko'rmoqchisiz?\n\n<i>Ma'lumot LMS platformasidan olinadi</i>",
+        text="📑 <b>LMS Panel</b>\n\nQaysi turdagi hisobotni ko'rmoqchisiz?\n\n<i>Ma'lumot LMS platformasidan olinadi</i>",
         parse_mode="HTML",
         reply_markup=types.ReplyKeyboardMarkup(
             keyboard=[
-                [types.KeyboardButton(text="📊 Barcha muammoli guruhlar")],
-                [types.KeyboardButton(text="👨🏻‍🏫 Ustoz bo'yicha guruhlar")],
-                [types.KeyboardButton(text="📋 Dars Jadval")],
-                [types.KeyboardButton(text="🏠 Bosh sahifa")],
+                [types.KeyboardButton(text="📊Finishing Groups"), types.KeyboardButton(text="👨🏻‍🏫 Ustoz bo'yicha guruhlar")],
+                [types.KeyboardButton(text="📋 Dars Jadval"), types.KeyboardButton(text="🏠 Bosh sahifa")],
             ],
             resize_keyboard=True,
         ),
@@ -296,7 +294,7 @@ async def export_schedule_to_sheets(message: types.Message, state: FSMContext):
 
 
 # ================= BARCHA MUAMMOLI GURUHLAR =================
-@report_router.message(ReportStates.waiting_for_report_choice, F.text == "📊 Barcha muammoli guruhlar")
+@report_router.message(ReportStates.waiting_for_report_choice, F.text == "📊Finishing Groups")
 async def show_problematic_groups(message: types.Message, state: FSMContext):
     await message.answer("⏳ LMSdan guruhlar yuklanmoqda...")
 
@@ -352,7 +350,7 @@ async def show_teachers_list(message: types.Message, state: FSMContext):
     )
 
 
-@report_router.message(ReportStates.waiting_for_teacher_choice, F.text == "📊 Barcha muammoli guruhlar")
+@report_router.message(ReportStates.waiting_for_teacher_choice, F.text == "📊Finishing Groups")
 async def switch_to_problematic(message: types.Message, state: FSMContext):
     await state.set_state(ReportStates.waiting_for_report_choice)
     await show_problematic_groups(message, state)
