@@ -120,7 +120,7 @@ def _get_lms_session():
 
 
 def get_all_groups():
-    """LMS export orqali barcha Drujba IELTS guruhlarni olish"""
+    """LMS export orqali barcha Drujba guruhlarni olish"""
     global _cached_groups, _cached_groups_time
     import time
 
@@ -155,30 +155,14 @@ def get_all_groups():
             if bid != DRUJBA_BRANCH_ID:
                 continue
 
-            cid = ws.cell(row_idx, course_col).value
-            if cid not in IELTS_COURSE_IDS:
-                continue
-
             status = ws.cell(row_idx, status_col).value
-            if status != 2:  # Faqat aktiv/waiting guruhlar (1=draft, 2=aktiv, 3=arxiv)
-                continue
-
-            end_str = str(ws.cell(row_idx, end_col).value or "")
-            if end_str == "None" or not end_str:
-                continue
-
-            try:
-                end_dt = datetime.strptime(end_str[:10], "%Y-%m-%d").date()
-            except:
-                continue
-
-            days_left = (end_dt - today).days
-            if days_left < -30:
+            if status not in {1, 2}:  # 1=draft/kutilmoqda, 2=aktiv
                 continue
 
             tid = ws.cell(row_idx, teacher_col).value
-            if not tid:  # O'qituvchisi yo'q bo'sh guruhlarni o'tkazib yuborish
+            if not tid:
                 continue
+            cid = ws.cell(row_idx, course_col).value
             tname = _teacher_map.get(tid, f"ID#{tid}")
             cname = _course_map.get(cid, f"ID#{cid}")
 
@@ -190,7 +174,23 @@ def get_all_groups():
                 except:
                     pass
 
-            end_fmt = end_dt.strftime("%d.%m.%Y")
+            # End date and days_left
+            end_str = str(ws.cell(row_idx, end_col).value or "")
+            end_fmt = ""
+            days_left = 999
+            if end_str and end_str != "None":
+                try:
+                    end_dt = datetime.strptime(end_str[:10], "%Y-%m-%d").date()
+                    end_fmt = end_dt.strftime("%d.%m.%Y")
+                    days_left = (end_dt - today).days
+                except:
+                    pass
+
+            # Status text
+            if status == 1:
+                status_text = "🗓 Kutilmoqda"
+            else:
+                status_text = "🟢 Aktiv guruh"
 
             groups.append({
                 "teacher": tname,
@@ -199,7 +199,7 @@ def get_all_groups():
                 "start_date": start_fmt,
                 "end_date": end_fmt,
                 "days_left": days_left,
-                "status": "Aktiv guruh",  # status=2 = aktiv/waiting
+                "status": status_text,
                 "comment": "",
             })
 
@@ -439,11 +439,12 @@ async def show_teacher_groups(call: types.CallbackQuery, state: FSMContext):
         )
         return
 
-    active_groups = [g for g in teacher_groups if g["days_left"] >= 0]
-    opening_soon = [g for g in teacher_groups if g["days_left"] < 0 and g["days_left"] >= -30]
+    active_groups = [g for g in teacher_groups if g["status"] == "🟢 Aktiv guruh" and g["days_left"] >= 0]
+    upcoming_groups = [g for g in teacher_groups if g["status"] == "🗓 Kutilmoqda"]
 
+    total_active = len(active_groups) + len(upcoming_groups)
     text = f"👨🏻‍🏫 <b>{teacher_name}</b>\n"
-    text += f"📊 Jami: {len(active_groups)} ta faol guruh\n\n"
+    text += f"📊 Jami: {total_active} ta guruh\n\n"
 
     if active_groups:
         text += "🟢 <b>AKTIV GURUHLAR:</b>\n"
@@ -452,24 +453,23 @@ async def show_teacher_groups(call: types.CallbackQuery, state: FSMContext):
             text += (
                 f"   📚 {g['group_name']} — {g['level']}\n"
                 f"   📅 {g['end_date']} ⏳ {days_info}\n"
-                f"   📌 {g['status']}\n"
             )
             if g["comment"]:
                 text += f"   📝 {g['comment']}\n"
             text += "\n"
 
-    if opening_soon:
-        text += "🟡 <b>YAQINDA TUGAGAN:</b>\n"
-        for g in opening_soon:
+    if upcoming_groups:
+        text += "🟡 <b>KUTILAYOTGAN GURUHLAR:</b>\n"
+        for g in upcoming_groups:
             text += (
                 f"   📚 {g['group_name']} — {g['level']}\n"
-                f"   📅 {g['end_date']}\n"
+                f"   📅 Boshlanishi: {g['start_date']}\n"
             )
             if g["comment"]:
                 text += f"   📝 {g['comment']}\n"
             text += "\n"
 
-    if not active_groups and not opening_soon:
+    if not active_groups and not upcoming_groups:
         text += "📭 Ko'rsatiladigan guruhlar topilmadi.\n"
 
     teachers = get_unique_teachers()
