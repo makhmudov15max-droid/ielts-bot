@@ -484,20 +484,23 @@ async def show_cashboxes(message: types.Message, state: FSMContext):
             await msg.edit_text("📭 Hech qanday cashbox topilmadi.")
             return
 
-        # Barcha cashboxlarni ko'rsat (filtrlash yo'q)
-        text = "🏦 <b>CASHBOXLAR</b>\n\n"
+        # Faqat Drujba filialidagi cashboxlar (branch_id=3)
+        drujba_cbs = [cb for cb in cashboxes if cb.get("branch_id") == DRUJBA_BRANCH_ID]
+        logger.info(f"Cashboxes: total={len(cashboxes)}, drujba={len(drujba_cbs)}, ids={[c['id'] for c in cashboxes]}")
+
+        if not drujba_cbs:
+            await msg.edit_text("📭 Drujba filialida cashbox topilmadi.")
+            return
+
+        # Xabarda listing
+        text = "🏦 <b>DRUJBA — CASHBOXLAR</b>\n\n"
         from_keyboard = []
 
-        for idx, cb in enumerate(cashboxes, 1):
+        for idx, cb in enumerate(drujba_cbs, 1):
             bal = cb.get("balance", {}) if isinstance(cb.get("balance"), dict) else {}
             total = sum(float(v or 0) for v in bal.values())
-            branch = cb.get("branch") or {}
-            branch_name = (branch.get("uz") or branch.get("en") or "") if isinstance(branch, dict) else ""
-            label = cb['name']
-            if branch_name:
-                label = f"{cb['name']} ({branch_name})"
             text += f"{idx}. <b>{cb['name']}</b> — 💰 {int(total)} so'm\n"
-            from_keyboard.append([types.InlineKeyboardButton(text=label, callback_data=f"cb_{cb['id']}")])
+            from_keyboard.append([types.InlineKeyboardButton(text=f"{cb['name']} — {int(total)} so'm", callback_data=f"cb_{cb['id']}")])
 
         from_keyboard.append([types.InlineKeyboardButton(text="🏠 Ortga", callback_data="cb_back")])
         inline_kb = types.InlineKeyboardMarkup(inline_keyboard=from_keyboard)
@@ -532,20 +535,16 @@ async def cashbox_callback_handler(call: types.CallbackQuery, state: FSMContext)
 
             dp = json.loads(unescape(match.group(1)))
             cashboxes = dp["props"]["cashboxes"]
+            drujba_cbs = [cb for cb in cashboxes if cb.get("branch_id") == DRUJBA_BRANCH_ID]
 
-            text = "🏦 <b>CASHBOXLAR</b>\n\n"
+            text = "🏦 <b>DRUJBA — CASHBOXLAR</b>\n\n"
             from_keyboard = []
 
-            for idx, cb in enumerate(cashboxes, 1):
+            for idx, cb in enumerate(drujba_cbs, 1):
                 bal = cb.get("balance", {}) if isinstance(cb.get("balance"), dict) else {}
                 total = sum(float(v or 0) for v in bal.values())
-                branch = cb.get("branch") or {}
-                branch_name = (branch.get("uz") or branch.get("en") or "") if isinstance(branch, dict) else ""
-                label = cb['name']
-                if branch_name:
-                    label = f"{cb['name']} ({branch_name})"
                 text += f"{idx}. <b>{cb['name']}</b> — 💰 {int(total)} so'm\n"
-                from_keyboard.append([types.InlineKeyboardButton(text=label, callback_data=f"cb_{cb['id']}")])
+                from_keyboard.append([types.InlineKeyboardButton(text=f"{cb['name']} — {int(total)} so'm", callback_data=f"cb_{cb['id']}")])
 
             from_keyboard.append([types.InlineKeyboardButton(text="🏠 Ortga", callback_data="cb_back")])
             inline_kb = types.InlineKeyboardMarkup(inline_keyboard=from_keyboard)
