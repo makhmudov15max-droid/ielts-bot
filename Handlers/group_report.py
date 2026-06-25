@@ -357,7 +357,63 @@ async def show_finance_report(message: types.Message, state: FSMContext):
     if not await is_admin(message.from_user.id):
         await message.answer("⚠️ Bu buyruq faqat administrator va owner uchun!")
         return
-    await message.answer("⏳ Finance report tayyorlanmoqda...")
+
+    msg = await message.answer("⏳ Finance report tayyorlanmoqda...")
+
+    try:
+        import json, re
+        from html import unescape
+
+        s = _get_lms_session()
+
+        # 1. Drujba ustozlarini olish (get_all_groups orqali)
+        groups = await asyncio.to_thread(get_all_groups)
+        drujba_teachers = set(g["teacher"] for g in groups if g["teacher"] and not g["teacher"].startswith("ID#"))
+
+        # 2. Balanslarni olish
+        r = s.get(f"{LMS_BASE}/admin/calculated-salaries?per_page=200", timeout=15)
+        match = re.search(r'data-page="([^"]*)"', r.text)
+        balances = {}
+        if match:
+            dp = json.loads(unescape(match.group(1)))
+            for emp in dp["props"]["employees"]:
+                tid = emp["id"]
+                name = f"{emp.get('first_name','')} {emp.get('last_name','')}".strip()
+                eb = emp.get("employee_balance", "0")
+                try:
+                    eb = float(eb)
+                except:
+                    eb = 0
+                if name in drujba_teachers:
+                    balances[name] = {"id": tid, "balance": eb}
+
+        # 3. Report tuzish
+        if not balances:
+            await msg.edit_text("📭 Drujba filialida faol ustozlar topilmadi.")
+            return
+
+        # Saralash (balans kamayish bo'yicha)
+        sorted_teachers = sorted(balances.items(), key=lambda x: -x[1]["balance"])
+
+        text = "💰 <b>DRUJBA — USTOZLAR BALANSI</b>\n\n"
+        total_balance = 0
+        for idx, (name, data) in enumerate(sorted_teachers, 1):
+            bal = data["balance"]
+            total_balance += bal
+            if bal >= 0:
+                text += f"{idx}. 👨🏻‍🏫 {name}\n   💰 {int(bal)} soʻm\n\n"
+            else:
+                text += f"{idx}. 👨🏻‍🏫 {name}\n   🔴 {int(bal)} soʻm\n\n"
+
+        text += f"━━━━━━━━━━━━━━━━\n"
+        text += f"📊 <b>Jami:</b> {len(balances)} ta ustoz\n"
+        text += f"💵 <b>Umumiy balans:</b> {int(total_balance)} soʻm"
+
+        await msg.edit_text(text, parse_mode="HTML")
+
+    except Exception as e:
+        logger.error(f"Finance report error: {e}")
+        await msg.edit_text(f"⚠️ Xatolik yuz berdi: {e}")
 
 
 # ================= WAITING GROUPS =================
