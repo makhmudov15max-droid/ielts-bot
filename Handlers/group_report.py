@@ -369,27 +369,13 @@ async def cashbox_back_home(message: types.Message, state: FSMContext):
 
 @report_router.message(ReportStates.waiting_for_report_choice, F.text == "📋 Dars Jadval")
 async def show_schedule_inline(message: types.Message, state: FSMContext):
-    """LMS dan dars jadvalini olib chatda ko'rsatadi (bugungi kun)"""
-    msg = await message.answer("⏳ Bugungi dars jadvali yuklanmoqda...")
+    """LMS dan dars jadvalini olib chatda ko'rsatadi (ixcham)"""
+    msg = await message.answer("⏳ Dars jadvali yuklanmoqda...")
 
     try:
         from utils.sheets_export import fetch_branch_schedule, _days_left
-        from datetime import date
 
         schedule = await asyncio.to_thread(fetch_branch_schedule)
-
-        # Bugungi hafta turini aniqlash (ISO hafta raqami)
-        today = datetime.now(UZ_TZ).date()
-        week_num = today.isocalendar()[1]
-        # TOQ = toq hafta, JUFT = juft hafta
-        is_toq = (week_num % 2 == 1)
-        day_type = "TOQ" if is_toq else "JUFT"
-        day_emoji = "🔵" if is_toq else "🔴"
-        lessons = schedule.get("odd" if is_toq else "even", [])
-
-        # Hafta kunlari
-        weekdays_uz = ["Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba", "Yakshanba"]
-        weekday_uz = weekdays_uz[today.weekday()]
 
         time_slots = ["08:00", "10:00", "12:00", "14:00", "16:00", "18:00"]
 
@@ -397,46 +383,40 @@ async def show_schedule_inline(message: types.Message, state: FSMContext):
             st = (st or "")[:5]
             return "18:00" if st >= "18:00" else st
 
-        active = [l for l in lessons if l.get("status") == 2]
-        planned = [l for l in lessons if l.get("status") == 1]
+        def build_section(lessons, label, emoji):
+            active = [l for l in lessons if l.get("status") == 2]
 
-        # Vaqt bo'yicha guruhlash (aktiv)
-        by_time = {}
-        for l in active:
-            tm = _norm_time(str(l.get("lesson_start_time", ""))[:5])
-            rn = str(l.get("room", {}).get("name", ""))
-            teacher = (l.get("teacher") or {}).get("first_name", "")
-            course_obj = l.get("sub_course") or l.get("course") or {}
-            level = course_obj.get("name", {}).get("uz", "?")
-            dl = _days_left(l.get("group_end_date", ""))
-            icon = "🔴" if dl <= 14 else ("🟡" if dl <= 30 else "🟢")
-            gid = l.get("id", "?")
-            by_time.setdefault(tm, []).append(f"🏠{rn} #{gid}|{teacher}({level})|{icon}")
+            # Vaqt bo'yicha guruhlash
+            by_time = {}
+            for l in active:
+                tm = _norm_time(str(l.get("lesson_start_time", ""))[:5])
+                rn = str(l.get("room", {}).get("name", ""))
+                teacher = (l.get("teacher") or {}).get("first_name", "")
+                course_obj = l.get("sub_course") or l.get("course") or {}
+                level = course_obj.get("name", {}).get("uz", "?")
+                dl = _days_left(l.get("group_end_date", ""))
+                icon = "🔴" if dl <= 14 else ("🟡" if dl <= 30 else "🟢")
+                gid = l.get("id", "?")
+                by_time.setdefault(tm, []).append(f"🏠{rn} #{gid}|{teacher}|{icon}")
 
-        # Sarlavha
-        date_str = today.strftime('%d.%m.%Y')
-        result = f"📋 <b>DRUJBA — BUGUNGI DARS JADVALI</b>\n"
-        result += f"{day_emoji} <b>{day_type}</b> | {weekday_uz} | {date_str}\n"
-        result += f"━━━━━━━━━━━━━━━━\n"
+            text = f"\n{emoji} <b>{label}</b>\n━━━━━━━━━━━━━━━━\n"
+            has_any = False
+            for tm in time_slots:
+                if tm not in by_time:
+                    continue
+                entries = "  ".join(by_time[tm])
+                text += f"⏰ {tm} → {entries}\n"
+                has_any = True
 
-        # Aktiv darslar
-        has_any = False
-        for tm in time_slots:
-            if tm not in by_time:
-                continue
-            entries = "  ".join(by_time[tm])
-            result += f"⏰ {tm} → {entries}\n"
-            has_any = True
+            if not has_any:
+                text += "📭 Faol darslar yo'q\n"
+            return text
 
-        if not has_any:
-            result += "📭 Bugungi faol darslar yo'q\n"
-
-        # Kutilayotgan guruhlar (status=1)
-        if planned:
-            result += f"\n⏳ <b>Kutilayotgan guruhlar:</b> {len(planned)} ta\n"
-
-        result += f"\n━━━━━━━━━━━━━━━━\n"
-        result += f"🔴14 kun | 🟡30 kun | 🟢30+ kun"
+        result = "📋 <b>DRUJBA — DARS JADVALI</b>\n"
+        result += f"<i>{datetime.now(UZ_TZ).strftime('%d.%m.%Y %H:%M')}</i>\n"
+        result += build_section(schedule.get("odd", []), "TOQ KUNLAR", "🔵")
+        result += build_section(schedule.get("even", []), "JUFT KUNLAR", "🔴")
+        result += "\n━━━━━━━━━━━━━━━━\n🔴14 kun | 🟡30 kun | 🟢30+ kun"
 
         await msg.edit_text(result, parse_mode="HTML")
 
