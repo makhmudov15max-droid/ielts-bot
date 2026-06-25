@@ -398,11 +398,9 @@ def _get_waiting_groups():
                     room_name = rooms[0]["name"] if rooms else "❌"
                     capacity = rooms[0]["capacity"] if rooms else 20
 
-                    # O'quvchilar
-                    students = gd.get("newly_added_trial_frozen_active_failed_students", [])
-                    active = sum(1 for s in students if s.get("pivot", {}).get("status") == 6)
-                    trial = sum(1 for s in students if s.get("pivot", {}).get("status") == 8)
-                    frozen = sum(1 for s in students if s.get("pivot", {}).get("status") == 9)
+                    # O'quvchilar — planned guruhlarda "students" arrayida
+                    students = gd.get("students", gd.get("newly_added_trial_frozen_active_failed_students", []))
+                    total_students = len(students)
 
                     waiting.append({
                         "name": gname,
@@ -410,9 +408,7 @@ def _get_waiting_groups():
                         "level": cname,
                         "room": room_name,
                         "capacity": capacity,
-                        "active": active,
-                        "trial": trial,
-                        "frozen": frozen,
+                        "students": total_students,
                     })
             except Exception as e:
                 logger.warning(f"Waiting group #{gid} fetch error: {e}")
@@ -422,9 +418,7 @@ def _get_waiting_groups():
                     "level": cname,
                     "room": "❌",
                     "capacity": 0,
-                    "active": 0,
-                    "trial": 0,
-                    "frozen": 0,
+                    "students": 0,
                 })
 
     return waiting
@@ -487,7 +481,7 @@ def _render_waiting_groups_report(groups: list, all_comments: dict):
             comment_line = f" 📝" if comment else ""
             text += (
                 f"   <b>{global_idx}.</b> 📚 {g['name']} — {g['level']}{comment_line}\n"
-                f"       👥 {g['active']} + {g['trial']} + {g['frozen']} / {g['capacity']}\n"
+                f"       👥 {g['students']} / {g['capacity']}\n"
                 f"       🏠 Xona: {g['room']}\n\n"
             )
 
@@ -517,7 +511,7 @@ async def _show_waiting_group_detail(call: types.CallbackQuery, state: FSMContex
 
     detail = f"⏳ <b>{g['name']} — {g['level']}</b>\n\n"
     detail += f"👨🏻‍🏫 {g['teacher']}\n"
-    detail += f"👥 {g['active']} + {g['trial']} + {g['frozen']} / {g['capacity']}\n"
+    detail += f"👥 {g['students']} / {g['capacity']}\n"
     detail += f"🏠 Xona: {g['room']}\n"
 
     if comment:
