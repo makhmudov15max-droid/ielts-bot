@@ -328,15 +328,13 @@ async def group_report_menu(message: types.Message, state: FSMContext):
     # Cashbox va Finance Report faqat Owner uchun
     if role == "Owner":
         lms_buttons = [
-            [types.KeyboardButton(text="📊Finishing Groups"), types.KeyboardButton(text="👨🏻‍🏫 Ustoz bo'yicha guruhlar")],
-            [types.KeyboardButton(text="⏳ Waiting Groups"), types.KeyboardButton(text="🏦 Cashbox"), types.KeyboardButton(text="💰 Finance Report")],
-            [types.KeyboardButton(text="📋 Dars Jadval")],
+            [types.KeyboardButton(text="📊 Finishing Groups"), types.KeyboardButton(text="👨🏻‍🏫 Ustoz bo'yicha"), types.KeyboardButton(text="⏳ Waiting Groups")],
+            [types.KeyboardButton(text="🏦 Cashbox"), types.KeyboardButton(text="💰 Finance Report"), types.KeyboardButton(text="📋 Dars Jadval")],
             [types.KeyboardButton(text="🏠 Bosh sahifa")],
         ]
     else:
         lms_buttons = [
-            [types.KeyboardButton(text="📊Finishing Groups"), types.KeyboardButton(text="👨🏻‍🏫 Ustoz bo'yicha guruhlar")],
-            [types.KeyboardButton(text="⏳ Waiting Groups")],
+            [types.KeyboardButton(text="📊 Finishing Groups"), types.KeyboardButton(text="👨🏻‍🏫 Ustoz bo'yicha"), types.KeyboardButton(text="⏳ Waiting Groups")],
             [types.KeyboardButton(text="📋 Dars Jadval")],
             [types.KeyboardButton(text="🏠 Bosh sahifa")],
         ]
@@ -888,7 +886,7 @@ async def delete_waiting_comment(call: types.CallbackQuery, state: FSMContext):
 
 
 # ================= BARCHA MUAMMOLI GURUHLAR =================
-@report_router.message(ReportStates.waiting_for_report_choice, F.text == "📊Finishing Groups")
+@report_router.message(ReportStates.waiting_for_report_choice, F.text == "📊 Finishing Groups")
 async def show_problematic_groups(message: types.Message, state: FSMContext):
     await message.answer("⏳ LMSdan guruhlar yuklanmoqda...")
 
@@ -915,7 +913,7 @@ async def show_problematic_groups(message: types.Message, state: FSMContext):
 
 
 # ================= USTOZ BO'YICHA GURUHLAR =================
-@report_router.message(ReportStates.waiting_for_report_choice, F.text == "👨🏻‍🏫 Ustoz bo'yicha guruhlar")
+@report_router.message(ReportStates.waiting_for_report_choice, F.text == "👨🏻‍🏫 Ustoz bo'yicha")
 async def show_teachers_list(message: types.Message, state: FSMContext):
     teachers = await asyncio.to_thread(get_unique_teachers)
 
@@ -944,13 +942,13 @@ async def show_teachers_list(message: types.Message, state: FSMContext):
     )
 
 
-@report_router.message(ReportStates.waiting_for_teacher_choice, F.text == "📊Finishing Groups")
+@report_router.message(ReportStates.waiting_for_teacher_choice, F.text == "📊 Finishing Groups")
 async def switch_to_problematic(message: types.Message, state: FSMContext):
     await state.set_state(ReportStates.waiting_for_report_choice)
     await show_problematic_groups(message, state)
 
 
-@report_router.message(ReportStates.waiting_for_teacher_choice, F.text == "👨🏻‍🏫 Ustoz bo'yicha guruhlar")
+@report_router.message(ReportStates.waiting_for_teacher_choice, F.text == "👨🏻‍🏫 Ustoz bo'yicha")
 async def refresh_teachers(message: types.Message, state: FSMContext):
     await show_teachers_list(message, state)
 
