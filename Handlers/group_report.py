@@ -325,7 +325,7 @@ async def group_report_menu(message: types.Message, state: FSMContext):
 
     await state.set_state(ReportStates.waiting_for_report_choice)
 
-    # Finance Report va Cashbox tugmalari faqat Owner uchun
+    # Cashbox va Finance Report faqat Owner uchun
     if role == "Owner":
         lms_buttons = [
             [types.KeyboardButton(text="📊Finishing Groups"), types.KeyboardButton(text="👨🏻‍🏫 Ustoz bo'yicha guruhlar")],
@@ -336,7 +336,7 @@ async def group_report_menu(message: types.Message, state: FSMContext):
     else:
         lms_buttons = [
             [types.KeyboardButton(text="📊Finishing Groups"), types.KeyboardButton(text="👨🏻‍🏫 Ustoz bo'yicha guruhlar")],
-            [types.KeyboardButton(text="⏳ Waiting Groups"), types.KeyboardButton(text="🏦 Cashbox")],
+            [types.KeyboardButton(text="⏳ Waiting Groups")],
             [types.KeyboardButton(text="📋 Dars Jadval")],
             [types.KeyboardButton(text="🏠 Bosh sahifa")],
         ]
@@ -460,6 +460,12 @@ async def show_finance_report(message: types.Message, state: FSMContext):
 @report_router.message(ReportStates.waiting_for_report_choice, F.text == "🏦 Cashbox")
 async def show_cashboxes(message: types.Message, state: FSMContext):
     """Barcha cashboxlarni listing qiladi"""
+    # Faqat Owner uchun
+    role = _USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner") if _USERS_ROLES else "Owner"
+    if role != "Owner":
+        await message.answer("⚠️ Bu buyruq faqat Owner uchun!")
+        return
+
     msg = await message.answer("⏳ Cashboxlar yuklanmoqda...")
 
     try:
