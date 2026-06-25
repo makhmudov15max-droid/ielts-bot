@@ -474,6 +474,7 @@ async def show_cashboxes(message: types.Message, state: FSMContext):
         r = s.get(f"{LMS_BASE}/admin/cashboxes", timeout=15)
         match = re.search(r'data-page="([^"]*)"', r.text)
         if not match:
+            logger.warning(f"Cashbox data-page not found. Status={r.status_code}, URL={r.url}, len={len(r.text)}")
             await msg.edit_text("⚠️ Cashbox ma'lumotlari topilmadi.")
             return
 
@@ -530,6 +531,7 @@ async def cashbox_callback_handler(call: types.CallbackQuery, state: FSMContext)
             r = s.get(f"{LMS_BASE}/admin/cashboxes", timeout=15)
             match = re.search(r'data-page="([^"]*)"', r.text)
             if not match:
+                logger.warning(f"Cashbox data-page not found. Status={r.status_code}, URL={r.url}, len={len(r.text)}")
                 await msg.edit_text("⚠️ Cashbox ma'lumotlari topilmadi.")
                 return
 
@@ -566,6 +568,7 @@ async def cashbox_callback_handler(call: types.CallbackQuery, state: FSMContext)
         r = s.get(f"{LMS_BASE}/admin/cashboxes", timeout=15)
         match = re.search(r'data-page="([^"]*)"', r.text)
         if not match:
+            logger.warning(f"Cashbox data-page not found. Status={r.status_code}, URL={r.url}, len={len(r.text)}")
             await msg.edit_text("⚠️ Cashbox ma'lumotlari topilmadi.")
             return
 
