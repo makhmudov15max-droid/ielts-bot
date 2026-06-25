@@ -368,92 +368,13 @@ async def cashbox_back_home(message: types.Message, state: FSMContext):
 
 
 @report_router.message(ReportStates.waiting_for_report_choice, F.text == "📋 Dars Jadval")
-async def show_schedule_inline(message: types.Message, state: FSMContext):
-    """LMS dan dars jadvalini olib chatda ko'rsatadi"""
-    msg = await message.answer("⏳ Dars jadvali yuklanmoqda...")
+async def export_schedule_to_sheets(message: types.Message, state: FSMContext):
+    """LMS dan dars jadvalini olib Google Sheets ga yozadi."""
+    await message.answer("⏳ LMS dan dars jadvali yuklanmoqda...\n\nBu biroz vaqt olishi mumkin (30-60 soniya).")
 
-    try:
-        from utils.sheets_export import fetch_branch_schedule, _days_left
-
-        schedule = await asyncio.to_thread(fetch_branch_schedule)
-
-        # Vaqt bloklari
-        time_slots = ["08:00", "10:00", "12:00", "14:00", "16:00", "18:00"]
-        room_order = ["101", "102", "103", "104", "105", "106", "107", "108", "109", "110", "111"]
-
-        def _normalize_time(st):
-            st = (st or "")[:5]
-            if st >= "18:00":
-                return "18:00"
-            return st
-
-        def build_section(lessons, label, emoji):
-            nonlocal schedule
-            # Faqat status=2 (aktiv) guruhlar
-            active = [l for l in lessons if l.get("status") == 2]
-
-            # Vaqt bloki bo'yicha guruhlash
-            by_time = {}
-            for l in active:
-                tm = _normalize_time(str(l.get("lesson_start_time", ""))[:5])
-                if tm not in by_time:
-                    by_time[tm] = {}
-                rn = str(l.get("room", {}).get("name", ""))
-                if rn not in by_time[tm]:
-                    by_time[tm][rn] = []
-                by_time[tm][rn].append(l)
-
-            text = f"\n{emoji} <b>{label}</b>\n"
-            text += "━━━━━━━━━━━━━━━━\n"
-
-            has_any = False
-            for tm in time_slots:
-                if tm not in by_time:
-                    continue
-                rooms = by_time[tm]
-                text += f"<b>⏰ {tm}</b>\n"
-                for rn in room_order:
-                    if rn not in rooms:
-                        continue
-                    for lesson in rooms[rn]:
-                        gid = lesson.get("id", "?")
-                        teacher = (lesson.get("teacher") or {}).get("first_name", "")
-                        course_obj = lesson.get("sub_course") or lesson.get("course") or {}
-                        level = course_obj.get("name", {}).get("uz", "?")
-                        end_date = lesson.get("group_end_date", "")
-                        dl = _days_left(end_date)
-
-                        if dl <= 14:
-                            status_icon = "🔴"
-                        elif dl <= 30:
-                            status_icon = "🟡"
-                        else:
-                            status_icon = "🟢"
-
-                        text += f"  🏠 {rn} → #{gid} | {teacher} | {level} {status_icon}\n"
-                    has_any = True
-                text += "\n"
-
-            if not has_any:
-                text += "  📭 Faol darslar yo'q\n"
-
-            return text
-
-        # TOQ va JUFT bo'limlarini tuzish
-        result = "📋 <b>DRUJBA — DARS JADVALI</b>\n"
-        result += f"<i>{datetime.now(UZ_TZ).strftime('%d.%m.%Y %H:%M')}</i>\n"
-
-        result += build_section(schedule.get("odd", []), "TOQ KUNLAR", "🔵")
-        result += build_section(schedule.get("even", []), "JUFT KUNLAR", "🔴")
-
-        result += "\n━━━━━━━━━━━━━━━━\n"
-        result += "🔴 14 kun | 🟡 30 kun | 🟢 30+ kun"
-
-        await msg.edit_text(result, parse_mode="HTML")
-
-    except Exception as e:
-        logger.error(f"Schedule inline error: {e}")
-        await msg.edit_text(f"⚠️ Xatolik yuz berdi: {e}")
+    from utils.sheets_export import write_schedule_to_sheets
+    result = await write_schedule_to_sheets()
+    await message.answer(result, parse_mode="HTML")
 
 
 @report_router.message(ReportStates.waiting_for_report_choice, F.text == "💰 Finance Report")
