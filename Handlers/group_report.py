@@ -440,9 +440,9 @@ async def show_finance_report(message: types.Message, state: FSMContext):
             total_balance += bal
             teacher_count += 1
             if bal >= 0:
-                text += f"{teacher_count}. 👨🏻‍🏫 {teacher}\n   💰 {_fmt(bal)} so'm\n\n"
+                text += f"{teacher_count}. 👨🏻‍🏫 {teacher}\n   💰 {int(bal)} so'm\n\n"
             else:
-                text += f"{teacher_count}. 👨🏻‍🏫 {teacher}\n   🔴 {_fmt(bal)} so'm\n\n"
+                text += f"{teacher_count}. 👨🏻‍🏫 {teacher}\n   🔴 {int(bal)} so'm\n\n"
 
         text += f"━━━━━━━━━━━━━━━━\n"
         text += f"📊 <b>Jami:</b> {teacher_count} ta ustoz\n"
