@@ -456,8 +456,8 @@ async def show_finance_report(message: types.Message, state: FSMContext):
 
 
 def _fmt(n: float) -> str:
-    """Sonni probel bilan formatlash: 49109462 → 49 109 462"""
-    return f"{int(n):,}".replace(",", " ")
+    """Sonni formatlash: 49109462 → 49109462 (probel/vergulsiz)"""
+    return str(int(n))
 
 
 # ================= CASHBOX =================
