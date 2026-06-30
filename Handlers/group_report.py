@@ -405,6 +405,7 @@ async def show_finance_report(message: types.Message, state: FSMContext):
             "Xurshid Hazratqulov",
             "Nilufar Karimova",
             "Ibrohim Aliyev",
+            "Otabek Mirhamidov",
         ]
 
         # 2. Balanslarni olish
