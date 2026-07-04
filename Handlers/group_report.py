@@ -1589,132 +1589,84 @@ async def trial_admin_select(call: types.CallbackQuery, state: FSMContext):
 
 
 async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admin_ids: list):
-    """Playwright orqali trial report yaratish"""
-    import json
+    """LMS session orqali trial report yaratish (requests, Playwrightsiz)"""
+    import json, re, asyncio
     from collections import defaultdict
     from datetime import date as date_module
+    from html import unescape
 
     today = date_module.today().isoformat()
 
     try:
-        import subprocess, os, tempfile
+        s = await asyncio.to_thread(_get_lms_session)
 
-        script = '''
-const {{ chromium }} = require('playwright');
-(async () => {{
-    const browser = await chromium.launch({{ headless: true }});
-    const context = await browser.newContext();
-    const page = await context.newPage();
-    
-    try {{
-        await page.goto('https://main.ieltszoneapp.uz/login', {{ waitUntil: 'networkidle', timeout: 20000 }});
-        await page.fill('input[name="email"]', '{email}');
-        await page.fill('input[name="password"]', '{password}');
-        await Promise.all([
-            page.waitForNavigation({{ timeout: 15000 }}).catch(() => {{}}),
-            page.click('button[type="submit"]')
-        ]);
-        await new Promise(r => setTimeout(r, 1000));
-        
-        await page.goto(
-            'https://main.ieltszoneapp.uz/admin/dashboard/new-students?branch_id=3&page=1&sort=id&per_page=64',
-            {{ waitUntil: 'networkidle', timeout: 15000 }}
-        );
-        
-        const students = await page.evaluate(() => {{
-            const results = [];
-            const rows = document.querySelectorAll('tr');
-            rows.forEach(tr => {{
-                const cells = tr.querySelectorAll('td');
-                if (cells.length < 6) return;
-                let name = cells[0]?.textContent?.trim() || '';
-                name = name.replace(/\\(\\d{{2,3}}\\)\\s*[\\d\\-]+\\s*$/, '').trim();
-                if (!name) return;
-                const course = cells[2]?.textContent?.trim() || '';
-                const admin = cells[6]?.textContent?.trim() || '';
-                const links = tr.querySelectorAll('a');
-                let studentId = null;
-                links.forEach(a => {{
-                    const href = a.getAttribute('href');
-                    if (href && href.includes('/admin/students/')) {{
-                        studentId = href.split('/').pop();
-                    }}
-                }});
-                results.push({{ name, course, admin, studentId }});
-            }});
-            return results;
-        }});
-        
-        const results = [];
-        for (const s of students) {{
-            if (!s.studentId) {{ results.push({{ ...s, comments: [] }}); continue; }}
-            try {{
-                const resp = await page.evaluate(async (sid) => {{
-                    const r = await fetch(`/admin/users/${{sid}}/comments`);
-                    return await r.json();
-                }}, s.studentId);
-                const comments = (resp.comments || []).slice(-1).map(c => ({{
-                    date: c.created_at?.substring(0, 10) || '',
-                    text: c.details?.comment || ''
-                }}));
-                results.push({{ ...s, comments }});
-            }} catch(e) {{
-                results.push({{ ...s, comments: [] }});
-            }}
-        }}
-        
-        console.log(JSON.stringify(results));
-        
-    }} catch(e) {{
-        console.log('ERROR:' + e.message);
-    }}
-    await browser.close();
-}})();
-'''
-
-        email = "makhmudov15max@gmail.com"
-        password = "halollik1902"
-        script = script.replace('{email}', email).replace('{password}', password)
-
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.js', delete=False) as f:
-            f.write(script)
-            script_path = f.name
-
-        proc = await asyncio.create_subprocess_exec(
-            'node', script_path,
-            env={**os.environ, 'NODE_PATH': '/opt/homebrew/lib/node_modules'},
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+        # Get new-students page
+        r = s.get(
+            f"{LMS_BASE}/admin/dashboard/new-students?branch_id=3&page=1&sort=id&per_page=64",
+            timeout=20,
         )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=150)
-        os.unlink(script_path)
-
-        output = stdout.decode().strip()
-
-        # Parse JSON from output
-        data = None
-        for line in output.split('\n'):
-            line = line.strip()
-            if line.startswith('[') or line.startswith('{'):
-                try:
-                    data = json.loads(line)
-                    break
-                except json.JSONDecodeError:
-                    continue
-
-        if data is None:
-            await msg.edit_text(f"⚠️ Trial report olishda xatolik: ma'lumot topilmadi")
+        match = re.search(r'data-page="([^"]*)"', r.text)
+        if not match:
+            await msg.edit_text("⚠️ LMS sahifasidan ma'lumot olishda xatolik.")
             return
 
+        dp = json.loads(unescape(match.group(1)))
+        students_raw = dp.get("props", {}).get("students", {}).get("data", [])
+        if not students_raw:
+            # Try alternate path
+            students_raw = dp.get("props", {}).get("records", [])
+
+        if not students_raw:
+            await msg.edit_text("⚠️ Lead ma'lumotlari topilmadi.")
+            return
+
+        # Extract student data
+        data = []
+        for st in students_raw:
+            name = f"{st.get('first_name', '')} {st.get('last_name', '')}".strip()
+            if not name:
+                continue
+            course = st.get("course", {}).get("name", {}).get("uz", "") if isinstance(st.get("course"), dict) else ""
+            if not course:
+                course = st.get("course_name", "")
+            admin = ""
+            if st.get("employee"):
+                admin = f"{st['employee'].get('first_name', '')} {st['employee'].get('last_name', '')}".strip()
+            student_id = st.get("id")
+
+            # Get last comment
+            last_comment = None
+            if student_id:
+                try:
+                    cr = s.get(f"{LMS_BASE}/admin/users/{student_id}/comments", timeout=10)
+                    cdata = cr.json()
+                    comments = cdata.get("comments", [])
+                    if comments:
+                        last = comments[-1]
+                        last_comment = {
+                            "date": last.get("created_at", "")[:10],
+                            "text": (last.get("details") or {}).get("comment", ""),
+                        }
+                except Exception:
+                    pass
+
+            data.append({
+                "name": name,
+                "course": course,
+                "admin": admin,
+                "student_id": student_id,
+                "comments": [last_comment] if last_comment else [],
+            })
+
     except Exception as e:
-        logger.error(f"Trial report playwright error: {e}")
+        logger.error(f"Trial report fetch error: {e}")
         await msg.edit_text(f"⚠️ Trial report olishda xatolik: {e}")
         return
 
-    # Filter by selected admins (or all)
+    # Filter by selected admins
     if len(selected_admin_ids) < len(TRIAL_ADMINS):
         selected_names = {TRIAL_ADMINS[eid] for eid in selected_admin_ids}
-        data = [s for s in data if s.get('admin') in selected_names]
+        data = [s for s in data if s["admin"] in selected_names]
 
     if not data:
         await msg.edit_text("📭 Tanlangan adminlar bo'yicha lead topilmadi.")
@@ -1722,6 +1674,7 @@ const {{ chromium }} = require('playwright');
 
     # Build report
     today_str = today
+
     def short_course(c):
         c = c.replace("General English -> ", "GE-")
         c = c.replace("IELTS -> IELTS ", "")
@@ -1733,7 +1686,7 @@ const {{ chromium }} = require('playwright');
 
     admins = defaultdict(list)
     for s in data:
-        admins[s['admin']].append(s)
+        admins[s["admin"]].append(s)
 
     sorted_admins = sorted(admins.items(), key=lambda x: -len(x[1]))
 
@@ -1743,24 +1696,24 @@ const {{ chromium }} = require('playwright');
     lines.append("")
 
     for admin_name, students in sorted_admins:
-        bugun = sum(1 for s in students if s['comments'] and s['comments'][0]['date'] == today_str)
+        bugun = sum(1 for s in students if s["comments"] and s["comments"][0]["date"] == today_str)
         total = len(students)
         lines.append(f"👤 **{admin_name}** — {total} ta")
         lines.append(f"   ✅ {bugun}   ⏳ {total - bugun}")
         lines.append("")
         for s in students:
-            c = short_course(s['course'])
-            last = s['comments'][0] if s['comments'] else None
-            if last and last['text']:
-                d = fmt_date(last['date'])
-                t = last['text'][:40]
-                status = " ✅" if last['date'] == today_str else " ⏳"
+            c = short_course(s["course"])
+            last = s["comments"][0] if s["comments"] else None
+            if last and last["text"]:
+                d = fmt_date(last["date"])
+                t = last["text"][:40]
+                status = " ✅" if last["date"] == today_str else " ⏳"
                 lines.append(f"   • {s['name']} — {c}  {d} → \"{t}\"{status}")
             else:
                 lines.append(f"   • {s['name']} — {c}  ⏳")
         lines.append("")
 
-    total_ok = sum(1 for s in data if s['comments'] and s['comments'][0]['date'] == today_str)
+    total_ok = sum(1 for s in data if s["comments"] and s["comments"][0]["date"] == today_str)
     total_wait = len(data) - total_ok
     lines.append(f"📊 **JAMI:** ✅ {total_ok}   ⏳ {total_wait}")
 
@@ -1769,7 +1722,6 @@ const {{ chromium }} = require('playwright');
     await state.set_state(ReportStates.waiting_for_trial_admin)
     await state.update_data(trial_selected_admins=selected_admin_ids)
 
-    # Send report, re-show admin keyboard
     await msg.edit_text(
         report_text,
         parse_mode="HTML",
