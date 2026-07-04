@@ -1481,10 +1481,10 @@ TRIAL_ADMINS = {
 }
 
 
-def _get_trial_admin_inline_keyboard(selected: set = None):
+def _get_trial_admin_inline_keyboard(selected=None):
     """Admin tanlash uchun inline keyboard (multiple choice + All)"""
     if selected is None:
-        selected = set()
+        selected = []
     kb = []
     # Sort by name
     sorted_admins = sorted(TRIAL_ADMINS.items(), key=lambda x: x[1])
@@ -1511,7 +1511,7 @@ async def trial_report_start(message: types.Message, state: FSMContext):
         return
 
     await state.set_state(ReportStates.waiting_for_trial_admin)
-    await state.update_data(trial_selected_admins=set())
+    await state.update_data(trial_selected_admins=[])
 
     await message.answer(
         text="📋 <b>Trial Report</b>\n\n"
@@ -1546,9 +1546,9 @@ async def trial_admin_select(call: types.CallbackQuery, state: FSMContext):
 
     if data == "trial_admin_all":
         if len(selected) == len(TRIAL_ADMINS):
-            selected = set()
+            selected = []
         else:
-            selected = set(TRIAL_ADMINS.keys())
+            selected = list(TRIAL_ADMINS.keys())
         await state.update_data(trial_selected_admins=selected)
         await call.message.edit_text(
             text="📋 <b>Trial Report</b>\n\n"
@@ -1577,7 +1577,7 @@ async def trial_admin_select(call: types.CallbackQuery, state: FSMContext):
     if emp_id in selected:
         selected.remove(emp_id)
     else:
-        selected.add(emp_id)
+        selected.append(emp_id)
     await state.update_data(trial_selected_admins=selected)
     await call.message.edit_text(
         text="📋 <b>Trial Report</b>\n\n"
@@ -1588,7 +1588,7 @@ async def trial_admin_select(call: types.CallbackQuery, state: FSMContext):
     )
 
 
-async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admin_ids: set):
+async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admin_ids: list):
     """Playwright orqali trial report yaratish"""
     import json
     from collections import defaultdict
