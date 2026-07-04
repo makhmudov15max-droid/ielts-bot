@@ -1623,16 +1623,12 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
         # Extract student data
         data = []
         for st in students_raw:
-            name = f"{st.get('first_name', '')} {st.get('last_name', '')}".strip()
+            name = st.get("student_name", "").strip()
             if not name:
                 continue
-            course = st.get("course", {}).get("name", {}).get("uz", "") if isinstance(st.get("course"), dict) else ""
-            if not course:
-                course = st.get("course_name", "")
-            admin = ""
-            if st.get("employee"):
-                admin = f"{st['employee'].get('first_name', '')} {st['employee'].get('last_name', '')}".strip()
-            student_id = st.get("id")
+            course = st.get("course_name", st.get("parent_course_name", "")).strip()
+            admin = st.get("administrator_name", "").strip()
+            student_id = st.get("student_id") or st.get("id")
 
             # Get last comment
             last_comment = None
