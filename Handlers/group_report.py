@@ -24,6 +24,7 @@ class ReportStates(StatesGroup):
     waiting_for_comment_input = State()
     waiting_for_comment_delete_confirm = State()
     waiting_for_cashbox_detail = State()
+    waiting_for_trial_admin = State()
 
 
 # ================= GLOBAL O'ZGARUVCHI =================
@@ -332,12 +333,12 @@ async def group_report_menu(message: types.Message, state: FSMContext):
         lms_buttons = [
             [types.KeyboardButton(text="📊 Finishing Groups"), types.KeyboardButton(text="👨🏻‍🏫 Ustoz bo'yicha"), types.KeyboardButton(text="⏳ Waiting Groups")],
             [types.KeyboardButton(text="🏦 Cashbox"), types.KeyboardButton(text="💰 Finance Report"), types.KeyboardButton(text="📋 Dars Jadval")],
-            [types.KeyboardButton(text="🏠 Bosh sahifa")],
+            [types.KeyboardButton(text="🎯 Trial"), types.KeyboardButton(text="🏠 Bosh sahifa")],
         ]
     else:
         lms_buttons = [
             [types.KeyboardButton(text="📊 Finishing Groups"), types.KeyboardButton(text="👨🏻‍🏫 Ustoz bo'yicha"), types.KeyboardButton(text="⏳ Waiting Groups")],
-            [types.KeyboardButton(text="📋 Dars Jadval")],
+            [types.KeyboardButton(text="📋 Dars Jadval"), types.KeyboardButton(text="🎯 Trial")],
             [types.KeyboardButton(text="🏠 Bosh sahifa")],
         ]
 
@@ -1468,3 +1469,309 @@ async def back_to_report(call: types.CallbackQuery, state: FSMContext):
         await call.message.edit_text(report, parse_mode="HTML", reply_markup=markup)
     except Exception:
         await call.message.answer(report, parse_mode="HTML", reply_markup=markup)
+
+
+# ================= TRIAL REPORT (New Students) =================
+
+TRIAL_ADMINS = {
+    371: "Mekhrinoz Davlatmirzayeva",
+    372: "Dilshod Saydaliev",
+    21049: "Farangiz Lutfiy",
+    23104: "Gulnigor Abidova",
+}
+
+
+def _get_trial_admin_inline_keyboard(selected: set = None):
+    """Admin tanlash uchun inline keyboard (multiple choice + All)"""
+    if selected is None:
+        selected = set()
+    kb = []
+    # Sort by name
+    sorted_admins = sorted(TRIAL_ADMINS.items(), key=lambda x: x[1])
+    for emp_id, name in sorted_admins:
+        check = "✅ " if emp_id in selected else ""
+        kb.append([
+            types.InlineKeyboardButton(
+                text=f"{check}{name}",
+                callback_data=f"trial_admin_{emp_id}"
+            )
+        ])
+    # Add All button
+    all_label = "✅ " if len(selected) == len(TRIAL_ADMINS) else ""
+    kb.append([types.InlineKeyboardButton(text=f"{all_label}📋 Barcha adminlar", callback_data="trial_admin_all")])
+    kb.append([types.InlineKeyboardButton(text="✅ Tasdiqlash", callback_data="trial_admin_confirm")])
+    kb.append([types.InlineKeyboardButton(text="⬅️ Ortga", callback_data="trial_admin_back")])
+    return types.InlineKeyboardMarkup(inline_keyboard=kb)
+
+
+@report_router.message(F.text == "🎯 Trial")
+async def trial_report_start(message: types.Message, state: FSMContext):
+    if not await is_admin(message.from_user.id):
+        await message.answer("⚠️ Bu buyruq faqat administrator va owner uchun!")
+        return
+
+    await state.set_state(ReportStates.waiting_for_trial_admin)
+    await state.update_data(trial_selected_admins=set())
+
+    await message.answer(
+        text="📋 <b>Trial Report</b>\n\n"
+             "Qaysi admin(lar) bo'yicha hisobot chiqaraylik?\n\n"
+             "<i>Bir nechta adminni tanlash mumkin. Tanlab bo'lgach ✅ Tasdiqlash ni bosing.</i>",
+        parse_mode="HTML",
+        reply_markup=_get_trial_admin_inline_keyboard(),
+    )
+
+
+@report_router.callback_query(F.data == "trial_admin_back")
+async def trial_admin_back(call: types.CallbackQuery, state: FSMContext):
+    await call.answer()
+    await state.set_state(ReportStates.waiting_for_report_choice)
+    # Re-show LMS menu
+    role = _USERS_ROLES.get(str(call.from_user.id), {}).get("role", "Owner") if _USERS_ROLES else "Owner"
+    from Keyboards.main_menu import get_main_menu
+    await call.message.delete()
+    await call.message.answer(
+        "📑 <b>LMS Panel</b>\n\nQaysi turdagi hisobotni ko'rmoqchisiz?",
+        parse_mode="HTML",
+        reply_markup=get_main_menu(role),
+    )
+
+
+@report_router.callback_query(ReportStates.waiting_for_trial_admin, F.data.startswith("trial_admin_"))
+async def trial_admin_select(call: types.CallbackQuery, state: FSMContext):
+    await call.answer()
+    data = call.data
+    state_data = await state.get_data()
+    selected: set = state_data.get("trial_selected_admins", set())
+
+    if data == "trial_admin_all":
+        if len(selected) == len(TRIAL_ADMINS):
+            selected = set()
+        else:
+            selected = set(TRIAL_ADMINS.keys())
+        await state.update_data(trial_selected_admins=selected)
+        await call.message.edit_text(
+            text="📋 <b>Trial Report</b>\n\n"
+                 "Qaysi admin(lar) bo'yicha hisobot chiqaraylik?\n\n"
+                 "<i>Bir nechta adminni tanlash mumkin. Tanlab bo'lgach ✅ Tasdiqlash ni bosing.</i>",
+            parse_mode="HTML",
+            reply_markup=_get_trial_admin_inline_keyboard(selected),
+        )
+        return
+
+    if data == "trial_admin_confirm":
+        if not selected:
+            await call.answer("⚠️ Kamida bitta adminni tanlang!", show_alert=True)
+            return
+        # Generate report
+        await call.message.edit_text("⏳ Trial report tayyorlanmoqda...")
+        await _run_trial_report(call.message, state, selected)
+        return
+
+    # Toggle admin selection
+    try:
+        emp_id = int(data.replace("trial_admin_", ""))
+    except ValueError:
+        return
+
+    if emp_id in selected:
+        selected.remove(emp_id)
+    else:
+        selected.add(emp_id)
+    await state.update_data(trial_selected_admins=selected)
+    await call.message.edit_text(
+        text="📋 <b>Trial Report</b>\n\n"
+             "Qaysi admin(lar) bo'yicha hisobot chiqaraylik?\n\n"
+             "<i>Bir nechta adminni tanlash mumkin. Tanlab bo'lgach ✅ Tasdiqlash ni bosing.</i>",
+        parse_mode="HTML",
+        reply_markup=_get_trial_admin_inline_keyboard(selected),
+    )
+
+
+async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admin_ids: set):
+    """Playwright orqali trial report yaratish"""
+    import json
+    from collections import defaultdict
+    from datetime import date as date_module
+
+    today = date_module.today().isoformat()
+
+    try:
+        import subprocess, os, tempfile
+
+        script = '''
+const {{ chromium }} = require('playwright');
+(async () => {{
+    const browser = await chromium.launch({{ headless: true }});
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    
+    try {{
+        await page.goto('https://main.ieltszoneapp.uz/login', {{ waitUntil: 'networkidle', timeout: 20000 }});
+        await page.fill('input[name="email"]', '{email}');
+        await page.fill('input[name="password"]', '{password}');
+        await Promise.all([
+            page.waitForNavigation({{ timeout: 15000 }}).catch(() => {{}}),
+            page.click('button[type="submit"]')
+        ]);
+        await new Promise(r => setTimeout(r, 1000));
+        
+        await page.goto(
+            'https://main.ieltszoneapp.uz/admin/dashboard/new-students?branch_id=3&page=1&sort=id&per_page=64',
+            {{ waitUntil: 'networkidle', timeout: 15000 }}
+        );
+        
+        const students = await page.evaluate(() => {{
+            const results = [];
+            const rows = document.querySelectorAll('tr');
+            rows.forEach(tr => {{
+                const cells = tr.querySelectorAll('td');
+                if (cells.length < 6) return;
+                let name = cells[0]?.textContent?.trim() || '';
+                name = name.replace(/\\(\\d{{2,3}}\\)\\s*[\\d\\-]+\\s*$/, '').trim();
+                if (!name) return;
+                const course = cells[2]?.textContent?.trim() || '';
+                const admin = cells[6]?.textContent?.trim() || '';
+                const links = tr.querySelectorAll('a');
+                let studentId = null;
+                links.forEach(a => {{
+                    const href = a.getAttribute('href');
+                    if (href && href.includes('/admin/students/')) {{
+                        studentId = href.split('/').pop();
+                    }}
+                }});
+                results.push({{ name, course, admin, studentId }});
+            }});
+            return results;
+        }});
+        
+        const results = [];
+        for (const s of students) {{
+            if (!s.studentId) {{ results.push({{ ...s, comments: [] }}); continue; }}
+            try {{
+                const resp = await page.evaluate(async (sid) => {{
+                    const r = await fetch(`/admin/users/${{sid}}/comments`);
+                    return await r.json();
+                }}, s.studentId);
+                const comments = (resp.comments || []).slice(-1).map(c => ({{
+                    date: c.created_at?.substring(0, 10) || '',
+                    text: c.details?.comment || ''
+                }}));
+                results.push({{ ...s, comments }});
+            }} catch(e) {{
+                results.push({{ ...s, comments: [] }});
+            }}
+        }}
+        
+        console.log(JSON.stringify(results));
+        
+    }} catch(e) {{
+        console.log('ERROR:' + e.message);
+    }}
+    await browser.close();
+}})();
+'''
+
+        email = "makhmudov15max@gmail.com"
+        password = "halollik1902"
+        script = script.replace('{email}', email).replace('{password}', password)
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.js', delete=False) as f:
+            f.write(script)
+            script_path = f.name
+
+        proc = await asyncio.create_subprocess_exec(
+            'node', script_path,
+            env={**os.environ, 'NODE_PATH': '/opt/homebrew/lib/node_modules'},
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=150)
+        os.unlink(script_path)
+
+        output = stdout.decode().strip()
+
+        # Parse JSON from output
+        data = None
+        for line in output.split('\n'):
+            line = line.strip()
+            if line.startswith('[') or line.startswith('{'):
+                try:
+                    data = json.loads(line)
+                    break
+                except json.JSONDecodeError:
+                    continue
+
+        if data is None:
+            await msg.edit_text(f"⚠️ Trial report olishda xatolik: ma'lumot topilmadi")
+            return
+
+    except Exception as e:
+        logger.error(f"Trial report playwright error: {e}")
+        await msg.edit_text(f"⚠️ Trial report olishda xatolik: {e}")
+        return
+
+    # Filter by selected admins (or all)
+    if len(selected_admin_ids) < len(TRIAL_ADMINS):
+        selected_names = {TRIAL_ADMINS[eid] for eid in selected_admin_ids}
+        data = [s for s in data if s.get('admin') in selected_names]
+
+    if not data:
+        await msg.edit_text("📭 Tanlangan adminlar bo'yicha lead topilmadi.")
+        return
+
+    # Build report
+    today_str = today
+    def short_course(c):
+        c = c.replace("General English -> ", "GE-")
+        c = c.replace("IELTS -> IELTS ", "")
+        return c
+
+    def fmt_date(d):
+        parts = d.split("-")
+        return f"{parts[2]}.{parts[1]}"
+
+    admins = defaultdict(list)
+    for s in data:
+        admins[s['admin']].append(s)
+
+    sorted_admins = sorted(admins.items(), key=lambda x: -len(x[1]))
+
+    lines = []
+    today_display = date_module.today().strftime("%d.%m.%Y")
+    lines.append(f"📋 TRIAL REPORT | {today_display} | Drujba | Jami: {len(data)}")
+    lines.append("")
+
+    for admin_name, students in sorted_admins:
+        bugun = sum(1 for s in students if s['comments'] and s['comments'][0]['date'] == today_str)
+        total = len(students)
+        lines.append(f"👤 **{admin_name}** — {total} ta")
+        lines.append(f"   ✅ {bugun}   ⏳ {total - bugun}")
+        lines.append("")
+        for s in students:
+            c = short_course(s['course'])
+            last = s['comments'][0] if s['comments'] else None
+            if last and last['text']:
+                d = fmt_date(last['date'])
+                t = last['text'][:40]
+                status = " ✅" if last['date'] == today_str else " ⏳"
+                lines.append(f"   • {s['name']} — {c}  {d} → \"{t}\"{status}")
+            else:
+                lines.append(f"   • {s['name']} — {c}  ⏳")
+        lines.append("")
+
+    total_ok = sum(1 for s in data if s['comments'] and s['comments'][0]['date'] == today_str)
+    total_wait = len(data) - total_ok
+    lines.append(f"📊 **JAMI:** ✅ {total_ok}   ⏳ {total_wait}")
+
+    report_text = "\n".join(lines)
+
+    await state.set_state(ReportStates.waiting_for_trial_admin)
+    await state.update_data(trial_selected_admins=selected_admin_ids)
+
+    # Send report, re-show admin keyboard
+    await msg.edit_text(
+        report_text,
+        parse_mode="HTML",
+        reply_markup=_get_trial_admin_inline_keyboard(selected_admin_ids),
+    )
