@@ -1626,7 +1626,11 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
             name = st.get("student_name", "").strip()
             if not name:
                 continue
-            course = st.get("course_name", st.get("parent_course_name", "")).strip()
+            course_raw = st.get("course_name", st.get("parent_course_name", ""))
+            if isinstance(course_raw, dict):
+                course = course_raw.get("uz", course_raw.get("en", "")).strip()
+            else:
+                course = str(course_raw).strip()
             admin = st.get("administrator_name", "").strip()
             student_id = st.get("student_id") or st.get("id")
 
