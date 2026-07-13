@@ -501,6 +501,7 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
                     status_code = last.get("status", last.get("type"))
                     note_text = last.get("comment", last.get("note", "")).strip()
                     created_at = last.get("created_at", "")
+                    logger.info(f"lead-logs {student_id}: status={status_code}, note='{note_text[:30]}', created_at='{created_at}'")
 
                     # Sanani formatlash (Toshkent vaqti)
                     date_str = ""
