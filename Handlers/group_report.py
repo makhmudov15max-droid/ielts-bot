@@ -557,15 +557,15 @@ async def show_finance_report(message: types.Message, state: FSMContext):
         DRUJBA_TEACHERS = [
             "Sardor Komilov",
             "Adxambek Ismoilov",
-            "Obidjon Rustamov",
+            "Otabek Mirhamidov",
             "Ahmadali Turgunov",
+            "Obidjon Rustamov",
             "Odiljon Jaloliddinov",
+            "Ibrohim Aliyev",
+            "Xurshid Hazratqulov",
             "Farangiz Elamanova",
             "Sevinch Ibrohimova",
-            "Xurshid Hazratqulov",
             "Nilufar Karimova",
-            "Ibrohim Aliyev",
-            "Otabek Mirhamidov",
         ]
 
         r = s.get(f"{LMS_BASE}/admin/calculated-salaries?per_page=200", timeout=15)
