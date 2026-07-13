@@ -31,6 +31,10 @@ class ReportStates(StatesGroup):
 # ================= GLOBAL O'ZGARUVCHI =================
 _USERS_ROLES = None
 
+# Cache: {key: (result, timestamp)}
+_REPORT_CACHE = {}
+_CACHE_TTL = 60  # soniya
+
 def set_users_roles(users_roles):
     global _USERS_ROLES
     _USERS_ROLES = users_roles
@@ -552,6 +556,13 @@ async def show_finance_report(message: types.Message, state: FSMContext):
     msg = await message.answer("⏳ Finance report tayyorlanmoqda...")
 
     try:
+        # Cache check
+        now = datetime.now(timezone.utc).timestamp()
+        cached = _REPORT_CACHE.get("finance")
+        if cached and now - cached[1] < _CACHE_TTL:
+            await msg.edit_text(cached[0], parse_mode="HTML")
+            return
+
         s = _get_lms_session()
 
         DRUJBA_TEACHERS = [
@@ -605,6 +616,9 @@ async def show_finance_report(message: types.Message, state: FSMContext):
         text += f"━━━━━━━━━━━━━━━━\n"
         text += f"📊 <b>Jami:</b> {teacher_count} ta ustoz\n"
         text += f"💵 <b>Umumiy balans:</b> {int(total_balance)} so'm"
+
+        # Cache
+        _REPORT_CACHE["finance"] = (text, datetime.now(timezone.utc).timestamp())
 
         await msg.edit_text(text, parse_mode="HTML")
 
