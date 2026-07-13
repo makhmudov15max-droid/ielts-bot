@@ -467,8 +467,8 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
                 "name": name,
                 "course": course,
                 "admin": admin,
-                "status": status,
-                "note_date": note_date,
+                "student_id": student_id,
+                "first_lesson": first_lesson_fmt,
             })
 
     except Exception as e:
@@ -487,9 +487,64 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
         await msg.edit_text("📭 Tanlangan adminlar bo'yicha lead topilmadi.")
         return
 
+    # Parallel comment olish — har bir lead uchun /admin/students/{id}?tab=comments
+    try:
+        s2 = _get_lms_session()
+        async def _fetch_comments(student_id):
+            if not student_id:
+                return ("", "")
+            try:
+                url = f"{LMS_BASE}/admin/students/{student_id}?tab=comments"
+                r = await asyncio.to_thread(s2.get, url, timeout=15)
+                if r.status_code != 200:
+                    return ("", "")
+                comments = re.findall(
+                    r'&quot;comment&quot;:&quot;([^&]+)&quot;.*?&quot;created_at&quot;:&quot;([^&]+)&quot;',
+                    r.text
+                )
+                if comments:
+                    last_text, last_dt = comments[-1]
+                    last_text = last_text.replace('\\/', '/')
+                    try:
+                        dt = datetime.fromisoformat(last_dt.replace("Z", "+00:00"))
+                        dt_str = dt.astimezone(UZ_TZ).strftime("%d.%m.%Y %H:%M")
+                    except:
+                        dt_str = last_dt[:16]
+                    return (last_text, dt_str)
+                return ("", "")
+            except Exception as e:
+                logger.warning(f"Comments fetch error for {student_id}: {e}")
+            return ("", "")
+
+        results = await asyncio.gather(*[_fetch_comments(s["student_id"]) for s in data])
+        today_display = date_module.today().strftime("%d.%m.%Y")
+        for i, (comment_text, comment_dt) in enumerate(results):
+            if i < len(data):
+                data[i]["last_comment"] = comment_text
+                data[i]["last_comment_date"] = comment_dt
+                if comment_dt and comment_dt.startswith(today_display):
+                    data[i]["status"] = "✅"
+                    data[i]["display"] = f"✅ {comment_text} | {comment_dt}"
+                elif comment_text:
+                    data[i]["status"] = "❌"
+                    data[i]["display"] = f"❌ {comment_text} | {comment_dt}"
+                else:
+                    data[i]["status"] = "⏳"
+                    if data[i]["first_lesson"]:
+                        data[i]["display"] = f"⏳ Izoh yo'q | 1-dars: {data[i]['first_lesson']}"
+                    else:
+                        data[i]["display"] = f"⏳ Izoh yo'q"
+    except Exception as e:
+        logger.warning(f"Trial comments fetch error: {e}")
+        for s in data:
+            s["status"] = "⏳"
+            if s["first_lesson"]:
+                s["display"] = f"⏳ Izoh yo'q | 1-dars: {s['first_lesson']}"
+            else:
+                s["display"] = f"⏳ Izoh yo'q"
+
     # short_course funksiyasi
     def short_course(c):
-        c = c.replace("General English -> ", "GE-")
         c = c.replace("IELTS -> IELTS ", "")
         c = c.replace("IELTS ", "")
         mapping = {
@@ -518,25 +573,21 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
     for admin_name, students in sorted_admins:
         total = len(students)
         done = sum(1 for s in students if s.get("status") == "✅")
-        wait = total - done
+        wait = sum(1 for s in students if s.get("status") == "❌")
+        unkn = total - done - wait
         lines.append(f"👤 **{admin_name}** — {total} ta")
-        lines.append(f"   ✅ {done}   ⏳ {wait}")
+        lines.append(f"   ✅ {done}   ❌ {wait}   ⏳ {unkn}")
         lines.append("")
         for s in students:
             c = short_course(s["course"])
-            status = s.get("status", "⏳")
-            note_date = s.get("note_date", "")
-
-            if status == "✅":
-                suffix = f"  ✅ Selected ({note_date})" if note_date else "  ✅"
-            else:
-                suffix = "  ⏳ Selection"
-            lines.append(f"   • {s['name']} — {c}{suffix}")
+            disp = s.get("display", "⏳")
+            lines.append(f"   • {s['name']} — {c}  {disp}")
         lines.append("")
 
     total_done = sum(1 for s in data if s.get("status") == "✅")
-    total_wait = len(data) - total_done
-    lines.append(f"📊 **JAMI:** ✅ {total_done}   ⏳ {total_wait}")
+    total_wait = sum(1 for s in data if s.get("status") == "❌")
+    total_unkn = len(data) - total_done - total_wait
+    lines.append(f"📊 **JAMI:** ✅ {total_done}   ❌ {total_wait}   ⏳ {total_unkn}")
 
     report_text = "\n".join(lines)
 
