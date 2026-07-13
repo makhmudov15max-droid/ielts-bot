@@ -568,6 +568,9 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
     await state.set_state(ReportStates.waiting_for_trial_admin)
     await state.update_data(trial_selected_admins=selected_admin_ids)
 
+    # State ni LMS asosiy menyusiga qaytarish — Trial tugmasi qayta ishlashi uchun
+    await state.set_state(ReportStates.waiting_for_report_choice)
+
     # Agar report juda uzun bo'lsa, qismlarga bo'lib yuborish
     MAX_LEN = 4000
     if len(report_text) > MAX_LEN:
