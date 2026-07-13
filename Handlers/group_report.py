@@ -448,12 +448,17 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
             admin = st.get("administrator_name", "").strip()
             student_id = st.get("student_id") or st.get("id")
 
-            first_lesson = st.get("first_lesson_date", "") or ""
+            first_lesson = st.get("planned_first_lesson_date", "") or ""
             first_lesson = first_lesson.strip()
             if first_lesson:
-                # Agar birinchi dars sanasi bor bo'lsa — Selected
+                # Format YYYY-MM-DD → DD.MM.YYYY
+                parts = first_lesson.split("-")
+                if len(parts) == 3:
+                    first_lesson_fmt = f"{parts[2]}.{parts[1]}.{parts[0]}"
+                else:
+                    first_lesson_fmt = first_lesson[:10]
                 status = "✅"
-                note_date = first_lesson[:10]  # "dd.mm.yyyy"
+                note_date = first_lesson_fmt
             else:
                 status = "⏳"
                 note_date = ""
