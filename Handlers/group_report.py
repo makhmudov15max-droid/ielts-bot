@@ -414,7 +414,7 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
     try:
         s = await asyncio.to_thread(_get_lms_session)
         r = await asyncio.to_thread(s.get, f"{LMS_BASE}/admin/dashboard/new-students?branch_id=3&page=1&sort=id&per_page=64", timeout=20)
-        match = re.search(r'data-page="([^\"]*)"', r.text)
+        match = re.search(r'data-page="([^"]*)"', r.text)
         if not match:
             await msg.edit_text("⚠️ LMS sahifasidan ma'lumot olishda xatolik.")
             return
@@ -422,7 +422,6 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
         dp = json.loads(unescape(match.group(1)))
         students_raw = dp.get("props", {}).get("students", {}).get("data", [])
         if not students_raw:
-            # Try alternate path
             students_raw = dp.get("props", {}).get("records", [])
 
         if not students_raw:
@@ -439,7 +438,6 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
             if isinstance(course_raw, dict):
                 course = course_raw.get("uz", course_raw.get("en", "")).strip()
             elif isinstance(course_raw, str) and course_raw.startswith("{"):
-                # Ba'zan course_name string ichida JSON dict sifatida keladi
                 try:
                     cd = json.loads(course_raw)
                     course = cd.get("uz", cd.get("en", "")).strip()
@@ -450,15 +448,11 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
             admin = st.get("administrator_name", "").strip()
             student_id = st.get("student_id") or st.get("id")
 
-            # Get last comment — skip to avoid timeout, just show ⏳ for all
-            last_comment = None
-
             data.append({
                 "name": name,
                 "course": course,
                 "admin": admin,
                 "student_id": student_id,
-                "comments": [],
             })
 
     except Exception as e:
@@ -477,13 +471,13 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
         await msg.edit_text("📭 Tanlangan adminlar bo'yicha lead topilmadi.")
         return
 
-    # Comment tekshiruvi — parallel
+    # Comment tekshiruvi — parallel: har bir lead uchun lead-logs API
     try:
         s = _get_lms_session()
-        async def _check_one_comment(student_id):
-            """Bir lead uchun comment tekshirish"""
+        async def _check_one_lead(student_id):
+            """Bir lead uchun oxirgi izohni va uning sanasini qaytaradi"""
             if not student_id:
-                return "⏳"
+                return ("⏳", "")
             try:
                 r = await asyncio.to_thread(
                     s.get,
@@ -492,34 +486,51 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
                 )
                 if r.status_code == 200:
                     logs = r.json() if isinstance(r.json(), list) else r.json().get("data", [])
-                    for log in logs:
-                        status = log.get("status", log.get("type"))
-                        if status in (3, 7, 8):  # qo'ng'iroq, SMS, izoh
-                            return "✅"
+                    if not logs:
+                        return ("⏳", "")
+
+                    last = logs[-1]
+                    status_code = last.get("status", last.get("type"))
+                    note_text = last.get("comment", last.get("note", "")).strip()
+                    created_at = last.get("created_at", "")
+
+                    # Sanani formatlash (Toshkent vaqti)
+                    date_str = ""
+                    if created_at:
+                        try:
+                            dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                            date_str = dt.astimezone(UZ_TZ).strftime("%d.%m.%Y %H:%M")
+                        except:
+                            date_str = created_at[:16]
+
+                    # Status 3(qo'ng'iroq), 7(SMS), 8(izoh) → ishlangan
+                    if status_code in (3, 7, 8):
+                        return ("✅", date_str)
+                    else:
+                        # Izoh bor lekin status boshqa → ⏳ bilan sana
+                        if note_text:
+                            return ("⏳", date_str)
+                        return ("⏳", "")
             except:
                 pass
-            return "⏳"
+            return ("⏳", "")
 
-        # Parallel tekshirish
-        statuses = await asyncio.gather(*[
-            _check_one_comment(s["student_id"]) for s in data
-        ])
-        for i, status in enumerate(statuses):
+        results = await asyncio.gather(*[_check_one_lead(s["student_id"]) for s in data])
+        for i, (status, note) in enumerate(results):
             if i < len(data):
                 data[i]["status"] = status
+                data[i]["note_date"] = note
     except Exception as e:
         logger.warning(f"Trial comment check error: {e}")
         for s in data:
             s["status"] = "⏳"
+            s["note_date"] = ""
 
-    # Build report
-    today_str = today
-
+    # short_course funksiyasi
     def short_course(c):
         c = c.replace("General English -> ", "GE-")
         c = c.replace("IELTS -> IELTS ", "")
         c = c.replace("IELTS ", "")
-        # Uzun nomlarni qisqartirish
         mapping = {
             "IELTS Novice": "Novice",
             "IELTS Standard": "Standard",
@@ -531,10 +542,6 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
         for k, v in mapping.items():
             c = c.replace(k, v)
         return c.strip()
-
-    def fmt_date(d):
-        parts = d.split("-")
-        return f"{parts[2]}.{parts[1]}"
 
     admins = defaultdict(list)
     for s in data:
@@ -556,7 +563,18 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
         lines.append("")
         for s in students:
             c = short_course(s["course"])
-            lines.append(f"   • {s['name']} — {c}  {s.get('status', '⏳')}")
+            status = s.get("status", "⏳")
+            note_date = s.get("note_date", "")
+
+            if status == "✅":
+                # ✅ + sana
+                suffix = f"  ✅ {note_date}" if note_date else "  ✅"
+            elif note_date:
+                # ⏳ + Selection (agar Selection bo'lsa) yoki sana
+                suffix = f"  ⏳ {note_date}"
+            else:
+                suffix = "  ⏳"
+            lines.append(f"   • {s['name']} — {c}{suffix}")
         lines.append("")
 
     total_done = sum(1 for s in data if s.get("status") == "✅")
@@ -565,16 +583,13 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
 
     report_text = "\n".join(lines)
 
-    await state.set_state(ReportStates.waiting_for_trial_admin)
     await state.update_data(trial_selected_admins=selected_admin_ids)
-
     # State ni LMS asosiy menyusiga qaytarish — Trial tugmasi qayta ishlashi uchun
     await state.set_state(ReportStates.waiting_for_report_choice)
 
     # Agar report juda uzun bo'lsa, qismlarga bo'lib yuborish
     MAX_LEN = 4000
     if len(report_text) > MAX_LEN:
-        # Sarlavha va statistikani asosiy xabarga qoldiramiz
         parts = []
         current = ""
         for line in lines:
@@ -589,12 +604,9 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
         if current:
             parts.append(current)
 
-        # Birinchi qismni edit qilamiz
         await msg.edit_text(parts[0], parse_mode="Markdown")
-        # Qolgan qismlarni yangi xabarlar sifatida yuboramiz
         for part in parts[1:]:
             await msg.answer(part, parse_mode="Markdown")
-        # Inline keyboard bilan yakuniy xabar
         await msg.answer(
             "📊 <b>Trial Report (to'liq)</b> — yuqoridagi xabarlarni ko'ring.",
             parse_mode="HTML",
