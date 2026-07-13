@@ -438,6 +438,13 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
             course_raw = st.get("course_name", st.get("parent_course_name", ""))
             if isinstance(course_raw, dict):
                 course = course_raw.get("uz", course_raw.get("en", "")).strip()
+            elif isinstance(course_raw, str) and course_raw.startswith("{"):
+                # Ba'zan course_name string ichida JSON dict sifatida keladi
+                try:
+                    cd = json.loads(course_raw)
+                    course = cd.get("uz", cd.get("en", "")).strip()
+                except:
+                    course = course_raw
             else:
                 course = str(course_raw).strip()
             admin = st.get("administrator_name", "").strip()
@@ -476,7 +483,19 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
     def short_course(c):
         c = c.replace("General English -> ", "GE-")
         c = c.replace("IELTS -> IELTS ", "")
-        return c
+        c = c.replace("IELTS ", "")
+        # Uzun nomlarni qisqartirish
+        mapping = {
+            "IELTS Novice": "Novice",
+            "IELTS Standard": "Standard",
+            "IELTS Expert": "Expert",
+            "IELTS Intensive": "Intensive",
+            "IELTS Standart": "Standart",
+            "IELTS Стандарт": "Standart",
+        }
+        for k, v in mapping.items():
+            c = c.replace(k, v)
+        return c.strip()
 
     def fmt_date(d):
         parts = d.split("-")
