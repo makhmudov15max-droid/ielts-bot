@@ -335,14 +335,20 @@ async def trial_cmd_handler(message: types.Message, state: FSMContext):
 async def trial_admin_back(call: types.CallbackQuery, state: FSMContext):
     await call.answer()
     await state.set_state(ReportStates.waiting_for_report_choice)
-    # Re-show LMS menu
     role = _USERS_ROLES.get(str(call.from_user.id), {}).get("role", "Owner") if _USERS_ROLES else "Owner"
-    from Keyboards.main_menu import get_main_menu
+    from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
     await call.message.delete()
     await call.message.answer(
-        "📑 <b>LMS Panel</b>\n\nQaysi turdagi hisobotni ko'rmoqchisiz?",
+        "📑 <b>LMS Panel</b>\n\nQuyidagi bo'limlardan birini tanlang:",
         parse_mode="HTML",
-        reply_markup=get_main_menu(role),
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="🎯 Trial")],
+                [KeyboardButton(text="📂 Groups"), KeyboardButton(text="💰 Finance")],
+                [KeyboardButton(text="🏠 Bosh sahifa")],
+            ],
+            resize_keyboard=True,
+        ),
     )
 
 
@@ -723,11 +729,22 @@ async def lms_home_handler(message: types.Message, state: FSMContext):
 
 @report_router.message(ReportStates.waiting_for_report_choice, F.text == "⬅️ Ortga")
 async def lms_back_handler(message: types.Message, state: FSMContext):
-    """LMS -> asosiy menyu"""
-    await state.clear()
+    """LMS submenu -> LMS asosiy menyu"""
     role = _USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner") if _USERS_ROLES else "Owner"
-    from Keyboards.main_menu import get_main_menu
-    await message.answer("🏠 <b>Bosh sahifa</b>", parse_mode="HTML", reply_markup=get_main_menu(role))
+    from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+    kb = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🎯 Trial")],
+            [KeyboardButton(text="📂 Groups"), KeyboardButton(text="💰 Finance")],
+            [KeyboardButton(text="🏠 Bosh sahifa")],
+        ],
+        resize_keyboard=True,
+    )
+    await message.answer(
+        "📑 <b>LMS Panel</b>\n\nQuyidagi bo'limlardan birini tanlang:",
+        parse_mode="HTML",
+        reply_markup=kb,
+    )
 
 
 @report_router.message(F.text == "🌐 LMS")
@@ -740,32 +757,64 @@ async def lms_main_handler(message: types.Message, state: FSMContext):
     await state.set_state(ReportStates.waiting_for_report_choice)
     role = _USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner") if _USERS_ROLES else "Owner"
     from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+
+    # Asosiy LMS menyusi
+    base_buttons = [
+        [KeyboardButton(text="🎯 Trial")],
+        [KeyboardButton(text="📂 Groups"), KeyboardButton(text="💰 Finance")],
+        [KeyboardButton(text="🏠 Bosh sahifa")],
+    ]
+
+    await message.answer(
+        "📑 <b>LMS Panel</b>\n\nQuyidagi bo'limlardan birini tanlang:",
+        parse_mode="HTML",
+        reply_markup=ReplyKeyboardMarkup(keyboard=base_buttons, resize_keyboard=True),
+    )
+
+
+# ================= GROUPS SUBMENU =================
+
+@report_router.message(ReportStates.waiting_for_report_choice, F.text == "📂 Groups")
+async def groups_submenu(message: types.Message, state: FSMContext):
+    """Groups submanyusi: Waiting, Finishing, Dars Jadval, Ustoz bo'yicha"""
+    role = _USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner") if _USERS_ROLES else "Owner"
+    from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+    kb = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📊 Finishing Groups"), KeyboardButton(text="⏳ Waiting Groups")],
+            [KeyboardButton(text="👨🏻‍🏫 Ustoz bo'yicha"), KeyboardButton(text="📋 Dars Jadval")],
+            [KeyboardButton(text="⬅️ Ortga")],
+        ],
+        resize_keyboard=True,
+    )
+    await message.answer("📂 <b>Groups</b> — kerakli bo'limni tanlang:", parse_mode="HTML", reply_markup=kb)
+
+
+# ================= FINANCE SUBMENU =================
+
+@report_router.message(ReportStates.waiting_for_report_choice, F.text == "💰 Finance")
+async def finance_submenu(message: types.Message, state: FSMContext):
+    """Finance submanyusi: Finance Report, Cashbox, Ustozlarni boshqarish"""
+    role = _USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner") if _USERS_ROLES else "Owner"
+    from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
     if role == "Owner":
         kb = ReplyKeyboardMarkup(
             keyboard=[
-                [KeyboardButton(text="🎯 Trial")],
-                [KeyboardButton(text="📊 Finishing Groups"), KeyboardButton(text="👨🏻‍🏫 Ustoz bo'yicha"), KeyboardButton(text="⏳ Waiting Groups")],
-                [KeyboardButton(text="🏦 Cashbox"), KeyboardButton(text="💰 Finance Report"), KeyboardButton(text="📋 Dars Jadval")],
+                [KeyboardButton(text="💰 Finance Report"), KeyboardButton(text="🏦 Cashbox")],
                 [KeyboardButton(text="👨🏻‍🏫 Ustozlarni boshqarish")],
-                [KeyboardButton(text="🏠 Bosh sahifa")],
+                [KeyboardButton(text="⬅️ Ortga")],
             ],
             resize_keyboard=True,
         )
     else:
         kb = ReplyKeyboardMarkup(
             keyboard=[
-                [KeyboardButton(text="🎯 Trial")],
-                [KeyboardButton(text="📊 Finishing Groups"), KeyboardButton(text="👨🏻‍🏫 Ustoz bo'yicha"), KeyboardButton(text="⏳ Waiting Groups")],
-                [KeyboardButton(text="📋 Dars Jadval")],
-                [KeyboardButton(text="🏠 Bosh sahifa")],
+                [KeyboardButton(text="💰 Finance Report"), KeyboardButton(text="🏦 Cashbox")],
+                [KeyboardButton(text="⬅️ Ortga")],
             ],
             resize_keyboard=True,
         )
-    await message.answer(
-        "📑 <b>LMS Panel</b>\n\nQuyidagi bo'limlardan birini tanlang:",
-        parse_mode="HTML",
-        reply_markup=kb,
-    )
+    await message.answer("💰 <b>Finance</b> — kerakli bo'limni tanlang:", parse_mode="HTML", reply_markup=kb)
 
 
 # ================= YORDAMCHI FUNKSIYALAR =================
