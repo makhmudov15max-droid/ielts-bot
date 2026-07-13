@@ -343,8 +343,7 @@ async def trial_admin_back(call: types.CallbackQuery, state: FSMContext):
         parse_mode="HTML",
         reply_markup=ReplyKeyboardMarkup(
             keyboard=[
-                [KeyboardButton(text="🎯 Trial")],
-                [KeyboardButton(text="📂 Groups"), KeyboardButton(text="💰 Finance")],
+                [KeyboardButton(text="📂 Groups"), KeyboardButton(text="💰 Finance"), KeyboardButton(text="💵 Sales")],
                 [KeyboardButton(text="🏠 Bosh sahifa")],
             ],
             resize_keyboard=True,
@@ -734,8 +733,7 @@ async def lms_back_handler(message: types.Message, state: FSMContext):
     from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
     kb = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🎯 Trial")],
-            [KeyboardButton(text="📂 Groups"), KeyboardButton(text="💰 Finance")],
+            [KeyboardButton(text="📂 Groups"), KeyboardButton(text="💰 Finance"), KeyboardButton(text="💵 Sales")],
             [KeyboardButton(text="🏠 Bosh sahifa")],
         ],
         resize_keyboard=True,
@@ -760,8 +758,7 @@ async def lms_main_handler(message: types.Message, state: FSMContext):
 
     # Asosiy LMS menyusi
     base_buttons = [
-        [KeyboardButton(text="🎯 Trial")],
-        [KeyboardButton(text="📂 Groups"), KeyboardButton(text="💰 Finance")],
+        [KeyboardButton(text="📂 Groups"), KeyboardButton(text="💰 Finance"), KeyboardButton(text="💵 Sales")],
         [KeyboardButton(text="🏠 Bosh sahifa")],
     ]
 
@@ -815,6 +812,22 @@ async def finance_submenu(message: types.Message, state: FSMContext):
             resize_keyboard=True,
         )
     await message.answer("💰 <b>Finance</b> — kerakli bo'limni tanlang:", parse_mode="HTML", reply_markup=kb)
+
+
+# ================= SALES SUBMENU =================
+
+@report_router.message(ReportStates.waiting_for_report_choice, F.text == "💵 Sales")
+async def sales_submenu(message: types.Message, state: FSMContext):
+    """Sales submanyusi: Trial va boshqa sales tugmalari"""
+    from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+    kb = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🎯 Trial")],
+            [KeyboardButton(text="⬅️ Ortga")],
+        ],
+        resize_keyboard=True,
+    )
+    await message.answer("💵 <b>Sales</b> — kerakli bo'limni tanlang:", parse_mode="HTML", reply_markup=kb)
 
 
 # ================= YORDAMCHI FUNKSIYALAR =================
