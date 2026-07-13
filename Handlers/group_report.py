@@ -511,11 +511,41 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
     await state.set_state(ReportStates.waiting_for_trial_admin)
     await state.update_data(trial_selected_admins=selected_admin_ids)
 
-    await msg.edit_text(
-        report_text,
-        parse_mode="HTML",
-        reply_markup=_get_trial_admin_inline_keyboard(selected_admin_ids),
-    )
+    # Agar report juda uzun bo'lsa, qismlarga bo'lib yuborish
+    MAX_LEN = 4000
+    if len(report_text) > MAX_LEN:
+        # Sarlavha va statistikani asosiy xabarga qoldiramiz
+        parts = []
+        current = ""
+        for line in lines:
+            if len(current) + len(line) + 1 > MAX_LEN:
+                parts.append(current)
+                current = line
+            else:
+                if current:
+                    current += "\n" + line
+                else:
+                    current = line
+        if current:
+            parts.append(current)
+
+        # Birinchi qismni edit qilamiz
+        await msg.edit_text(parts[0], parse_mode="Markdown")
+        # Qolgan qismlarni yangi xabarlar sifatida yuboramiz
+        for part in parts[1:]:
+            await msg.answer(part, parse_mode="Markdown")
+        # Inline keyboard bilan yakuniy xabar
+        await msg.answer(
+            "📊 <b>Trial Report (to'liq)</b> — yuqoridagi xabarlarni ko'ring.",
+            parse_mode="HTML",
+            reply_markup=_get_trial_admin_inline_keyboard(selected_admin_ids),
+        )
+    else:
+        await msg.edit_text(
+            report_text,
+            parse_mode="Markdown",
+            reply_markup=_get_trial_admin_inline_keyboard(selected_admin_ids),
+        )
 
 
 # ================= LMS HISOBOT HANDLERLARI (Reply Keyboard) =================
