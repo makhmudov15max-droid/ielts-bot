@@ -745,7 +745,8 @@ async def lms_main_handler(message: types.Message, state: FSMContext):
             keyboard=[
                 [KeyboardButton(text="🎯 Trial")],
                 [KeyboardButton(text="📊 Finishing Groups"), KeyboardButton(text="👨🏻‍🏫 Ustoz bo'yicha"), KeyboardButton(text="⏳ Waiting Groups")],
-                [KeyboardButton(text="🏦 Cashbox"), KeyboardButton(text="💰 Finance Report"), KeyboardButton(text="👨🏻‍🏫 Ustozlarni boshqarish")],
+                [KeyboardButton(text="🏦 Cashbox"), KeyboardButton(text="💰 Finance Report"), KeyboardButton(text="📋 Dars Jadval")],
+                [KeyboardButton(text="👨🏻‍🏫 Ustozlarni boshqarish")],
                 [KeyboardButton(text="🏠 Bosh sahifa")],
             ],
             resize_keyboard=True,
