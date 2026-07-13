@@ -477,6 +477,41 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
         await msg.edit_text("📭 Tanlangan adminlar bo'yicha lead topilmadi.")
         return
 
+    # Comment tekshiruvi — parallel
+    try:
+        s = _get_lms_session()
+        async def _check_one_comment(student_id):
+            """Bir lead uchun comment tekshirish"""
+            if not student_id:
+                return "⏳"
+            try:
+                r = await asyncio.to_thread(
+                    s.get,
+                    f"{LMS_BASE}/admin/lead-logs/{student_id}",
+                    timeout=10
+                )
+                if r.status_code == 200:
+                    logs = r.json() if isinstance(r.json(), list) else r.json().get("data", [])
+                    for log in logs:
+                        status = log.get("status", log.get("type"))
+                        if status in (3, 7, 8):  # qo'ng'iroq, SMS, izoh
+                            return "✅"
+            except:
+                pass
+            return "⏳"
+
+        # Parallel tekshirish
+        statuses = await asyncio.gather(*[
+            _check_one_comment(s["student_id"]) for s in data
+        ])
+        for i, status in enumerate(statuses):
+            if i < len(data):
+                data[i]["status"] = status
+    except Exception as e:
+        logger.warning(f"Trial comment check error: {e}")
+        for s in data:
+            s["status"] = "⏳"
+
     # Build report
     today_str = today
 
@@ -514,16 +549,19 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
 
     for admin_name, students in sorted_admins:
         total = len(students)
+        done = sum(1 for s in students if s.get("status") == "✅")
+        wait = total - done
         lines.append(f"👤 **{admin_name}** — {total} ta")
-        lines.append(f"   ✅ 0   ⏳ {total}")
+        lines.append(f"   ✅ {done}   ⏳ {wait}")
         lines.append("")
         for s in students:
             c = short_course(s["course"])
-            lines.append(f"   • {s['name']} — {c}  ⏳")
+            lines.append(f"   • {s['name']} — {c}  {s.get('status', '⏳')}")
         lines.append("")
 
-    total_wait = len(data)
-    lines.append(f"📊 **JAMI:** ✅ 0   ⏳ {total_wait}")
+    total_done = sum(1 for s in data if s.get("status") == "✅")
+    total_wait = len(data) - total_done
+    lines.append(f"📊 **JAMI:** ✅ {total_done}   ⏳ {total_wait}")
 
     report_text = "\n".join(lines)
 
