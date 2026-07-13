@@ -26,6 +26,8 @@ class ReportStates(StatesGroup):
     waiting_for_comment_delete_confirm = State()
     waiting_for_cashbox_detail = State()
     waiting_for_trial_admin = State()
+    waiting_for_teacher_name_add = State()
+    waiting_for_teacher_name_remove = State()
 
 
 # ================= GLOBAL O'ZGARUVCHI =================
@@ -34,6 +36,54 @@ _USERS_ROLES = None
 # Cache: {key: (result, timestamp)}
 _REPORT_CACHE = {}
 _CACHE_TTL = 60  # soniya
+
+# DRUJBA_TEACHERS — JSON faylda saqlanadi
+_TEACHERS_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "drujba_teachers.json")
+
+def _load_teachers():
+    """DRUJBA_TEACHERS ro'yxatini JSON fayldan o'qish"""
+    default_teachers = [
+        "Sardor Komilov",
+        "Adxambek Ismoilov",
+        "Otabek Mirhamidov",
+        "Ahmadali Turgunov",
+        "Obidjon Rustamov",
+        "Odiljon Jaloliddinov",
+        "Ibrohim Aliyev",
+        "Xurshid Hazratqulov",
+        "Farangiz Elamanova",
+        "Sevinch Ibrohimova",
+        "Nilufar Karimova",
+    ]
+    try:
+        fpath = os.path.abspath(_TEACHERS_FILE)
+        if os.path.exists(fpath):
+            with open(fpath, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, list) and len(data) > 0:
+                return data
+        # Fayl yo'q yoki noto'g'ri — yaratib qo'yamiz
+        os.makedirs(os.path.dirname(fpath), exist_ok=True)
+        with open(fpath, "w", encoding="utf-8") as f:
+            json.dump(default_teachers, f, ensure_ascii=False, indent=2)
+        return default_teachers
+    except Exception as e:
+        logger.warning(f"_load_teachers error: {e}")
+        return default_teachers
+
+def _save_teachers(teachers: list):
+    """DRUJBA_TEACHERS ro'yxatini JSON faylga yozish"""
+    try:
+        fpath = os.path.abspath(_TEACHERS_FILE)
+        os.makedirs(os.path.dirname(fpath), exist_ok=True)
+        with open(fpath, "w", encoding="utf-8") as f:
+            json.dump(teachers, f, ensure_ascii=False, indent=2)
+        # Keshni tozalash
+        _REPORT_CACHE.pop("finance", None)
+        return True
+    except Exception as e:
+        logger.error(f"_save_teachers error: {e}")
+        return False
 
 def set_users_roles(users_roles):
     global _USERS_ROLES
@@ -565,19 +615,7 @@ async def show_finance_report(message: types.Message, state: FSMContext):
 
         s = _get_lms_session()
 
-        DRUJBA_TEACHERS = [
-            "Sardor Komilov",
-            "Adxambek Ismoilov",
-            "Otabek Mirhamidov",
-            "Ahmadali Turgunov",
-            "Obidjon Rustamov",
-            "Odiljon Jaloliddinov",
-            "Ibrohim Aliyev",
-            "Xurshid Hazratqulov",
-            "Farangiz Elamanova",
-            "Sevinch Ibrohimova",
-            "Nilufar Karimova",
-        ]
+        DRUJBA_TEACHERS = _load_teachers()
 
         r = s.get(f"{LMS_BASE}/admin/calculated-salaries?per_page=200", timeout=15)
         match = re.search(r'data-page="([^"]*)"', r.text)
@@ -707,7 +745,7 @@ async def lms_main_handler(message: types.Message, state: FSMContext):
             keyboard=[
                 [KeyboardButton(text="🎯 Trial")],
                 [KeyboardButton(text="📊 Finishing Groups"), KeyboardButton(text="👨🏻‍🏫 Ustoz bo'yicha"), KeyboardButton(text="⏳ Waiting Groups")],
-                [KeyboardButton(text="🏦 Cashbox"), KeyboardButton(text="💰 Finance Report"), KeyboardButton(text="📋 Dars Jadval")],
+                [KeyboardButton(text="🏦 Cashbox"), KeyboardButton(text="💰 Finance Report"), KeyboardButton(text="👨🏻‍🏫 Ustozlarni boshqarish")],
                 [KeyboardButton(text="🏠 Bosh sahifa")],
             ],
             resize_keyboard=True,
@@ -1175,3 +1213,137 @@ async def cashbox_callback_handler(call: types.CallbackQuery, state: FSMContext)
     except Exception as e:
         logger.error(f"Cashbox detail error: {e}")
         await msg.edit_text(f"⚠️ Xatolik: {e}")
+
+
+# ================= USTOZLARNI BOSHQARISH =================
+
+@report_router.message(ReportStates.waiting_for_report_choice, F.text == "👨🏻‍🏫 Ustozlarni boshqarish")
+async def manage_teachers(message: types.Message, state: FSMContext):
+    """Ustozlar ro'yxatini ko'rish, qo'shish, olib tashlash"""
+    role = _USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner") if _USERS_ROLES else "Owner"
+    if role != "Owner":
+        await message.answer("⚠️ Bu buyruq faqat Owner uchun!")
+        return
+
+    teachers = _load_teachers()
+    text = "👨🏻‍🏫 <b>DRUJBA USTOZLARI RO'YXATI</b>\n\n"
+    for idx, t in enumerate(teachers, 1):
+        text += f"{idx}. {t}\n"
+
+    from_keyboard = [
+        [types.InlineKeyboardButton(text="➕ Yangi ustoz qo'shish", callback_data="teacher_add")],
+        [types.InlineKeyboardButton(text="➖ Ustozni olib tashlash", callback_data="teacher_remove")],
+        [types.InlineKeyboardButton(text="🏠 Bosh sahifa", callback_data="teacher_home")],
+    ]
+    inline_kb = types.InlineKeyboardMarkup(inline_keyboard=from_keyboard)
+
+    msg = await message.answer(text, parse_mode="HTML", reply_markup=inline_kb)
+    await state.set_state(ReportStates.waiting_for_teacher_choice)
+
+
+@report_router.callback_query(F.data == "teacher_home")
+async def teacher_home(call: types.CallbackQuery, state: FSMContext):
+    await call.answer()
+    await state.clear()
+    await call.message.delete()
+    role = _USERS_ROLES.get(str(call.from_user.id), {}).get("role", "Owner") if _USERS_ROLES else "Owner"
+    from Keyboards.main_menu import get_main_menu
+    await call.message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
+
+
+@report_router.callback_query(F.data == "teacher_add")
+async def teacher_add_prompt(call: types.CallbackQuery, state: FSMContext):
+    await call.answer()
+    await call.message.edit_text(
+        "✏️ Yangi ustozning to'liq ismini kiriting:\n\n"
+        "Masalan: <code>Bobur Aliyev</code>\n\n"
+        "Bekor qilish uchun /cancel yozing.",
+        parse_mode="HTML"
+    )
+    await state.set_state(ReportStates.waiting_for_teacher_name_add)
+
+
+@report_router.message(ReportStates.waiting_for_teacher_name_add)
+async def teacher_add_confirm(message: types.Message, state: FSMContext):
+    name = message.text.strip()
+    if not name or len(name) < 3:
+        await message.answer("⚠️ Ism juda qisqa. Iltimos, to'liq ismni kiriting (kamida 3 harf).")
+        return
+
+    teachers = _load_teachers()
+
+    # Takrorlanmasligini tekshirish
+    for t in teachers:
+        if name.lower() in t.lower() or t.lower() in name.lower():
+            await message.answer(
+                f"⚠️ <b>{name}</b> ro'yxatda allaqachon mavjud yoki o'xshash ism bor:\n"
+                f"   → {t}\n\n"
+                f"Qayta urinib ko'ring yoki /cancel yozing.",
+                parse_mode="HTML"
+            )
+            return
+
+    teachers.append(name)
+    _save_teachers(teachers)
+
+    text = f"✅ <b>{name}</b> ro'yxatga qo'shildi!\n\n"
+    text += "👨🏻‍🏫 <b>Joriy ro'yxat:</b>\n"
+    for idx, t in enumerate(teachers, 1):
+        text += f"{idx}. {t}\n"
+
+    from_keyboard = [
+        [types.InlineKeyboardButton(text="➕ Yana qo'shish", callback_data="teacher_add")],
+        [types.InlineKeyboardButton(text="🏁 Tugatish", callback_data="teacher_home")],
+    ]
+    inline_kb = types.InlineKeyboardMarkup(inline_keyboard=from_keyboard)
+    await message.answer(text, parse_mode="HTML", reply_markup=inline_kb)
+    await state.set_state(ReportStates.waiting_for_teacher_choice)
+
+
+@report_router.callback_query(F.data == "teacher_remove")
+async def teacher_remove_prompt(call: types.CallbackQuery, state: FSMContext):
+    await call.answer()
+    teachers = _load_teachers()
+
+    text = "🗑 <b>Olib tashlash uchun ustozni tanlang:</b>\n\n"
+    from_keyboard = []
+    for idx, t in enumerate(teachers, 1):
+        from_keyboard.append([
+            types.InlineKeyboardButton(text=f"{idx}. {t}", callback_data=f"tremove_{idx}")
+        ])
+    from_keyboard.append([types.InlineKeyboardButton(text="🔙 Ortga", callback_data="teacher_back")])
+
+    inline_kb = types.InlineKeyboardMarkup(inline_keyboard=from_keyboard)
+    await call.message.edit_text(text, parse_mode="HTML", reply_markup=inline_kb)
+
+
+@report_router.callback_query(F.data.startswith("tremove_"))
+async def teacher_remove_confirm(call: types.CallbackQuery, state: FSMContext):
+    await call.answer()
+    idx = int(call.data.replace("tremove_", "")) - 1
+    teachers = _load_teachers()
+
+    if idx < 0 or idx >= len(teachers):
+        await call.message.edit_text("⚠️ Xatolik: bunday ustoz topilmadi.")
+        return
+
+    removed = teachers.pop(idx)
+    _save_teachers(teachers)
+
+    text = f"✅ <b>{removed}</b> ro'yxatdan olib tashlandi!\n\n"
+    text += "👨🏻‍🏫 <b>Yangilangan ro'yxat:</b>\n"
+    for i, t in enumerate(teachers, 1):
+        text += f"{i}. {t}\n"
+
+    from_keyboard = [
+        [types.InlineKeyboardButton(text="➖ Yana olib tashlash", callback_data="teacher_remove")],
+        [types.InlineKeyboardButton(text="🏁 Tugatish", callback_data="teacher_home")],
+    ]
+    inline_kb = types.InlineKeyboardMarkup(inline_keyboard=from_keyboard)
+    await call.message.edit_text(text, parse_mode="HTML", reply_markup=inline_kb)
+
+
+@report_router.callback_query(F.data == "teacher_back")
+async def teacher_back(call: types.CallbackQuery, state: FSMContext):
+    await call.answer()
+    await manage_teachers(call.message, state)
