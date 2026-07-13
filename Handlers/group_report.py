@@ -565,7 +565,7 @@ async def show_finance_report(message: types.Message, state: FSMContext):
             "Xurshid Hazratqulov",
             "Nilufar Karimova",
             "Ibrohim Aliyev",
-            "Otbabek Mirhamidov",
+            "Otabek Mirhamidov",
         ]
 
         r = s.get(f"{LMS_BASE}/admin/calculated-salaries?per_page=200", timeout=15)
