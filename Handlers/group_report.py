@@ -479,14 +479,22 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
             if not student_id:
                 return ("⏳", "")
             try:
+                url = f"{LMS_BASE}/admin/lead-logs/{student_id}"
+                logger.info(f"Trial checking lead-logs: {student_id}")
                 r = await asyncio.to_thread(
                     s.get,
-                    f"{LMS_BASE}/admin/lead-logs/{student_id}",
+                    url,
                     timeout=10
                 )
                 if r.status_code == 200:
-                    logs = r.json() if isinstance(r.json(), list) else r.json().get("data", [])
+                    try:
+                        raw = r.json()
+                    except:
+                        logger.warning(f"lead-logs {student_id}: not JSON")
+                        return ("⏳", "")
+                    logs = raw if isinstance(raw, list) else raw.get("data", [])
                     if not logs:
+                        logger.warning(f"lead-logs {student_id}: empty logs, raw={str(raw)[:200]}")
                         return ("⏳", "")
 
                     last = logs[-1]
@@ -511,8 +519,8 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
                         if note_text:
                             return ("⏳", date_str)
                         return ("⏳", "")
-            except:
-                pass
+            except Exception as e:
+                logger.warning(f"lead-logs API error for {student_id}: {e}")
             return ("⏳", "")
 
         results = await asyncio.gather(*[_check_one_lead(s["student_id"]) for s in data])
