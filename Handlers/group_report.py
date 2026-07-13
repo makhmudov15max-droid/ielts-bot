@@ -448,11 +448,22 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
             admin = st.get("administrator_name", "").strip()
             student_id = st.get("student_id") or st.get("id")
 
+            first_lesson = st.get("first_lesson_date", "") or ""
+            first_lesson = first_lesson.strip()
+            if first_lesson:
+                # Agar birinchi dars sanasi bor bo'lsa — Selected
+                status = "✅"
+                note_date = first_lesson[:10]  # "dd.mm.yyyy"
+            else:
+                status = "⏳"
+                note_date = ""
+
             data.append({
                 "name": name,
                 "course": course,
                 "admin": admin,
-                "student_id": student_id,
+                "status": status,
+                "note_date": note_date,
             })
 
     except Exception as e:
@@ -470,70 +481,6 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
     if not data:
         await msg.edit_text("📭 Tanlangan adminlar bo'yicha lead topilmadi.")
         return
-
-    # Comment tekshiruvi — parallel: har bir lead uchun lead-logs API
-    try:
-        s = _get_lms_session()
-        async def _check_one_lead(student_id):
-            """Bir lead uchun oxirgi izohni va uning sanasini qaytaradi"""
-            if not student_id:
-                return ("⏳", "")
-            try:
-                url = f"{LMS_BASE}/admin/lead-logs/{student_id}"
-                logger.info(f"Trial checking lead-logs: {student_id}")
-                r = await asyncio.to_thread(
-                    s.get,
-                    url,
-                    timeout=10
-                )
-                if r.status_code == 200:
-                    try:
-                        raw = r.json()
-                    except:
-                        logger.warning(f"lead-logs {student_id}: not JSON")
-                        return ("⏳", "")
-                    logs = raw if isinstance(raw, list) else raw.get("data", [])
-                    if not logs:
-                        logger.warning(f"lead-logs {student_id}: empty logs, raw={str(raw)[:200]}")
-                        return ("⏳", "")
-
-                    last = logs[-1]
-                    status_code = last.get("status", last.get("type"))
-                    note_text = last.get("comment", last.get("note", "")).strip()
-                    created_at = last.get("created_at", "")
-                    logger.info(f"lead-logs {student_id}: status={status_code}, note='{note_text[:30]}', created_at='{created_at}'")
-
-                    # Sanani formatlash (Toshkent vaqti)
-                    date_str = ""
-                    if created_at:
-                        try:
-                            dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-                            date_str = dt.astimezone(UZ_TZ).strftime("%d.%m.%Y %H:%M")
-                        except:
-                            date_str = created_at[:16]
-
-                    # Status 3(qo'ng'iroq), 7(SMS), 8(izoh) → ishlangan
-                    if status_code in (3, 7, 8):
-                        return ("✅", date_str)
-                    else:
-                        # Izoh bor lekin status boshqa → ⏳ bilan sana
-                        if note_text:
-                            return ("⏳", date_str)
-                        return ("⏳", "")
-            except Exception as e:
-                logger.warning(f"lead-logs API error for {student_id}: {e}")
-            return ("⏳", "")
-
-        results = await asyncio.gather(*[_check_one_lead(s["student_id"]) for s in data])
-        for i, (status, note) in enumerate(results):
-            if i < len(data):
-                data[i]["status"] = status
-                data[i]["note_date"] = note
-    except Exception as e:
-        logger.warning(f"Trial comment check error: {e}")
-        for s in data:
-            s["status"] = "⏳"
-            s["note_date"] = ""
 
     # short_course funksiyasi
     def short_course(c):
@@ -576,13 +523,9 @@ async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admi
             note_date = s.get("note_date", "")
 
             if status == "✅":
-                # ✅ + sana
-                suffix = f"  ✅ {note_date}" if note_date else "  ✅"
-            elif note_date:
-                # ⏳ + Selection (agar Selection bo'lsa) yoki sana
-                suffix = f"  ⏳ {note_date}"
+                suffix = f"  ✅ Selected ({note_date})" if note_date else "  ✅"
             else:
-                suffix = "  ⏳"
+                suffix = "  ⏳ Selection"
             lines.append(f"   • {s['name']} — {c}{suffix}")
         lines.append("")
 
