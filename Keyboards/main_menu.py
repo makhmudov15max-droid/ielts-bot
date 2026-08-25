@@ -15,8 +15,7 @@ def get_main_menu(role: str):
     elif role == "Admin":
         keyboard = [
             [KeyboardButton(text="✅ Ishga keldim")],
-            [KeyboardButton(text="📋 Vazifalar roʻyxati"), KeyboardButton(text="📊 Admin oylik")],
-            [KeyboardButton(text="🌐 LMS")]
+            [KeyboardButton(text="📋 Vazifalar roʻyxati"), KeyboardButton(text="📊 Admin oylik")]
         ]
     elif role == "Manager Assistant":
         keyboard = [
