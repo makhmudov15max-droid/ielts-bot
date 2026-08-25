@@ -858,8 +858,8 @@ async def lms_back_handler(message: types.Message, state: FSMContext):
 @report_router.message(F.text == "🌐 LMS")
 async def lms_main_handler(message: types.Message, state: FSMContext):
     """LMS tugmasi bosilganda — Reply keyboard panelni ko'rsatish"""
+    # Ruxsatsiz foydalanuvchilarga butunlay jim javob (Admin ham kira olmaydi)
     if not await is_admin(message.from_user.id):
-        await message.answer("⚠️ Bu buyruq faqat administrator va owner uchun!")
         return
 
     await state.set_state(ReportStates.waiting_for_report_choice)
