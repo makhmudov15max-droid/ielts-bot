@@ -25,7 +25,6 @@ class ReportStates(StatesGroup):
     waiting_for_comment_input = State()
     waiting_for_comment_delete_confirm = State()
     waiting_for_cashbox_detail = State()
-    waiting_for_trial_admin = State()
     waiting_for_teacher_name_add = State()
     waiting_for_teacher_name_remove = State()
 
@@ -281,360 +280,7 @@ def get_all_groups():
         return []
 
 
-# ================= TRIAL ADMIN KONFIG =================
-TRIAL_ADMINS = {
-    371: "Farangiz Lutfiy",
-    372: "Dilshod Saydaliev",
-    21049: "Gulnigor Abidova",
-    23104: "Mekhrinoz Davlatmirzayeva",
-}
-
-
-def _get_trial_admin_inline_keyboard(selected=None):
-    """Checkbox inline keyboard for admin selection"""
-    from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-
-    if selected is None:
-        selected = []
-
-    kb = []
-    for emp_id, emp_name in TRIAL_ADMINS.items():
-        check = "✅ " if emp_id in selected else ""
-        kb.append([InlineKeyboardButton(
-            text=f"{check}{emp_name}",
-            callback_data=f"trial_admin_{emp_id}",
-        )])
-
-    # "All" button
-    all_label = "✅ " if len(selected) == len(TRIAL_ADMINS) else ""
-    kb.append([InlineKeyboardButton(text=f"{all_label}📋 Barcha adminlar", callback_data="trial_admin_all")])
-    kb.append([InlineKeyboardButton(text="✅ Tasdiqlash", callback_data="trial_admin_confirm")])
-    kb.append([InlineKeyboardButton(text="⬅️ Ortga", callback_data="trial_admin_back")])
-    return InlineKeyboardMarkup(inline_keyboard=kb)
-
-
-async def trial_cmd_handler(message: types.Message, state: FSMContext):
-    """Trial tugmasi bosilganda — admin selection ko'rsatish"""
-    if not await is_admin(message.from_user.id):
-        await message.answer("⚠️ Bu buyruq faqat administrator va owner uchun!")
-        return
-
-    await state.set_state(ReportStates.waiting_for_trial_admin)
-    await state.update_data(trial_selected_admins=[])
-
-    await message.answer(
-        text="📋 <b>Trial Report</b>\n\n"
-             "Qaysi admin(lar) bo'yicha hisobot chiqaraylik?\n\n"
-             "<i>Bir nechta adminni tanlash mumkin. Tanlab bo'lgach ✅ Tasdiqlash ni bosing.</i>",
-        parse_mode="HTML",
-        reply_markup=_get_trial_admin_inline_keyboard(),
-    )
-
-
-@report_router.callback_query(F.data == "trial_admin_back")
-async def trial_admin_back(call: types.CallbackQuery, state: FSMContext):
-    await call.answer()
-    await state.set_state(ReportStates.waiting_for_report_choice)
-    role = _USERS_ROLES.get(str(call.from_user.id), {}).get("role", "Owner") if _USERS_ROLES else "Owner"
-    from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-    await call.message.delete()
-    await call.message.answer(
-        "📑 <b>LMS Panel</b>\n\nQuyidagi bo'limlardan birini tanlang:",
-        parse_mode="HTML",
-        reply_markup=ReplyKeyboardMarkup(
-            keyboard=[
-                [KeyboardButton(text="📂 Groups"), KeyboardButton(text="💰 Finance"), KeyboardButton(text="💵 Sales")],
-                [KeyboardButton(text="🏠 Bosh sahifa")],
-            ],
-            resize_keyboard=True,
-        ),
-    )
-
-
-@report_router.callback_query(ReportStates.waiting_for_trial_admin, F.data.startswith("trial_admin_"))
-async def trial_admin_select(call: types.CallbackQuery, state: FSMContext):
-    await call.answer()
-    data = call.data
-    state_data = await state.get_data()
-    selected = state_data.get("trial_selected_admins", [])
-
-    if data == "trial_admin_all":
-        if len(selected) == len(TRIAL_ADMINS):
-            selected = []
-        else:
-            selected = list(TRIAL_ADMINS.keys())
-        await state.update_data(trial_selected_admins=selected)
-        await call.message.edit_text(
-            text="📋 <b>Trial Report</b>\n\n"
-                 "Qaysi admin(lar) bo'yicha hisobot chiqaraylik?\n\n"
-                 "<i>Bir nechta adminni tanlash mumkin. Tanlab bo'lgach ✅ Tasdiqlash ni bosing.</i>",
-            parse_mode="HTML",
-            reply_markup=_get_trial_admin_inline_keyboard(selected),
-        )
-        return
-
-    if data == "trial_admin_confirm":
-        if not selected:
-            await call.answer("⚠️ Kamida bitta adminni tanlang!", show_alert=True)
-            return
-        # Generate report
-        await call.message.edit_text("⏳ Trial report tayyorlanmoqda...")
-        await _run_trial_report(call.message, state, selected)
-        return
-
-    # Toggle admin selection
-    try:
-        emp_id = int(data.replace("trial_admin_", ""))
-    except ValueError:
-        return
-
-    if emp_id in selected:
-        selected.remove(emp_id)
-    else:
-        selected.append(emp_id)
-    await state.update_data(trial_selected_admins=selected)
-    await call.message.edit_text(
-        text="📋 <b>Trial Report</b>\n\n"
-             "Qaysi admin(lar) bo'yicha hisobot chiqaraylik?\n\n"
-             "<i>Bir nechta adminni tanlash mumkin. Tanlab bo'lgach ✅ Tasdiqlash ni bosing.</i>",
-        parse_mode="HTML",
-        reply_markup=_get_trial_admin_inline_keyboard(selected),
-    )
-
-
-async def _run_trial_report(msg: types.Message, state: FSMContext, selected_admin_ids: list):
-    """LMS session orqali trial report yaratish (requests, Playwrightsiz)"""
-    import json, re
-    from collections import defaultdict
-    from datetime import date as date_module
-    from html import unescape
-
-    today = date_module.today().isoformat()
-
-    try:
-        s = await asyncio.to_thread(_get_lms_session)
-        r = await asyncio.to_thread(s.get, f"{LMS_BASE}/admin/dashboard/new-students?branch_id=3&page=1&sort=id&per_page=64", timeout=20)
-        match = re.search(r'data-page="([^"]*)"', r.text)
-        if not match:
-            await msg.edit_text("⚠️ LMS sahifasidan ma'lumot olishda xatolik.")
-            return
-
-        dp = json.loads(unescape(match.group(1)))
-        students_raw = dp.get("props", {}).get("students", {}).get("data", [])
-        if not students_raw:
-            students_raw = dp.get("props", {}).get("records", [])
-
-        if not students_raw:
-            await msg.edit_text("⚠️ Lead ma'lumotlari topilmadi.")
-            return
-
-        # Extract student data
-        data = []
-        for st in students_raw:
-            name = st.get("student_name", "").strip()
-            if not name:
-                continue
-            course_raw = st.get("course_name", st.get("parent_course_name", ""))
-            if isinstance(course_raw, dict):
-                course = course_raw.get("uz", course_raw.get("en", "")).strip()
-            elif isinstance(course_raw, str) and course_raw.startswith("{"):
-                try:
-                    cd = json.loads(course_raw)
-                    course = cd.get("uz", cd.get("en", "")).strip()
-                except:
-                    course = course_raw
-            else:
-                course = str(course_raw).strip()
-            admin = st.get("administrator_name", "").strip()
-            student_id = st.get("student_id") or st.get("id")
-
-            first_lesson = st.get("planned_first_lesson_date", "") or ""
-            first_lesson = first_lesson.strip()
-            if first_lesson:
-                # Format YYYY-MM-DD → DD.MM.YYYY
-                parts = first_lesson.split("-")
-                if len(parts) == 3:
-                    first_lesson_fmt = f"{parts[2]}.{parts[1]}.{parts[0]}"
-                else:
-                    first_lesson_fmt = first_lesson[:10]
-                status = "✅"
-                note_date = first_lesson_fmt
-            else:
-                status = "⏳"
-                note_date = ""
-
-            data.append({
-                "name": name,
-                "course": course,
-                "admin": admin,
-                "student_id": student_id,
-                "first_lesson": first_lesson_fmt,
-            })
-
-    except Exception as e:
-        import traceback
-        tb = traceback.format_exc()
-        logger.error(f"Trial report fetch error: {e}\n{tb}")
-        await msg.edit_text(f"⚠️ Trial report olishda xatolik: {e}")
-        return
-
-    # Filter by selected admins
-    if len(selected_admin_ids) < len(TRIAL_ADMINS):
-        selected_names = {TRIAL_ADMINS[eid] for eid in selected_admin_ids}
-        data = [s for s in data if s["admin"] in selected_names]
-
-    if not data:
-        await msg.edit_text("📭 Tanlangan adminlar bo'yicha lead topilmadi.")
-        return
-
-    # Parallel comment olish — har bir lead uchun /admin/students/{id}?tab=comments
-    try:
-        s2 = _get_lms_session()
-        async def _fetch_comments(student_id):
-            if not student_id:
-                return ("", "")
-            try:
-                url = f"{LMS_BASE}/admin/students/{student_id}?tab=comments"
-                r = await asyncio.to_thread(s2.get, url, timeout=15)
-                if r.status_code != 200:
-                    return ("", "")
-                comments = re.findall(
-                    r'&quot;comment&quot;:&quot;([^&]+)&quot;.*?&quot;created_at&quot;:&quot;([^&]+)&quot;',
-                    r.text
-                )
-                if comments:
-                    last_text, last_dt = comments[-1]
-                    last_text = last_text.replace('\\/', '/')
-                    try:
-                        dt = datetime.fromisoformat(last_dt.replace("Z", "+00:00"))
-                        dt_str = dt.astimezone(UZ_TZ).strftime("%d.%m.%Y %H:%M")
-                    except:
-                        dt_str = last_dt[:16]
-                    return (last_text, dt_str)
-                return ("", "")
-            except Exception as e:
-                logger.warning(f"Comments fetch error for {student_id}: {e}")
-            return ("", "")
-
-        results = await asyncio.gather(*[_fetch_comments(s["student_id"]) for s in data])
-        today_display = date_module.today().strftime("%d.%m.%Y")
-        for i, (comment_text, comment_dt) in enumerate(results):
-            if i < len(data):
-                data[i]["last_comment"] = comment_text
-                data[i]["last_comment_date"] = comment_dt
-                if comment_dt and comment_dt.startswith(today_display):
-                    data[i]["status"] = "✅"
-                    data[i]["display"] = f"✅ {comment_text} | {comment_dt}"
-                elif comment_text:
-                    data[i]["status"] = "❌"
-                    data[i]["display"] = f"❌ {comment_text} | {comment_dt}"
-                else:
-                    data[i]["status"] = "⏳"
-                    if data[i]["first_lesson"]:
-                        data[i]["display"] = f"⏳ Izoh yo'q | 1-dars: {data[i]['first_lesson']}"
-                    else:
-                        data[i]["display"] = f"⏳ Izoh yo'q"
-    except Exception as e:
-        logger.warning(f"Trial comments fetch error: {e}")
-        for s in data:
-            s["status"] = "⏳"
-            if s["first_lesson"]:
-                s["display"] = f"⏳ Izoh yo'q | 1-dars: {s['first_lesson']}"
-            else:
-                s["display"] = f"⏳ Izoh yo'q"
-
-    # short_course funksiyasi
-    def short_course(c):
-        c = c.replace("IELTS -> IELTS ", "")
-        c = c.replace("IELTS ", "")
-        mapping = {
-            "IELTS Novice": "Novice",
-            "IELTS Standard": "Standard",
-            "IELTS Expert": "Expert",
-            "IELTS Intensive": "Intensive",
-            "IELTS Standart": "Standart",
-            "IELTS Стандарт": "Standart",
-        }
-        for k, v in mapping.items():
-            c = c.replace(k, v)
-        return c.strip()
-
-    admins = defaultdict(list)
-    for s in data:
-        admins[s["admin"]].append(s)
-
-    sorted_admins = sorted(admins.items(), key=lambda x: -len(x[1]))
-
-    lines = []
-    today_display = date_module.today().strftime("%d.%m.%Y")
-    lines.append(f"📋 TRIAL REPORT | {today_display} | Drujba | Jami: {len(data)}")
-    lines.append("")
-
-    for admin_name, students in sorted_admins:
-        total = len(students)
-        done = sum(1 for s in students if s.get("status") == "✅")
-        wait = sum(1 for s in students if s.get("status") == "❌")
-        unkn = total - done - wait
-        lines.append(f"👤 **{admin_name}** — {total} ta")
-        lines.append(f"   ✅ {done}   ❌ {wait}   ⏳ {unkn}")
-        lines.append("")
-        for s in students:
-            c = short_course(s["course"])
-            disp = s.get("display", "⏳")
-            lines.append(f"   • {s['name']} — {c}  {disp}")
-        lines.append("")
-
-    total_done = sum(1 for s in data if s.get("status") == "✅")
-    total_wait = sum(1 for s in data if s.get("status") == "❌")
-    total_unkn = len(data) - total_done - total_wait
-    lines.append(f"📊 **JAMI:** ✅ {total_done}   ❌ {total_wait}   ⏳ {total_unkn}")
-
-    report_text = "\n".join(lines)
-
-    await state.update_data(trial_selected_admins=selected_admin_ids)
-    # State ni LMS asosiy menyusiga qaytarish — Trial tugmasi qayta ishlashi uchun
-    await state.set_state(ReportStates.waiting_for_report_choice)
-
-    # Agar report juda uzun bo'lsa, qismlarga bo'lib yuborish
-    MAX_LEN = 4000
-    if len(report_text) > MAX_LEN:
-        parts = []
-        current = ""
-        for line in lines:
-            if len(current) + len(line) + 1 > MAX_LEN:
-                parts.append(current)
-                current = line
-            else:
-                if current:
-                    current += "\n" + line
-                else:
-                    current = line
-        if current:
-            parts.append(current)
-
-        await msg.edit_text(parts[0], parse_mode="Markdown")
-        for part in parts[1:]:
-            await msg.answer(part, parse_mode="Markdown")
-        await msg.answer(
-            "📊 <b>Trial Report (to'liq)</b> — yuqoridagi xabarlarni ko'ring.",
-            parse_mode="HTML",
-            reply_markup=_get_trial_admin_inline_keyboard(selected_admin_ids),
-        )
-    else:
-        await msg.edit_text(
-            report_text,
-            parse_mode="Markdown",
-            reply_markup=_get_trial_admin_inline_keyboard(selected_admin_ids),
-        )
-
-
 # ================= LMS HISOBOT HANDLERLARI (Reply Keyboard) =================
-@report_router.message(ReportStates.waiting_for_report_choice, F.text == "🎯 Trial")
-async def lms_trial_handler(message: types.Message, state: FSMContext):
-    """LMS -> Trial"""
-    await trial_cmd_handler(message, state)
-
-
 @report_router.message(ReportStates.waiting_for_report_choice, F.text == "📋 Finishing Groups")
 async def lms_finishing_handler(message: types.Message, state: FSMContext):
     """LMS -> Finishing Groups"""
@@ -843,7 +489,7 @@ async def lms_back_handler(message: types.Message, state: FSMContext):
     from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
     kb = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="📂 Groups"), KeyboardButton(text="💰 Finance"), KeyboardButton(text="💵 Sales")],
+            [KeyboardButton(text="📂 Groups"), KeyboardButton(text="💰 Finance")],
             [KeyboardButton(text="🏠 Bosh sahifa")],
         ],
         resize_keyboard=True,
@@ -868,7 +514,7 @@ async def lms_main_handler(message: types.Message, state: FSMContext):
 
     # Asosiy LMS menyusi
     base_buttons = [
-        [KeyboardButton(text="📂 Groups"), KeyboardButton(text="💰 Finance"), KeyboardButton(text="💵 Sales")],
+        [KeyboardButton(text="📂 Groups"), KeyboardButton(text="💰 Finance")],
         [KeyboardButton(text="🏠 Bosh sahifa")],
     ]
 
@@ -922,22 +568,6 @@ async def finance_submenu(message: types.Message, state: FSMContext):
             resize_keyboard=True,
         )
     await message.answer("💰 <b>Finance</b> — kerakli bo'limni tanlang:", parse_mode="HTML", reply_markup=kb)
-
-
-# ================= SALES SUBMENU =================
-
-@report_router.message(ReportStates.waiting_for_report_choice, F.text == "💵 Sales")
-async def sales_submenu(message: types.Message, state: FSMContext):
-    """Sales submanyusi: Trial va boshqa sales tugmalari"""
-    from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-    kb = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="🎯 Trial")],
-            [KeyboardButton(text="⬅️ Ortga")],
-        ],
-        resize_keyboard=True,
-    )
-    await message.answer("💵 <b>Sales</b> — kerakli bo'limni tanlang:", parse_mode="HTML", reply_markup=kb)
 
 
 # ================= YORDAMCHI FUNKSIYALAR =================
@@ -995,8 +625,8 @@ def _get_waiting_groups():
                     capacity = rooms[0]["capacity"] if rooms else 20
 
                     students = gd.get("students", gd.get("newly_added_trial_frozen_active_failed_students", []))
+                    # trial holati (status 1, 8) oldin hisoblanar edi — Sales bo'limi o'chirilgani uchun olib tashlandi
                     active = sum(1 for s in students if s.get("pivot", {}).get("status") == 6)
-                    trial = sum(1 for s in students if s.get("pivot", {}).get("status") in (1, 8))
                     frozen = sum(1 for s in students if s.get("pivot", {}).get("status") == 9)
 
                     waiting.append({
@@ -1006,7 +636,6 @@ def _get_waiting_groups():
                         "room": room_name,
                         "capacity": capacity,
                         "active": active,
-                        "trial": trial,
                         "frozen": frozen,
                     })
             except Exception as e:
@@ -1018,7 +647,6 @@ def _get_waiting_groups():
                     "room": "❌",
                     "capacity": 0,
                     "active": 0,
-                    "trial": 0,
                     "frozen": 0,
                 })
 
@@ -1058,7 +686,7 @@ def _render_waiting_groups_report(groups: list, all_comments: dict):
             comment_line = f" 📝" if comment else ""
             text += (
                 f"   <b>{global_idx}.</b> 📚 {g['name']} — {g['level']}{comment_line}\n"
-                f"       👥 {g['active']} + {g['trial']} + {g['frozen']} / {'?' if g['capacity'] == 0 else g['capacity']}\n"
+                f"       👥 {g['active']} + {g['frozen']} / {'?' if g['capacity'] == 0 else g['capacity']}\n"
                 f"       🏠 Xona: {g['room']}\n\n"
             )
 
@@ -1087,7 +715,7 @@ async def _show_waiting_group_detail(call: types.CallbackQuery, state: FSMContex
 
     detail = f"⏳ <b>{g['name']} — {g['level']}</b>\n\n"
     detail += f"👨🏻‍🏫 {g['teacher']}\n"
-    detail += f"👥 {g['active']} + {g['trial']} + {g['frozen']} / {'?' if g['capacity'] == 0 else g['capacity']}\n"
+    detail += f"👥 {g['active']} + {g['frozen']} / {'?' if g['capacity'] == 0 else g['capacity']}\n"
     detail += f"🏠 Xona: {g['room']}\n"
 
     if comment:
