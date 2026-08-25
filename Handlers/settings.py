@@ -99,6 +99,17 @@ async def settings_main_back(message: types.Message, state: FSMContext):
     await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=get_main_menu(role))
 
 
+@settings_router.message(SettingsStates.waiting_for_main_choice, F.text == "💰 Jarimalar")
+async def settings_fines_choice(message: types.Message, state: FSMContext):
+    """💰 Jarimalar tugmasi bosilganda - rol tanlash"""
+    await state.set_state(SettingsStates.waiting_for_fine_role)
+    await message.answer(
+        text="💰 <b>Jarimalar</b>\n\nQaysi rol uchun jarima tariflarini belgilamoqchisiz?",
+        parse_mode="HTML",
+        reply_markup=get_fine_role_keyboard()
+    )
+
+
 @settings_router.message(SettingsStates.waiting_for_main_choice)
 async def invalid_main_choice(message: types.Message):
     await message.answer("❌ Iltimos, tugmalardan birini tanlang!", reply_markup=get_settings_main_keyboard())
@@ -348,17 +359,6 @@ def get_fine_actions_keyboard():
             [KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")],
         ],
         resize_keyboard=True
-    )
-
-
-@settings_router.message(SettingsStates.waiting_for_main_choice, F.text == "💰 Jarimalar")
-async def settings_fines_choice(message: types.Message, state: FSMContext):
-    """💰 Jarimalar tugmasi bosilganda - rol tanlash"""
-    await state.set_state(SettingsStates.waiting_for_fine_role)
-    await message.answer(
-        text="💰 <b>Jarimalar</b>\n\nQaysi rol uchun jarima tariflarini belgilamoqchisiz?",
-        parse_mode="HTML",
-        reply_markup=get_fine_role_keyboard()
     )
 
 

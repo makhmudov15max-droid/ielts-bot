@@ -252,9 +252,9 @@ def get_check_in_reminder_keyboard():
 def get_settings_main_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🌴 Ta'tillar"), KeyboardButton(text="🏢 Ish smena")],
+            [KeyboardButton(text="🌴 Ta'tillar"), KeyboardButton(text="🏠 Bosh sahifa")],
+            [KeyboardButton(text="🏢 Ish smena"), KeyboardButton(text="⬅️ Ortga")],
             [KeyboardButton(text="💰 Jarimalar")],
-            [KeyboardButton(text="🏠 Bosh sahifa"), KeyboardButton(text="⬅️ Ortga")]
         ],
         resize_keyboard=True
     )
