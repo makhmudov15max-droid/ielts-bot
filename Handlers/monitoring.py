@@ -8,6 +8,7 @@ from utils.attendance_db import (
     get_missed_days,
 )
 from utils.users_db import get_user_work_time, get_motivation_index, increment_motivation_index, set_user_free
+from utils.fines_db import find_tariff_for_minutes, add_fine, get_user_active_fines_total
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -947,40 +948,92 @@ async def late_reason_entered(message: types.Message, state: FSMContext):
     role = data.get("role")
     arrived_at = data.get("arrived_at")
     today = data.get("today")
-    late_minutes = data.get("late_minutes")
+    late_minutes = data.get("late_minutes") or 0
     
     from utils.attendance_db import update_attendance_reason
     await update_attendance_reason(attendance_id, reason)
     
-    await state.clear()
-    await message.answer(
-        text=(
-            f"✅ <b>Kech qolish sababi qabul qilindi!</b>\n\n"
-            f"📅 Sana: {today}\n"
-            f"⏰ Kelgan vaqt: {arrived_at}\n"
-            f"⚠️ Kechikish: {late_minutes} daqiqa\n"
-            f"✍️ Sabab: {reason}\n\n"
-            f"🌟 <b>E'tiboringiz uchun rahmat, {user_name}!</b>\n"
-            f"Kelajakda o'z vaqtida kelishingizni tavsiya qilamiz."
-        ),
-        parse_mode="HTML",
-        reply_markup=get_main_menu(role)
-    )
+    # ===== JARIMA INTEGRATSIYASI (kechikish) =====
+    # Agar kechikish bo'lsa va shu rol uchun tarif belgilangan bo'lsa -> jarima qo'yiladi
+    user_id_str = str(message.from_user.id)
+    fine_amount = 0
+    fine_id = 0
+    if late_minutes > 0:
+        tariff = await find_tariff_for_minutes(role, late_minutes)
+        if tariff:
+            fine_id = await add_fine(
+                user_id=user_id_str,
+                user_name=user_name,
+                role=role,
+                date=today,
+                late_minutes=late_minutes,
+                amount=tariff["amount"],
+                reason="late"
+            )
+            fine_amount = tariff["amount"]
     
-    # Manager/Owner larga bildirishnoma yuborish
+    await state.clear()
+    
+    # Xodimga javob (jarima bor/yO'q)
+    if fine_amount > 0:
+        await message.answer(
+            text=(
+                f"✅ <b>Kech qolish sababi qabul qilindi!</b>\n\n"
+                f"📅 Sana: {today}\n"
+                f"⏰ Kelgan vaqt: {arrived_at}\n"
+                f"⚠️ Kechikish: {late_minutes} daqiqa\n"
+                f"✍️ Sabab: {reason}\n\n"
+                f"⬇️ <b>Jarima</b>\n"
+                f"Assalomu alaykum, {user_name}. Bugun ishga {late_minutes} daqiqa kech kelganingiz aniqlandi. "
+                f"Shu sababli sizga <b>{fine_amount} so'm</b> jarima belgilanadi. "
+                f"Iltimos, kelajakda ish jadvaliga rioya qiling.\n\n"
+                f"🌟 E'tiboringiz uchun rahmat!"
+            ),
+            parse_mode="HTML",
+            reply_markup=get_main_menu(role)
+        )
+    else:
+        await message.answer(
+            text=(
+                f"✅ <b>Kech qolish sababi qabul qilindi!</b>\n\n"
+                f"📅 Sana: {today}\n"
+                f"⏰ Kelgan vaqt: {arrived_at}\n"
+                f"⚠️ Kechikish: {late_minutes} daqiqa\n"
+                f"✍️ Sabab: {reason}\n\n"
+                f"🌟 <b>E'tiboringiz uchun rahmat, {user_name}!</b>\n"
+                f"Kelajakda o'z vaqtida kelishingizni tavsiya qilamiz."
+            ),
+            parse_mode="HTML",
+            reply_markup=get_main_menu(role)
+        )
+    
+    # Manager/Owner larga bildirishnoma yuborish + jarima tugmalari
     try:
         for uid, uinfo in USERS_ROLES.items():
             if isinstance(uinfo, dict) and uinfo.get("role") in ["Owner", "Manager"]:
+                owner_text = (
+                    f"⚠️ <b>Kechikish haqida xabar</b>\n\n"
+                    f"👤 <b>Xodim:</b> {user_name}\n"
+                    f"🎖 <b>Lavozim:</b> {role}\n"
+                    f"📅 <b>Sana:</b> {today}\n"
+                    f"⏰ <b>Kelgan vaqt:</b> {arrived_at}\n"
+                    f"⚠️ <b>Kechikish:</b> {late_minutes} daqiqa\n"
+                    f"✍️ <b>Sabab:</b> {reason}\n"
+                )
+                owner_reply_markup = None
+                if fine_amount > 0 and fine_id:
+                    owner_text += f"\n💰 <b>Jarima:</b> {fine_amount} so'm"
+                    owner_reply_markup = types.InlineKeyboardMarkup(inline_keyboard=[
+                        [
+                            types.InlineKeyboardButton(text="✏️ Qisqartirish", callback_data=f"fine_edit_{fine_id}"),
+                            types.InlineKeyboardButton(text="🗑 Bekor qilish", callback_data=f"fine_cancel_{fine_id}")
+                        ]
+                    ])
                 await message.bot.send_message(
                     chat_id=int(uid),
-                    text=f"⚠️ <b>Kechikish haqida xabar</b>\n\n"
-                         f"👤 <b>Xodim:</b> {user_name}\n"
-                         f"🎖 <b>Lavozim:</b> {role}\n"
-                         f"📅 <b>Sana:</b> {today}\n"
-                         f"⏰ <b>Kelgan vaqt:</b> {arrived_at}\n"
-                         f"⚠️ <b>Kechikish:</b> {late_minutes} daqiqa\n"
-                         f"✍️ <b>Sabab:</b> {reason}",
-                    parse_mode="HTML"
+                    text=owner_text,
+                    parse_mode="HTML",
+                    reply_markup=owner_reply_markup
                 )
     except Exception as e:
         logging.error(f"Manager notification xatolik: {e}")
@@ -1311,6 +1364,11 @@ async def check_in_video_handler(message: types.Message, state: FSMContext):
     except:
         early_min = 0
     
+    # O'z vaqtida kelgan Admin uchun bonus "oz qoldi" matni (faqat Admin)
+    bonus_text = ""
+    if role == "Admin":
+        bonus_text = "\n⭐ <b>Bonus: </b> 100,000 UZS — oy oxiridagi bonusga oz qoldi! 📈"
+
     if early_min > 0:
         # Navbatdagi motivatsion xabarni olish va indeksni oldinga surish
         mot_index = await get_motivation_index(user_id)
@@ -1324,7 +1382,8 @@ async def check_in_video_handler(message: types.Message, state: FSMContext):
                 f"⏰ Kelgan vaqt: {current_time}\n"
                 f"📋 Ish vaqti: {work_start} - {work_end}\n"
                 f"⏩ <b>Hurmatli {user_name}, siz ishga {early_min} daqiqa oldin keldingiz!</b>\n\n"
-                f"{mot_message}\n\n"
+                f"{mot_message}\n"
+                f"{bonus_text}\n"
                 f"📸 Isbot rahbarga yuborildi."
             ),
             parse_mode="HTML",
@@ -1338,6 +1397,7 @@ async def check_in_video_handler(message: types.Message, state: FSMContext):
                 f"⏰ Kelgan vaqt: {current_time}\n"
                 f"📋 Ish vaqti: {work_start} - {work_end}\n"
                 f"🎉 <b>Hurmatli {user_name}, siz ishga o'z vaqtida keldingiz. Kuningiz barokatli o'tsin!</b>\n"
+                f"{bonus_text}\n"
                 f"📸 Isbot rahbarga yuborildi."
             ),
             parse_mode="HTML",

@@ -13,6 +13,7 @@ from utils.access import check_user_access
 from utils.attendance_db import has_checkin_today, mark_missed_for_date, get_attendance_by_user_and_date
 from utils.users_db import get_user_work_time
 from utils.holidays_db import is_today_global_holiday
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 start_router = Router()
 
@@ -194,6 +195,8 @@ async def auto_task_scheduler(bot):
             continue
     
     # ========== ASOSIY SIKL ==========
+    # Smena yakunida ishga kelmaganlar uchun xabar yuborilganligini kuzatish
+    missed_notified = {}
     while True:
         try:
             now = datetime.now(timezone.utc).astimezone(tashkent_tz)
@@ -210,6 +213,7 @@ async def auto_task_scheduler(bot):
                 for task in TASKS_DATABASE:
                     task["sent_today_times"] = []
                 reminder_sent_today.clear()
+                missed_notified.clear()
             
             # Agar bayram kuni bo'lsa, ishga kelish eslatmalarini YUBORMA
             if not is_holiday:
@@ -269,7 +273,89 @@ async def auto_task_scheduler(bot):
                         if not await has_checkin_today(str(user_id)):
                             await mark_missed_for_date(str(user_id), today_str)
                     last_daily_check_date = today_str
-                
+
+                    # ===== OY OXIRI: Admin larga bonus xabari =====
+                    # Oyning oxirgi kuni ekanligini tekshiramiz
+                    import calendar as _cal
+                    last_day = _cal.monthrange(now.year, now.month)[1]
+                    if now.day == last_day:
+                        try:
+                            from utils.fines_db import has_active_fine_in_month
+                            for u_id, u_info in USERS_ROLES.items():
+                                if not isinstance(u_info, dict):
+                                    continue
+                                brole = u_info.get("role")
+                                if brole != "Admin":
+                                    continue
+                                if u_info.get("name") is None:
+                                    continue
+                                has_fine = await has_active_fine_in_month(str(u_id), now.year, now.month)
+                                if not has_fine:
+                                    await bot.send_message(
+                                        chat_id=int(u_id),
+                                        text=(
+                                            f"🎉 <b>Tabriklaymiz, {u_info.get('name', 'Xodim')}!</b>\n\n"
+                                            f"Bu oy hech qachon kech kelmadingiz. Sizga <b>100,000 so'm</b> bonus berildi. 🎉"
+                                        ),
+                                        parse_mode="HTML"
+                                    )
+                        except Exception as e:
+                            logging.error(f"Oy oxiri bonus xabari xatolik: {e}")
+
+                # ===== SMENA YAKUNI: ishga kelmaganlar uchun owner xabari =====
+                # Har xodimning work_end + 1 daqiqasida, agar ishga kelmagan bo'lsa,
+                # owner/manager ga "Ishga kelmadi" xabari + jarima tugmasi
+                for user_id, user_info in USERS_ROLES.items():
+                    if not isinstance(user_info, dict):
+                        continue
+                    srole = user_info.get("role")
+                    if srole in ["Owner", "Manager"]:
+                        continue
+                    skey = f"{user_id}:{today_str}"
+                    if missed_notified.get(skey):
+                        continue
+                    if await has_checkin_today(str(user_id)):
+                        missed_notified[skey] = True
+                        continue
+                    try:
+                        ws_, we_ = await get_user_work_time(str(user_id))
+                        we_h, we_m = map(int, we_.split(":"))
+                        we_plus = we_h * 60 + we_m + 1
+                        we_h2 = (we_plus // 60) % 24
+                        we_m2 = we_plus % 60
+                        end_plus_str = f"{we_h2:02d}:{we_m2:02d}"
+                    except Exception:
+                        continue
+                    if current_time_str != end_plus_str:
+                        continue
+
+                    # Smena yakunlandi va xodim kelmadi -> owner xabar
+                    missed_notified[skey] = True
+                    sname = user_info.get("name", "Xodim")
+                    boss_ids = [
+                        int(uid) for uid, ui in USERS_ROLES.items()
+                        if isinstance(ui, dict) and ui.get("role") in ["Owner", "Manager"]
+                    ]
+                    for bid in boss_ids:
+                        try:
+                            await bot.send_message(
+                                chat_id=bid,
+                                text=(
+                                    f"🚫 <b>Ishga kelmadi</b>\n\n"
+                                    f"👤 <b>Xodim:</b> {sname}\n"
+                                    f"🎖 <b>Lavozim:</b> {srole}\n"
+                                    f"📅 <b>Sana:</b> {today_str}\n\n"
+                                    f"Ushbu xodim ish smenasi yakuniga qadar ishga kelmadi. Jarima belgilashingiz mumkin:"
+                                ),
+                                parse_mode="HTML",
+                                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                                    [InlineKeyboardButton(text="💰 Jarima belgilash",
+                                                           callback_data=f"absent_fine_{user_id}_{today_str}")]
+                                ])
+                            )
+                        except Exception as e:
+                            logging.error(f"Smena yakuni xabari xatolik: {e}")
+
                 # ===== XAVFSIZLIK TARMOG'I: 00:05 da kechagi kun uchun tekshiruv =====
                 # Agar bot 23:59 da restart bo'lib qolgan bo'lsa, kechagi kun
                 # missed belgilanmagan bo'lishi mumkin. Shu yerda tekshiramiz.

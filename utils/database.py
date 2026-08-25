@@ -153,6 +153,40 @@ async def init_db():
             """)
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_group_comments_name ON group_comments(group_name)")
 
+            # ================= FINES_TARIFFS TABLE =================
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS fines_tariffs (
+                    id SERIAL PRIMARY KEY,
+                    role TEXT NOT NULL,
+                    min_minutes INTEGER NOT NULL,
+                    max_minutes INTEGER NOT NULL,
+                    amount INTEGER NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_fines_tariffs_role ON fines_tariffs(role)")
+
+            # ================= FINES TABLE =================
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS fines (
+                    id SERIAL PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    user_name TEXT,
+                    role TEXT,
+                    date TEXT NOT NULL,
+                    late_minutes INTEGER DEFAULT 0,
+                    amount INTEGER DEFAULT 0,
+                    reason TEXT DEFAULT 'late',
+                    status TEXT DEFAULT 'active',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    cancelled_at TIMESTAMP
+                )
+            """)
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_fines_user ON fines(user_id)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_fines_date ON fines(date)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_fines_status ON fines(status)")
+            logging.info("✅ fines_tariffs va fines jadvallar tayyor")
+
             # ================= MIGRATION: motivation_index ustuni =================
             await conn.execute("""
                 ALTER TABLE users ADD COLUMN IF NOT EXISTS motivation_index INTEGER DEFAULT 0

@@ -19,6 +19,7 @@ from Handlers.proofs import proofs_router, init_proofs_handler
 from Handlers.monitoring import monitoring_router, init_monitoring_handler
 from Handlers.settings import settings_router, init_settings_handler
 from Handlers.holidays import holidays_router, init_holidays_handler
+from Handlers.fines_panel import fines_router, init_fines_panel_handler
 from utils.database import init_db, close_db
 from utils.users_db import load_users
 from utils.tasks_db import load_tasks
@@ -66,6 +67,7 @@ async def main():
         init_monitoring_handler(USERS_ROLES)
         init_settings_handler(USERS_ROLES, ADMIN_ID)
         init_holidays_handler(USERS_ROLES)
+        init_fines_panel_handler(USERS_ROLES, ADMIN_ID)
 
         bot = Bot(token=BOT_TOKEN)
         dp = Dispatcher(storage=storage)
@@ -97,6 +99,7 @@ async def main():
         dp.include_router(report_router)
         dp.include_router(settings_router)
         dp.include_router(holidays_router)
+        dp.include_router(fines_router)
 
         logging.info("✅ Barcha routerlar ulandi")
 
