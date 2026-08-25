@@ -157,6 +157,10 @@ async def auto_task_scheduler(bot):
         if role in ["Owner", "Manager"]:
             continue
         
+        # Yakshanba kuni restart eslatmasi yuborilmasin
+        if now.strftime("%a").strip().lower() == "sun" or (await is_today_global_holiday()):
+            continue
+        
         if await has_checkin_today(str(user_id)):
             continue
         
@@ -206,7 +210,7 @@ async def auto_task_scheduler(bot):
             today_str = now.strftime("%Y-%m-%d")
             
             # ===== BUGUN BAYRAM KUNI EKANLIGINI TEKSHIRISH =====
-            is_holiday = await is_today_global_holiday()
+            is_holiday = await is_today_global_holiday() or (current_day_name == "sun")
             
             if current_time_str == "00:00":
                 await reset_sent_today_times()

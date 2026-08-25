@@ -1074,8 +1074,8 @@ async def check_in_start_handler(message: types.Message, state: FSMContext):
     # noto'g'ri xabar chiqishini oldini oladi.
     await state.clear()
     
-    # ===== BUGUN BAYRAM KUNI TEKSHIRISH =====
-    is_holiday = await is_today_global_holiday()
+    # ===== BUGUN BAYRAM KUNI / YAKSHANBA TEKSHIRISH =====
+    is_holiday = await is_today_global_holiday() or (now.strftime("%a").strip().lower() == "sun")
     if is_holiday:
         await message.answer(
             text="🎉 <b>Hurmatli xodim, bugun bayram kuni!</b>\n\n"
