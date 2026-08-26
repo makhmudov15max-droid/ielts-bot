@@ -154,7 +154,7 @@ async def auto_task_scheduler(bot):
         if not isinstance(user_info, dict):
             continue
         role = user_info.get("role")
-        if role in ["Owner", "Manager"]:
+        if role in ["Owner", "Manager", "rejected"]:
             continue
         
         # Yakshanba kuni restart eslatmasi yuborilmasin
@@ -225,7 +225,7 @@ async def auto_task_scheduler(bot):
                     if not isinstance(user_info, dict):
                         continue
                     role = user_info.get("role")
-                    if role in ["Owner", "Manager"]:
+                    if role in ["Owner", "Manager", "rejected"]:
                         continue
                     
                     if reminder_sent_today.get(user_id) == today_str:
@@ -272,7 +272,7 @@ async def auto_task_scheduler(bot):
                         if not isinstance(user_info, dict):
                             continue
                         role = user_info.get("role")
-                        if role in ["Owner", "Manager"]:
+                        if role in ["Owner", "Manager", "rejected"]:
                             continue
                         if not await has_checkin_today(str(user_id)):
                             await mark_missed_for_date(str(user_id), today_str)
@@ -313,7 +313,7 @@ async def auto_task_scheduler(bot):
                     if not isinstance(user_info, dict):
                         continue
                     srole = user_info.get("role")
-                    if srole in ["Owner", "Manager"]:
+                    if srole in ["Owner", "Manager", "rejected"]:
                         continue
                     skey = f"{user_id}:{today_str}"
                     if missed_notified.get(skey):
@@ -370,7 +370,7 @@ async def auto_task_scheduler(bot):
                         if not isinstance(user_info, dict):
                             continue
                         role = user_info.get("role")
-                        if role in ["Owner", "Manager"]:
+                        if role in ["Owner", "Manager", "rejected"]:
                             continue
                         existing = await get_attendance_by_user_and_date(str(user_id), yesterday)
                         if not existing:
