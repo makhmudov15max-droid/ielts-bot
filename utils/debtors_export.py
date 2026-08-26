@@ -139,8 +139,14 @@ def _is_26(note):
     return "2+6" in n
 
 
-def _days_past_deadline(deadline_str: str) :
-    """deadline'dan bugungacha o'tgan kunlar soni. Kelajakda bo'lsa manfiy/0."""
+def _days_past_deadline(deadline_str: str):
+    """Deadline kun raqamidan bugungacha kechikish kunlari.
+
+    deadline_str oy-nomsiz 'dd.mm.YYYY' (yoki ISO) — faqat KUNI muhim:
+    masalan '01.09.2026' -> har oy 1-sanasida to'lov; bugun 26 bo'lsa
+    26-1=25 kun kechikkan. Agar bugungi kun < deadline kuni bo'lsa 0
+    (hali kechikmagan).
+    """
     try:
         dl = datetime.strptime(str(deadline_str)[:10], "%d.%m.%Y")
     except Exception:
@@ -148,9 +154,11 @@ def _days_past_deadline(deadline_str: str) :
             dl = datetime.strptime(str(deadline_str)[:10], "%Y-%m-%d")
         except Exception:
             return None
-    dl = dl.replace(tzinfo=UZ_TZ)  # aware qilish
-    today = datetime.now(UZ_TZ).replace(hour=0, minute=0, second=0, microsecond=0)
-    return (today - dl).days
+    day = dl.day  # har oyning nechanchi kunida to'lov
+    today_day = datetime.now(UZ_TZ).day
+    if today_day < day:
+        return 0  # hali oy ichida deadline kuniga yetmagan
+    return today_day - day
 
 
 def _row_color(dtype, deadline_str, is_26_note):
