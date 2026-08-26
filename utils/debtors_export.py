@@ -244,8 +244,8 @@ def _write_to_sheets(all_rows: dict):
     # Jadvalni tozalash (A1:F210 kontenti)
     ws.clear()
 
-    # Butun F hududini oddiy formatga qaytarish (oq bg, bold emas)
-    # — eski qo'lda qo'yilgan ko'k/bold format yangi qatorlarga ko'chmasligi uchun
+    # Butun F hududini oddiy formatga qaytarish (oq bg, bold emas, font size 10, Arial)
+    # — eski qo'lda qo'yilgan ko'k/bold/katta font format yangi qatorlarga ko'chmasligi uchun
     try:
         from google.oauth2 import service_account as _saF
         from googleapiclient.discovery import build as _buildF
@@ -257,9 +257,14 @@ def _write_to_sheets(all_rows: dict):
                 "range": {"sheetId": ws.id, "startRowIndex": 0, "endRowIndex": 500, "startColumnIndex": 0, "endColumnIndex": 6},
                 "cell": {"userEnteredFormat": {
                     "backgroundColor": {"red": 1, "green": 1, "blue": 1},
-                    "textFormat": {"bold": False, "foregroundColor": {"red": 0, "green": 0, "blue": 0}}
+                    "textFormat": {
+                        "bold": False,
+                        "fontSize": 10,
+                        "fontFamily": "Arial",
+                        "foregroundColor": {"red": 0, "green": 0, "blue": 0}
+                    }
                 }},
-                "fields": "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat.bold,userEnteredFormat.textFormat.foregroundColor"
+                "fields": "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat.bold,userEnteredFormat.textFormat.fontSize,userEnteredFormat.textFormat.fontFamily,userEnteredFormat.textFormat.foregroundColor"
             }
         }]}).execute()
     except Exception as _e:
