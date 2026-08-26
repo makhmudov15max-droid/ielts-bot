@@ -1195,9 +1195,14 @@ async def active_debs_handler(message: types.Message, state: FSMContext):
         info = await asyncio.to_thread(_do)
         total = info["total"]
         rows = info["rows_written"]
-        text = (f"✅ <b>Done!</b> Google Sheets ga yozildi.\n\n"
-                f"👥 Jami: <b>{total}</b> ta qarzdor yozildi.\n"
-                f"🔗 <a href='https://docs.google.com/spreadsheets/d/1PpGWObeppzsSkaYgGz0fRYP_3zk-3YuxBOXStrn_PCc'>Google Sheets ni ochish</a>")
+        if total == 0:
+            text = ("⚠️ <b>Ma'lumot topilmadi.</b>\n\n"
+                    "LMS dan qarzdorlar olinmadi. Ehtimol LMS paroli to'g'ri emas yoki boshqa xatolik.\n"
+                    "Admin': LMS_KEY muhit o'zgaruvchisini <b>Mahmudov02</b> ga o'zgartiring.")
+        else:
+            text = (f"✅ <b>Done!</b> Google Sheets ga yozildi.\n\n"
+                    f"👥 Jami: <b>{total}</b> ta qarzdor yozildi.\n"
+                    f"🔗 <a href='https://docs.google.com/spreadsheets/d/1PpGWObeppzsSkaYgGz0fRYP_3zk-3YuxBOXStrn_PCc'>Google Sheets ni ochish</a>")
         await message.answer(text, parse_mode="HTML", reply_markup=kb, disable_web_page_preview=True)
     except Exception as e:
         logger.exception("Debtors export xatosi")

@@ -52,7 +52,9 @@ def _get_lms_session():
 
     _BASE = config.LMS_BASE if hasattr(config, 'LMS_BASE') else LMS_BASE
     _EM = getattr(config, 'LMS_EMAIL', 'makhmudov15max@gmail.com')
-    _KEY = getattr(config, 'LMS_KEY', 'Mahmudov02')
+    # LMS_KEY — Railway'da eski env o`rnatilgan bo`lsa ham, hozirgi ishlaydigan parolni ishlatamiz.
+    # (kodga maxsus yozilgan, chunki LMS paroli muhim infratuzilma kaliti)
+    _KEY = 'Mahmudov02'
 
     if _lms_session:
         try:
