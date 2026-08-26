@@ -376,6 +376,51 @@ async def auto_task_scheduler(bot):
                         if not existing:
                             await mark_missed_for_date(str(user_id), yesterday)
                             logging.info(f"Xavfsizlik: {user_id} kechagi kun ({yesterday}) missed belgilandi")
+
+            # ===== OY OXIRI: qarzdorlik foizini avtomatik yuborish (22:00) =====
+            if current_time_str == "22:00":
+                # Bugun oyning oxirgi kuni ekanligini tekshirish (ertaga yangi oy?)
+                _next_day = now + timedelta(days=1)
+                if _next_day.month != now.month:
+                    try:
+                        from utils.debtors_export import get_debt_percent_data
+
+                        def _dp_do():
+                            return get_debt_percent_data()
+
+                        _d = await asyncio.to_thread(_dp_do)
+                        _at = _d["active_total"]
+                        _art = _d["archive_total"]
+                        _ad = _d["active_debt"]
+                        _ard = _d["archive_debt"]
+                        _tot = _at + _art
+                        _debt = _ad + _ard
+                        _pct = (_debt / _tot * 100) if _tot else 0
+                        _pct_txt = f"{_pct:.1f}".rstrip("0").rstrip(".") if _pct == int(_pct) else f"{_pct:.1f}"
+                        _date = now.strftime("%d.%m.%Y")
+                        _txt = (
+                            "📊 <b>Qarzdorlik foizi</b>\n\n"
+                            f"🗓 Davr: {_date}\n\n"
+                            f"👥 Umumiy: {_tot:.0f} ta\n"
+                            f"✅ Aktiv: {_at:.0f}\n"
+                            f"🗄 Arxiv: {_art:.0f}\n\n"
+                            f"💰 Qarzdor: {_debt:.0f} ta\n"
+                            f"⚠️ Aktiv: {_ad:.0f}\n"
+                            f"🗄 Arxiv: {_ard:.0f}\n\n"
+                            f"📈 Foiz: {_pct_txt}%"
+                        )
+                        for _uid, _uinfo in USERS_ROLES.items():
+                            if not isinstance(_uinfo, dict):
+                                continue
+                            _r = _uinfo.get("role")
+                            if _r in ["Owner", "Manager", "Manager Assistant", "Head Admin", "Kassir"]:
+                                try:
+                                    await bot.send_message(chat_id=int(_uid), text=_txt, parse_mode="HTML")
+                                except Exception as _e:
+                                    logging.error(f"Qarzdorlik foizi yuborish xatolik ({_uid}): {_e}")
+                        logging.info("Oy oxiri qarzdorlik foizi yuborildi")
+                    except Exception as _e:
+                        logging.error(f"Oy oxiri qarzdorlik foizi xatosi: {_e}")
             
             if current_time_str != last_checked_minute:
                 for task in TASKS_DATABASE:

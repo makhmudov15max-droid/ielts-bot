@@ -27,6 +27,11 @@ class ReportStates(StatesGroup):
     waiting_for_cashbox_detail = State()
     waiting_for_teacher_name_add = State()
     waiting_for_teacher_name_remove = State()
+    # Qarzdorlik foizi -> maosh hisoblash
+    waiting_for_salary_choice = State()
+    waiting_for_salary_hours = State()
+    waiting_for_salary_days = State()
+    waiting_for_salary_cover = State()
 
 
 # ================= GLOBAL O'ZGARUVCHI =================
@@ -94,11 +99,11 @@ async def is_admin(user_id: int) -> bool:
         user_info = _USERS_ROLES.get(str(user_id))
         if user_info:
             role = user_info.get("role")
-            if role in ["Owner", "Manager", "Manager Assistant"]:
+            if role in ["Owner", "Manager", "Manager Assistant", "Head Admin"]:
                 return True
     from utils.users_db import get_user_role
     role = await get_user_role(str(user_id))
-    return role in ["Owner", "Manager", "Manager Assistant"]
+    return role in ["Owner", "Manager", "Manager Assistant", "Head Admin"]
 
 
 # ================= LMS CONFIG =================
@@ -487,14 +492,23 @@ async def lms_back_handler(message: types.Message, state: FSMContext):
     """LMS submenu -> LMS asosiy menyu"""
     role = _USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner") if _USERS_ROLES else "Owner"
     from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-    kb = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📂 Groups"), KeyboardButton(text="💰 Finance")],
-            [KeyboardButton(text="💲 Debtors")],
-            [KeyboardButton(text="🏠 Bosh sahifa")],
-        ],
-        resize_keyboard=True,
-    )
+    if role == "Kassir":
+        kb = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="💲 Debtors")],
+                [KeyboardButton(text="🏠 Bosh sahifa")],
+            ],
+            resize_keyboard=True,
+        )
+    else:
+        kb = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="📂 Groups"), KeyboardButton(text="💰 Finance")],
+                [KeyboardButton(text="💲 Debtors")],
+                [KeyboardButton(text="🏠 Bosh sahifa")],
+            ],
+            resize_keyboard=True,
+        )
     await message.answer(
         "📑 <b>LMS Panel</b>\n\nQuyidagi bo'limlardan birini tanlang:",
         parse_mode="HTML",
@@ -506,19 +520,27 @@ async def lms_back_handler(message: types.Message, state: FSMContext):
 async def lms_main_handler(message: types.Message, state: FSMContext):
     """LMS tugmasi bosilganda — Reply keyboard panelni ko'rsatish"""
     # Ruxsatsiz foydalanuvchilarga butunlay jim javob (Admin ham kira olmaydi)
-    if not await is_admin(message.from_user.id):
+    role = _USERS_ROLES.get(str(message.from_user.id), {}).get("role", None) if _USERS_ROLES else None
+    if role != "Kassir" and not await is_admin(message.from_user.id):
         return
 
     await state.set_state(ReportStates.waiting_for_report_choice)
     role = _USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner") if _USERS_ROLES else "Owner"
     from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-    # Asosiy LMS menyusi
-    base_buttons = [
-        [KeyboardButton(text="📂 Groups"), KeyboardButton(text="💰 Finance")],
-        [KeyboardButton(text="💲 Debtors")],
-        [KeyboardButton(text="🏠 Bosh sahifa")],
-    ]
+    if role == "Kassir":
+        # Kassirga LMS ichidan faqat '💲 Debtors' ko'rinadi (Debs ％ uchun)
+        base_buttons = [
+            [KeyboardButton(text="💲 Debtors")],
+            [KeyboardButton(text="🏠 Bosh sahifa")],
+        ]
+    else:
+        # Asosiy LMS menyusi
+        base_buttons = [
+            [KeyboardButton(text="📂 Groups"), KeyboardButton(text="💰 Finance")],
+            [KeyboardButton(text="💲 Debtors")],
+            [KeyboardButton(text="🏠 Bosh sahifa")],
+        ]
 
     await message.answer(
         "📑 <b>LMS Panel</b>\n\nQuyidagi bo'limlardan birini tanlang:",
@@ -1154,20 +1176,51 @@ async def teacher_back(call: types.CallbackQuery, state: FSMContext):
 
 # ================= DEBTORS SUBMENU =================
 
+def _debt_percent_coeff(percent: float) -> float:
+    """Qarzdorlik foiziga qarab Kassir maoshi koeffitsiyentini qaytaradi."""
+    if percent <= 0:
+        return 3.0
+    if percent < 2.0:
+        return 2.0
+    if percent < 5.0:
+        return 1.8
+    if percent < 7.0:
+        return 1.7
+    if percent < 10.0:
+        return 1.6
+    if percent < 15.0:
+        return 1.5
+    if percent < 20.0:
+        return 1.4
+    return 1.2
+
 @report_router.message(ReportStates.waiting_for_report_choice, F.text == "💲 Debtors")
 async def debtors_submenu(message: types.Message, state: FSMContext):
-    """Debtors submanyusi: faqat '🟢 Active Debs' tugmasi."""
-    if not await is_admin(message.from_user.id):
+    """Debtors submanyusi: '🟢 Active Debs' va 'Debs ％' tugmalari."""
+    role = _USERS_ROLES.get(str(message.from_user.id), {}).get("role", None) if _USERS_ROLES else None
+    if role != "Kassir" and not await is_admin(message.from_user.id):
         return
     from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-    kb = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="🟢 Active Debs")],
-            [KeyboardButton(text="⬅️ Ortga")],
-        ],
-        resize_keyboard=True,
-    )
-    await message.answer("💲 <b>Debtors</b>\n\nQarzdor talabalar ro'yxatini Google Sheets ga yozish uchun quyidagini bosing:", parse_mode="HTML", reply_markup=kb)
+    role = _USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner") if _USERS_ROLES else "Owner"
+    if role == "Kassir":
+        # Kassirga faqat 'Debs ％' (foiz) ko'rinadi — '🟢 Active Debs' (Sheets ga yozuvchi) ko'rinmaydi
+        kb = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="Debs ％")],
+                [KeyboardButton(text="⬅️ Ortga")],
+            ],
+            resize_keyboard=True,
+        )
+    else:
+        kb = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="🟢 Active Debs")],
+                [KeyboardButton(text="Debs ％")],
+                [KeyboardButton(text="⬅️ Ortga")],
+            ],
+            resize_keyboard=True,
+        )
+    await message.answer("💲 <b>Debtors</b>\n\nQarzdor talabalar ro'yxati va qarzdorlik foizi uchun quyidagilarni bosing:", parse_mode="HTML", reply_markup=kb)
 
 
 @report_router.message(ReportStates.waiting_for_report_choice, F.text == "🟢 Active Debs")
@@ -1179,6 +1232,7 @@ async def active_debs_handler(message: types.Message, state: FSMContext):
     kb = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="🟢 Active Debs")],
+            [KeyboardButton(text="Debs ％")],
             [KeyboardButton(text="⬅️ Ortga")],
         ],
         resize_keyboard=True,
@@ -1207,3 +1261,237 @@ async def active_debs_handler(message: types.Message, state: FSMContext):
     except Exception as e:
         logger.exception("Debtors export xatosi")
         await message.answer(f"❌ <b>Xatolik:</b> {e}", parse_mode="HTML", reply_markup=kb)
+
+
+@report_router.message(ReportStates.waiting_for_report_choice, F.text == "Debs ％")
+async def debt_percent_handler(message: types.Message, state: FSMContext):
+    """LMS dan qarzdorlik foizini hisoblab, botda ko'rsatadi."""
+    role = _USERS_ROLES.get(str(message.from_user.id), {}).get("role", None) if _USERS_ROLES else None
+    if role != "Kassir" and not await is_admin(message.from_user.id):
+        return
+    from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+    if role == "Kassir":
+        kb = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="Debs ％")],
+                [KeyboardButton(text="⬅️ Ortga")],
+            ],
+            resize_keyboard=True,
+        )
+    else:
+        kb = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="🟢 Active Debs")],
+                [KeyboardButton(text="Debs ％")],
+                [KeyboardButton(text="⬅️ Ortga")],
+            ],
+            resize_keyboard=True,
+        )
+    await message.answer("⏳ <b>Qarzdorlik foizini hisoblamoqdaman...</b>\nBu bir necha daqiqa olishi mumkin.", parse_mode="HTML")
+
+    try:
+        import asyncio
+        from datetime import datetime as _dt
+        from utils.debtors_export import get_debt_percent_data
+
+        def _do():
+            return get_debt_percent_data()
+
+        d = await asyncio.to_thread(_do)
+
+        active_total = d["active_total"]
+        archive_total = d["archive_total"]
+        active_debt = d["active_debt"]
+        archive_debt = d["archive_debt"]
+        all_total = active_total + archive_total
+        all_debt = active_debt + archive_debt
+        percent = (all_debt / all_total * 100) if all_total else 0
+
+        today = _dt.now()
+        date_str = today.strftime("%d.%m.%Y")
+        percent_txt = f"{percent:.1f}".rstrip("0").rstrip(".") if percent == int(percent) else f"{percent:.1f}"
+
+        # Koeffitsiyentni foizga qarab hisoblash (Kassir maoshi uchun)
+        coeff = _debt_percent_coeff(percent)
+        coeff_txt = f"{coeff:g}"
+
+        text = (
+            "📊 <b>Qarzdorlik foizi</b>\n\n"
+            f"🗓 Davr: {date_str}\n\n"
+            f"👥 Umumiy: {all_total:.0f} ta\n"
+            f"✅ Aktiv: {active_total:.0f}\n"
+            f"🗄 Arxiv: {archive_total:.0f}\n\n"
+            f"💰 Qarzdor: {all_debt:.0f} ta\n"
+            f"⚠️ Aktiv: {active_debt:.0f}\n"
+            f"🗄 Arxiv: {archive_debt:.0f}\n\n"
+            f"📈 Foiz: {percent_txt}%  (×{coeff_txt})"
+        )
+        await message.answer(text, parse_mode="HTML", reply_markup=kb)
+
+        # Maosh hisoblash taklifi
+        from aiogram.types import ReplyKeyboardMarkup as _RKM, KeyboardButton as _KB
+        choice_kb = _RKM(
+            keyboard=[
+                [_KB(text="Istayman 🙃"), _KB(text="Istamayman")],
+            ],
+            resize_keyboard=True,
+        )
+        # Foiz koeffitsiyentini state'da saqlaymiz
+        await state.update_data(
+            debt_coeff=coeff,
+            debt_percent=percent_txt,
+            debt_date=date_str,
+        )
+        await state.set_state(ReportStates.waiting_for_salary_choice)
+        await message.answer(
+            "Istasangiz men sizga umumiy maoshingizni hisoblab beraman 🙃",
+            reply_markup=choice_kb,
+        )
+    except Exception as e:
+        logger.exception("Debt percent xatosi")
+        await message.answer(f"❌ <b>Xatolik:</b> {e}", parse_mode="HTML", reply_markup=kb)
+
+
+# ================= QARZDORLIK FOIZI -> MAOSH HISOBLASH =================
+
+@report_router.message(ReportStates.waiting_for_salary_choice, F.text == "Istamayman")
+async def salary_decline(message: types.Message, state: FSMContext):
+    """Foydalanuvchi maosh hisoblamaslikni tanlasa — bosh menyuga qaytadi."""
+    await state.clear()
+    role = _USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner") if _USERS_ROLES else "Owner"
+    from Keyboards.main_menu import get_main_menu
+    await message.answer("🏠 <b>Bosh sahifa</b>", parse_mode="HTML", reply_markup=get_main_menu(role))
+
+
+@report_router.message(ReportStates.waiting_for_salary_choice, F.text == "Istayman 🙃")
+async def salary_start(message: types.Message, state: FSMContext):
+    """Maosh hisoblash boshlandi — kunlik soatlar so'raladi."""
+    await state.set_state(ReportStates.waiting_for_salary_hours)
+    await message.answer(
+        "1️⃣ Siz bir kunda necha soat ishlaysiz?\n\n"
+        "<i>Faqat raqam kiriting (masalan: 8)</i>",
+        parse_mode="HTML",
+        reply_markup=types.ReplyKeyboardRemove(),
+    )
+
+
+@report_router.message(ReportStates.waiting_for_salary_hours)
+async def salary_hours_input(message: types.Message, state: FSMContext):
+    """Kunlik soatlarni qabul qiladi — faqat raqam."""
+    txt = message.text.strip()
+    if not txt.isdigit():
+        await message.answer("⚠️ Iltimos, faqat raqam kiriting (masalan: 8).")
+        return
+    hours = int(txt)
+    if hours <= 0:
+        await message.answer("⚠️ Soat soni 0 dan katta bo'lishi kerak.")
+        return
+    await state.update_data(salary_hours=hours)
+    await state.set_state(ReportStates.waiting_for_salary_days)
+    await message.answer(
+        "2️⃣ Hisoblamoqchi bo'lgan oy davomida necha kun ishladingiz?\n\n"
+        "<i>Yakshanba, bayram kunlari va ishlamagan kunlaringizdan tashqari. Faqat raqam kiriting.</i>",
+        parse_mode="HTML",
+    )
+
+
+@report_router.message(ReportStates.waiting_for_salary_days)
+async def salary_days_input(message: types.Message, state: FSMContext):
+    """Ishlangan kunlarni qabul qiladi — faqat raqam."""
+    txt = message.text.strip()
+    if not txt.isdigit():
+        await message.answer("⚠️ Iltimos, faqat raqam kiriting.")
+        return
+    days = int(txt)
+    if days <= 0:
+        await message.answer("⚠️ Kunlar soni 0 dan katta bo'lishi kerak.")
+        return
+    await state.update_data(salary_days=days)
+    await state.set_state(ReportStates.waiting_for_salary_cover)
+
+    from aiogram.types import ReplyKeyboardMarkup as _RKM, KeyboardButton as _KB
+    cover_kb = _RKM(
+        keyboard=[
+            [_KB(text="Cover qilmadim")],
+        ],
+        resize_keyboard=True,
+    )
+    await message.answer(
+        "3️⃣ Cover qilgan soatlaringizni yig'indisini kiriting.\n\n"
+        "<i>Raqam kiriting (masalan: 14). Agar cover bo'lmasa — 'Cover qilmadim' tugmasini bosing.</i>",
+        parse_mode="HTML",
+        reply_markup=cover_kb,
+    )
+
+
+@report_router.message(ReportStates.waiting_for_salary_cover, F.text == "Cover qilmadim")
+async def salary_cover_none(message: types.Message, state: FSMContext):
+    """Cover bo'lmasa — 0 cover bilan hisoblaydi."""
+    await _compute_salary(message, state, cover_hours=0)
+
+
+@report_router.message(ReportStates.waiting_for_salary_cover)
+async def salary_cover_input(message: types.Message, state: FSMContext):
+    """Cover soatlarini qabul qiladi va maoshni hisoblaydi."""
+    txt = message.text.strip().replace(" ", "")
+    if not txt.lstrip("-").isdigit():
+        await message.answer("⚠️ Iltimos, faqat raqam kiriting (yoki 'Cover qilmadim' tugmasini bosing).")
+        return
+    cover = int(txt)
+    if cover < 0:
+        await message.answer("⚠️ Cover soati manfiy bo'lolmaydi.")
+        return
+    await _compute_salary(message, state, cover_hours=cover)
+
+
+async def _compute_salary(message, state, cover_hours: int):
+    """Kassir fiks maoshini hisoblab ko'rsatadi."""
+    data = await state.get_data()
+    hours = data.get("salary_hours", 0)
+    days = data.get("salary_days", 0)
+    coeff = data.get("debt_coeff", 1.0)
+    percent_txt = data.get("debt_percent", "?")
+    date_str = data.get("debt_date", "?")
+
+    # Fiks hisoblash: birinchi 8 soat 15,000/soat, 8 dan oshgani 20,000/soat
+    base_hours = 8
+    rate_base = 15000
+    rate_overtime = 20000
+    if hours <= base_hours:
+        daily = hours * rate_base
+    else:
+        daily = base_hours * rate_base + (hours - base_hours) * rate_overtime
+
+    monthly_fix = daily * days
+    cover_amount = cover_hours * 15000  # cover har doim 15,000 dan (20,000 ga o'tmaydi)
+    total_before = monthly_fix + cover_amount
+    final = total_before * coeff
+
+    def _fmt(n):
+        return f"{int(round(n)):,}".replace(",", " ")
+
+    # Hisobni tushuntirish
+    if hours <= base_hours:
+        daily_explain = f"{hours} soat × 15,000 = {_fmt(daily)}"
+    else:
+        extra = hours - base_hours
+        daily_explain = (f"8 soat × 15,000 + {extra} soat × 20,000 = "
+                         f"{_fmt(base_hours*rate_base)} + {_fmt(extra*rate_overtime)} = {_fmt(daily)}")
+
+    text = (
+        "💼 <b>Umumiy maosh (Kassir)</b>\n\n"
+        f"🗓 Davr: {date_str}\n"
+        f"📈 Qarzdorlik foizi: {percent_txt}%  (×{coeff:g})\n\n"
+        f"⏱ <b>Kunlik:</b> {daily_explain}\n"
+        f"📆 Ishlangan kunlar: {days} kun\n"
+        f"💰 <b>Oylik fiks:</b> {_fmt(daily)} × {days} = {_fmt(monthly_fix)}\n"
+        f"🔁 Cover: {cover_hours} soat × 15,000 = {_fmt(cover_amount)}\n"
+        f"➡️ <b>Jami (fiks + cover):</b> {_fmt(total_before)}\n\n"
+        f"🎯 <b>Yakuniy maosh:</b>\n"
+        f"{_fmt(total_before)} × {coeff:g} = <b>{_fmt(final)} so'm</b>"
+    )
+
+    await state.clear()
+    role = _USERS_ROLES.get(str(message.from_user.id), {}).get("role", "Owner") if _USERS_ROLES else "Owner"
+    from Keyboards.main_menu import get_main_menu
+    await message.answer(text, parse_mode="HTML", reply_markup=get_main_menu(role))

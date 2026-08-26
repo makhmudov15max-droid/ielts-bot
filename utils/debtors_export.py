@@ -551,6 +551,74 @@ def _create_charts(all_stats: dict):
         _svc.spreadsheets().batchUpdate(spreadsheetId=SHEET_ID, body={"requests": reqs}).execute()
 
 
+def get_debt_percent_data() -> dict:
+    """LMS dan qarzdorlik foizi hisobi uchun raqamlarni oladi.
+
+    Qaytaradi:
+      active_total  -> umumiy aktiv talabalar (LMS dashboard activeStudents)
+      archive_total -> shu oyda active'dan archive'ga o'tganlar soni
+      active_debt   -> aktiv qarzdorlar (DEBTORS + MORE, 2+6 istisno, PARTIAL kirmaydi)
+      archive_debt  -> negative balans bilan archive'ga o'tgan qarzdorlar
+    """
+    import re, json, html as _h
+    s = _get_lms_session()
+    tmap = _teacher_map
+
+    def _props_count(url: str) -> int:
+        """Inertia sahifasidagi data-page dan count olish."""
+        try:
+            raw = s.get(url, timeout=30).text
+            m = re.search(r'data-page="([^"]+)"', raw)
+            if not m:
+                return 0
+            data = json.loads(_h.unescape(m.group(1)))
+            return int(data.get("props", {}).get("goneFromActiveStudentsCount", 0))
+        except Exception:
+            return 0
+
+    # 1) Umumiy aktiv talabalar (dashboard activeStudents)
+    active_total = 0
+    try:
+        raw = s.get(f"{LMS_BASE}/admin/dashboard", timeout=30).text
+        m = re.search(r'data-page="([^"]+)"', raw)
+        if m:
+            data = json.loads(_h.unescape(m.group(1)))
+            active_total = int(data.get("props", {}).get("activeStudents", 0))
+    except Exception:
+        active_total = 0
+
+    # 2) Shu oyda active'dan archive'ga o'tganlar soni (I ustun "arxiv")
+    today = datetime.now(UZ_TZ)
+    from_date = f"{today.year}-{today.month:02d}-01"
+    to_date = f"{today.year}-{today.month:02d}-{today.day:02d}"
+    arch_url = (f"{LMS_BASE}/admin/dashboard/students-gone-from-active-students"
+                f"?from_date={from_date}&page=1&to_date={to_date}")
+    archive_total = _props_count(arch_url)
+
+    # 3) Aktiv qarzdorlar: DEBTORS + MORE (2+6 istisno, PARTIAL kirmaydi)
+    active_debt = 0
+    for dtype in [TYPE_DEBTOR, TYPE_MORE]:
+        rows, _stats, _cols = fetch_all_students(s, dtype, tmap)
+        for r in rows:
+            # ism yonida (2+6) qo'shilgan bo'lsa -> istisno, sanamaymiz
+            name = r[0]
+            if "(2" in name and "+6" in name:
+                continue
+            active_debt += 1
+
+    # 4) Negative balans bilan archive'ga o'tgan qarzdorlar
+    neg_url = (f"{LMS_BASE}/admin/dashboard/students-gone-from-active-students"
+               f"?balance=negative&from_date={from_date}&page=1&to_date={to_date}")
+    archive_debt = _props_count(neg_url)
+
+    return {
+        "active_total": active_total,
+        "archive_total": archive_total,
+        "active_debt": active_debt,
+        "archive_debt": archive_debt,
+    }
+
+
 def run_export() -> dict:
     """Barcha tiplarni yig`ib, sheets ga yozadi + diagrammalar yaratadi."""
     s = _get_lms_session()
