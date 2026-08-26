@@ -293,6 +293,26 @@ def _write_to_sheets(all_rows: dict):
 
     # Sarlavha qalin + bo`lim sarlavhalari rangli
     ws.format("A1:F1", {"textFormat": {"bold": True}})
+
+    # Horizontal align qoidasi (A=LEFT, B=RIGHT, C-F=LEFT) — barcha qatorlar
+    try:
+        from google.oauth2 import service_account as _saH
+        from googleapiclient.discovery import build as _buildH
+        _scopeH = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+        _crH = _saH.Credentials.from_service_account_info(json.loads(creds_json), scopes=_scopeH)
+        _svcH = _buildH("sheets", "v4", credentials=_crH)
+        align_reqs = [
+            {"repeatCell": {"range": {"sheetId": ws.id, "startRowIndex": 0, "endRowIndex": 500, "startColumnIndex": 0, "endColumnIndex": 1},
+                            "cell": {"userEnteredFormat": {"horizontalAlignment": "LEFT"}}, "fields": "userEnteredFormat.horizontalAlignment"}},
+            {"repeatCell": {"range": {"sheetId": ws.id, "startRowIndex": 0, "endRowIndex": 500, "startColumnIndex": 1, "endColumnIndex": 2},
+                            "cell": {"userEnteredFormat": {"horizontalAlignment": "RIGHT"}}, "fields": "userEnteredFormat.horizontalAlignment"}},
+            {"repeatCell": {"range": {"sheetId": ws.id, "startRowIndex": 0, "endRowIndex": 500, "startColumnIndex": 2, "endColumnIndex": 6},
+                            "cell": {"userEnteredFormat": {"horizontalAlignment": "LEFT"}}, "fields": "userEnteredFormat.horizontalAlignment"}},
+        ]
+        _svcH.spreadsheets().batchUpdate(spreadsheetId=SHEET_ID, body={"requests": align_reqs}).execute()
+    except Exception as _eh:
+        logger.warning(f"align fail: {_eh}")
+
     # Bo`lim sarlavhalari (--- 📌 ... ---) to`q ko`k fon + oq qalin
     reqs_format = []
     for row_i, row in enumerate(grid):
