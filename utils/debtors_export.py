@@ -126,6 +126,55 @@ def _fmt_comment_ts(created_at: str) -> str:
         return ""
 
 
+# ---- Rang xilma-xilligi (deadline o'tgan kunlar bo'yicha) ----
+COLOR_YELLOW = {"red": 1.0, "green": 1.0, "blue": 0.6}       # sariq (1-6 debtors / 1-10 partial)
+COLOR_LIGHT_RED = {"red": 1.0, "green": 0.6, "blue": 0.6}    # och qizil (7-10 debtors)
+COLOR_DARK_RED = {"red": 0.7, "green": 0.1, "blue": 0.1}      # to'q qizil (11+ / more)
+
+def _is_26(note):
+    """note ichida '2+6' (har xil yozilish) borligini tekshiradi."""
+    if not note:
+        return False
+    n = str(note).lower().replace(" ", "").replace("\u00a0", "")
+    return "2+6" in n
+
+
+def _days_past_deadline(deadline_str: str) :
+    """deadline'dan bugungacha o'tgan kunlar soni. Kelajakda bo'lsa manfiy/0."""
+    try:
+        dl = datetime.strptime(str(deadline_str)[:10], "%d.%m.%Y")
+    except Exception:
+        try:
+            dl = datetime.strptime(str(deadline_str)[:10], "%Y-%m-%d")
+        except Exception:
+            return None
+    dl = dl.replace(tzinfo=UZ_TZ)  # aware qilish
+    today = datetime.now(UZ_TZ).replace(hour=0, minute=0, second=0, microsecond=0)
+    return (today - dl).days
+
+
+def _row_color(dtype, deadline_str, is_26_note):
+    """Qator uchun fon rangini qaytaradi (dict) yoki None (ranglanmaydi)."""
+    if is_26_note:
+        return None  # 2+6 loyiha o'quvchilari ranglanmaydi
+    if dtype == TYPE_MORE:
+        return COLOR_DARK_RED
+    days = _days_past_deadline(deadline_str)
+    if days is None or days <= 0:
+        return None  # deadline kelajakda/bugun — hali vaqti bor
+    if dtype == TYPE_DEBTOR:
+        if 1 <= days <= 6:
+            return COLOR_YELLOW
+        if 7 <= days <= 10:
+            return COLOR_LIGHT_RED
+        return COLOR_DARK_RED
+    if dtype == TYPE_PARTIAL:
+        if 1 <= days <= 10:
+            return COLOR_YELLOW
+        return COLOR_DARK_RED
+    return None
+
+
 def fetch_debtor_page(session, dtype: str, page: int):
     """Bir sahifadagi qarzdorlar. Dict qaytaradi yoki None xatolikda."""
     import requests
@@ -197,6 +246,7 @@ def fetch_all_students(session, dtype: str, tmap: dict):
     page = 1
     rows = []
     stats = {"dates": {}, "authors": {}}  # '18.08' -> count, author -> count
+    colors = []  # har row uchun fon rangi (dict yoki None)
     while True:
         pg = fetch_debtor_page(session, dtype, page)
         if not pg:
@@ -205,15 +255,23 @@ def fetch_all_students(session, dtype: str, tmap: dict):
         for st in data:
             sg = (st.get("student_groups") or [{}])[0]  # asosiy guruh
             comment_text, created_at, author = _last_comment(session, st.get("id"))
+            # '2+6' loyiha o'quvchisi — eslatma (note) maydonida
+            note = st.get("note") or ""
+            is_26 = _is_26(note)
+            full_name = st.get("full_name", "")
+            if is_26:
+                full_name = f"{full_name} (2+6)"
+            deadline = _deadline_for_group(sg or {})
             row = [
-                st.get("full_name", ""),
+                full_name,
                 str(st.get("phone", "") or ""),
                 _fmt_balance(st.get("student_balance")),
-                _deadline_for_group(sg or {}),
+                deadline,
                 _teacher_for_group(tmap, sg or {}),
                 comment_text,
             ]
             rows.append(row)
+            colors.append(_row_color(dtype, deadline, is_26))
             logger.info(f"  [{dtype}] {row[0]} balance={row[2]} comment={comment_text[:40]}")
 
             # statistika — izoh sanasi (dd.mm) va muallif
@@ -227,11 +285,11 @@ def fetch_all_students(session, dtype: str, tmap: dict):
         if pag >= last:
             break
         page += 1
-    return rows, stats
+    return rows, stats, colors
 
 
-def _write_to_sheets(all_rows: dict):
-    """Bo`limlar ketma-ketligida jadvalga yozish. A-C ustunlar o`chirilgan, A1 dan."""
+def _write_to_sheets(all_rows: dict, all_colors: dict = None):
+    """Bo`limlar ketma-ketligida jadvalga yozish. all_colors: {dtype: [color|None, ...]}"""
     import gspread
     creds_json = os.getenv("GOOGLE_CREDS")
     if not creds_json:
@@ -247,45 +305,40 @@ def _write_to_sheets(all_rows: dict):
     # Butun F hududini oddiy formatga qaytarish (oq bg, bold emas, font size 10, Arial)
     # — eski qo'lda qo'yilgan ko'k/bold/katta font format yangi qatorlarga ko'chmasligi uchun
     try:
-        from google.oauth2 import service_account as _saF
-        from googleapiclient.discovery import build as _buildF
-        _scopeF = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-        _crF = _saF.Credentials.from_service_account_info(json.loads(creds_json), scopes=_scopeF)
-        _svcF = _buildF("sheets", "v4", credentials=_crF)
-        _svcF.spreadsheets().batchUpdate(spreadsheetId=SHEET_ID, body={"requests": [{
-            "repeatCell": {
-                "range": {"sheetId": ws.id, "startRowIndex": 0, "endRowIndex": 500, "startColumnIndex": 0, "endColumnIndex": 6},
-                "cell": {"userEnteredFormat": {
-                    "backgroundColor": {"red": 1, "green": 1, "blue": 1},
-                    "textFormat": {
-                        "bold": False,
-                        "fontSize": 10,
-                        "fontFamily": "Arial",
-                        "foregroundColor": {"red": 0, "green": 0, "blue": 0}
-                    }
-                }},
-                "fields": "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat.bold,userEnteredFormat.textFormat.fontSize,userEnteredFormat.textFormat.fontFamily,userEnteredFormat.textFormat.foregroundColor"
+        ws.format("A1:F500", {
+            "backgroundColor": {"red": 1, "green": 1, "blue": 1},
+            "textFormat": {
+                "bold": False,
+                "fontSize": 10,
+                "fontFamily": "Arial",
+                "foregroundColor": {"red": 0, "green": 0, "blue": 0}
             }
-        }]}).execute()
+        })
     except Exception as _e:
         logger.warning(f"format reset fail: {_e}")
 
     # Bo`limlar ketma-ketligini qurish
     blocks = [
-        (SECTION_DEBTORS, all_rows.get(TYPE_DEBTOR, [])),
-        (SECTION_PARTIAL, all_rows.get(TYPE_PARTIAL, [])),
-        (SECTION_MORE, all_rows.get(TYPE_MORE, [])),
+        (SECTION_DEBTORS, TYPE_DEBTOR, all_rows.get(TYPE_DEBTOR, [])),
+        (SECTION_PARTIAL, TYPE_PARTIAL, all_rows.get(TYPE_PARTIAL, [])),
+        (SECTION_MORE, TYPE_MORE, all_rows.get(TYPE_MORE, [])),
     ]
 
     # Sarlavha + barcha qatorlarni yig`amiz
     grid = []
     grid.append(HEADERS)
-    for section, rows in blocks:
+    row_color_map = {}  # sheet row index (0-based) -> color dict
+    for section, dtype, rows in blocks:
         if not rows:
             continue
         grid.append([section, "", "", "", "", ""])
-        for r in rows:
+        # Bu bo'limga tegishli colors ro'yxati
+        c_list = (all_colors or {}).get(dtype, [])
+        for i, r in enumerate(rows):
             grid.append(r)
+            col = c_list[i] if i < len(c_list) else None
+            if col:
+                row_color_map[len(grid) - 1] = col
 
     start = "A1"
     end = f"F{len(grid)}"
@@ -327,6 +380,15 @@ def _write_to_sheets(all_rows: dict):
                     "fields": "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat.bold,userEnteredFormat.textFormat.fontSize,userEnteredFormat.textFormat.foregroundColor"
                 }
             })
+    # Qarzdorlik darajasi bo'yicha rangli qatorlar (deadline o'tgan kunlarga qarab)
+    for row_i, col in row_color_map.items():
+        reqs_format.append({
+            "repeatCell": {
+                "range": {"sheetId": ws.id, "startRowIndex": row_i, "endRowIndex": row_i + 1, "startColumnIndex": 0, "endColumnIndex": 6},
+                "cell": {"userEnteredFormat": {"backgroundColor": col}},
+                "fields": "userEnteredFormat.backgroundColor"
+            }
+        })
     if reqs_format:
         from google.oauth2 import service_account as _sa2
         from googleapiclient.discovery import build as _build2
@@ -488,14 +550,16 @@ def run_export() -> dict:
 
     result = {}
     all_stats = {}
+    all_colors = {}
     for dtype in [TYPE_DEBTOR, TYPE_PARTIAL, TYPE_MORE]:
-        rows, stats = fetch_all_students(s, dtype, tmap)
+        rows, stats, colors = fetch_all_students(s, dtype, tmap)
         result[dtype] = rows
         all_stats[dtype] = stats
+        all_colors[dtype] = colors
     total = sum(len(v) for v in result.values())
 
     # Sheets'ga yozish
-    rows_written = _write_to_sheets(result)
+    rows_written = _write_to_sheets(result, all_colors)
     # Diagrammalar
     _create_charts(all_stats)
     return {"rows": result, "total": total, "rows_written": rows_written}
