@@ -30,7 +30,7 @@ def get_main_menu(role: str):
     elif role == "Kassir":
         keyboard = [
             [KeyboardButton(text="✅ Ishga keldim")],
-            [KeyboardButton(text="📋 Vazifalar roʻyxati"), KeyboardButton(text="💰 Kassir oylik")],
+            [KeyboardButton(text="📋 Vazifalar roʻyxati")],
             [KeyboardButton(text="🌐 LMS"), KeyboardButton(text="💵 jarimalarim")],
         ]
     elif role == "Sanitar":
