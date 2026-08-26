@@ -104,7 +104,7 @@ async def is_admin(user_id: int) -> bool:
 # ================= LMS CONFIG =================
 LMS_BASE = "https://main.ieltszoneapp.uz"
 LMS_EMAIL = config.LMS_EMAIL if hasattr(config, 'LMS_EMAIL') else "makhmudov15max@gmail.com"
-LMS_KEY = config.LMS_KEY if hasattr(config, 'LMS_KEY') else os.getenv("LMS_KEY", "halollik1902")
+LMS_KEY = config.LMS_KEY if hasattr(config, 'LMS_KEY') else os.getenv("LMS_KEY", "Mahmudov02")
 
 DRUJBA_BRANCH_ID = 3
 IELTS_COURSE_IDS = {7, 8, 9, 10, 12, 15}  # Novice, Standard, Expert, Intensive, Practice, Speaking
@@ -490,6 +490,7 @@ async def lms_back_handler(message: types.Message, state: FSMContext):
     kb = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="📂 Groups"), KeyboardButton(text="💰 Finance")],
+            [KeyboardButton(text="💲 Debtors")],
             [KeyboardButton(text="🏠 Bosh sahifa")],
         ],
         resize_keyboard=True,
@@ -515,6 +516,7 @@ async def lms_main_handler(message: types.Message, state: FSMContext):
     # Asosiy LMS menyusi
     base_buttons = [
         [KeyboardButton(text="📂 Groups"), KeyboardButton(text="💰 Finance")],
+        [KeyboardButton(text="💲 Debtors")],
         [KeyboardButton(text="🏠 Bosh sahifa")],
     ]
 
@@ -1148,3 +1150,55 @@ async def teacher_remove_confirm(call: types.CallbackQuery, state: FSMContext):
 async def teacher_back(call: types.CallbackQuery, state: FSMContext):
     await call.answer()
     await manage_teachers(call.message, state)
+
+
+# ================= DEBTORS SUBMENU =================
+
+@report_router.message(ReportStates.waiting_for_report_choice, F.text == "💲 Debtors")
+async def debtors_submenu(message: types.Message, state: FSMContext):
+    """Debtors submanyusi: faqat '🟢 Active Debs' tugmasi."""
+    if not await is_admin(message.from_user.id):
+        return
+    from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+    kb = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🟢 Active Debs")],
+            [KeyboardButton(text="⬅️ Ortga")],
+        ],
+        resize_keyboard=True,
+    )
+    await message.answer("💲 <b>Debtors</b>\n\nQarzdor talabalar ro'yxatini Google Sheets ga yozish uchun quyidagini bosing:", parse_mode="HTML", reply_markup=kb)
+
+
+@report_router.message(ReportStates.waiting_for_report_choice, F.text == "🟢 Active Debs")
+async def active_debs_handler(message: types.Message, state: FSMContext):
+    """Google Sheets ga barcha qarzdorlarni yozadi (deb-eksport)."""
+    if not await is_admin(message.from_user.id):
+        return
+    from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+    kb = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🟢 Active Debs")],
+            [KeyboardButton(text="⬅️ Ortga")],
+        ],
+        resize_keyboard=True,
+    )
+    await message.answer("⏳ <b>Qarzdorlarni yuklab olmoqdaman...</b>\nBu bir necha daqiqa olishi mumkin.", parse_mode="HTML")
+
+    try:
+        import asyncio
+        from utils.debtors_export import run_export
+
+        def _do():
+            return run_export()
+
+        info = await asyncio.to_thread(_do)
+        total = info["total"]
+        rows = info["rows_written"]
+        text = (f"✅ <b>Done!</b> Google Sheets ga yozildi.\n\n"
+                f"👥 Jami: <b>{total}</b> ta qarzdor yozildi.\n"
+                f"🔗 <a href='https://docs.google.com/spreadsheets/d/1PpGWObeppzsSkaYgGz0fRYP_3zk-3YuxBOXStrn_PCc'>Google Sheets ni ochish</a>")
+        await message.answer(text, parse_mode="HTML", reply_markup=kb, disable_web_page_preview=True)
+    except Exception as e:
+        logger.exception("Debtors export xatosi")
+        await message.answer(f"❌ <b>Xatolik:</b> {e}", parse_mode="HTML", reply_markup=kb)
