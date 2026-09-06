@@ -333,6 +333,21 @@ def is_holiday_date(date_str: str, holidays_set: set) -> bool:
     return mm_dd in holidays_set
 
 
+def is_sunday(date_str: str) -> bool:
+    """Berilgan sana yakshanba ekanini tekshiradi. Yakshanba — dam olish kuni."""
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").weekday() == 6
+    except Exception:
+        return False
+
+
+def is_workday(date_str: str, holidays_set: set) -> bool:
+    """Berilgan sana ish kuni ekanini tekshiradi (yakshanba va bayram EMAS)."""
+    if is_sunday(date_str):
+        return False
+    return not is_holiday_date(date_str, holidays_set)
+
+
 async def format_attendance_report(records: list, title: str) -> str:
     """Attendance report - bayram kunlarini hisobga olgan holda"""
     if not records:
@@ -350,7 +365,11 @@ async def format_attendance_report(records: list, title: str) -> str:
         arrived_at = r.get("arrived_at", "Noma'lum")
         late_min = r.get("late_minutes", 0)
         reason = r.get("reason", "")
-        
+
+        # Yakshanba — dam olish kuni, ish kuni hisoblanmaydi va ko'rsatilmaydi
+        if is_sunday(date):
+            continue
+
         is_holiday = is_holiday_date(date, holidays_set) if holidays_set else False
         
         if status == "checked_in":
@@ -385,11 +404,11 @@ async def format_attendance_report(records: list, title: str) -> str:
         text += "⚠️ <b>Ishga kelmagan / tasdiqlamagan kunlar:</b>\n"
         text += "\n".join(missed_days) + "\n\n"
     
-    # Statistikaga bayram kunlarini kiritma (faqat ish kunlari)
+    # Statistikaga bayram va yakshanba kunlarini kiritma (faqat ish kunlari)
     total_work_days = len(checked_in_days)
-    total_days_in_period = len(set(r.get("date") for r in records if not is_holiday_date(r.get("date"), holidays_set)))
+    total_days_in_period = len(set(r.get("date") for r in records if is_workday(r.get("date"), holidays_set)))
     
-    text += "📊 <b>Statistika (bayramlar hisobga olinmagan):</b>\n"
+    text += "📊 <b>Statistika (bayram va dam olish kunlari hisobga olinmagan):</b>\n"
     text += f"   ✅ Ishlagan kunlar: {total_work_days}/{total_days_in_period}"
     
     return text
@@ -736,16 +755,16 @@ async def send_all_employees_report(message: types.Message, start_date: str, end
     end = datetime.strptime(end_date, "%Y-%m-%d")
     today = datetime.now(TASHKENT_TZ).strftime("%Y-%m-%d")
     
-    # Faqat bugungacha bo'lgan sanalar
+    holidays_set = await get_holiday_dates()
+
+    # Faqat ish kunlari (bugungacha): yakshanba va bayram kunlari chiqariladi
     date_list = []
     current = start
     while current <= end:
         d = current.strftime("%Y-%m-%d")
-        if d <= today:
+        if d <= today and is_workday(d, holidays_set):
             date_list.append(d)
         current += timedelta(days=1)
-    
-    holidays_set = await get_holiday_dates()
     
     await message.answer(f"👥 <b>{title}</b>\n📊 {len(employees)} ta xodim", parse_mode="HTML")
     
@@ -788,8 +807,8 @@ async def send_all_employees_report(message: types.Message, start_date: str, end
             else:
                 missed.append(short)
         
-        # Hisobotni yig'ish
-        total_work_days = len(date_list) - len([d for d in date_list if is_holiday_date(d, holidays_set)])
+        # Hisobotni yig'ish (date_list faqat ish kunlarini o'z ichiga oladi)
+        total_work_days = len(date_list)
         h, m = divmod(total_late_min, 60)
         
         report = (
