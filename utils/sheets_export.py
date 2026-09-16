@@ -299,6 +299,219 @@ def write_teacher_slots(sheet, schedule, sheet_id, requests_out):
     return busy_count
 
 
+# ====== TOQ/JUFT IXCHAM JADVAL (asosiy jadvalning yonida, AE ustundan) ======
+# Dizayn: 1 qator = 1 vaqt sloti, ustunlar: Soat | xona raqamlari...
+# TOQ bloki tepada, JUFT bloki pastda.
+# AE ustunidan boshlanadi — O:AA ustozlar slot jadvali bilan to'qnashmasligi uchun.
+COMPACT_COL_START = 31        # AE ustuni (1-based: AE = 31)
+COMPACT_ROW_START = 1         # AE1
+COMPACT_ROOM_IDS = ["101", "102", "103", "104", "106", "107", "108", "109", "110", "111"]
+# Eslatma: 105 xonasi jadvalda ishlatilmaydi (namunada yo'q)
+COMPACT_TIMES = ["08:00", "10:00", "14:00", "16:00", "18:00"]
+COMPACT_TIMES_SAFE = ["'08:00", "'10:00", "'14:00", "'16:00", "'18:00"]
+
+# Sariq — yaqin orada ochiladigan guruh (status=1, xonasi aniq)
+YELLOW_PLANNED_BG = {"red": 1.0, "green": 0.898, "blue": 0.0}     # #FFE500
+COMPACT_HEADER_BG = {"red": 0.004, "green": 0.945, "blue": 0.698}  # #01F1B2
+
+
+def _col_letter(idx: int) -> str:
+    s = ""
+    while idx > 0:
+        idx, rem = divmod(idx - 1, 26)
+        s = chr(65 + rem) + s
+    return s
+
+
+def _compact_slot_time(st: str) -> str:
+    """Dars vaqtini ixcham jadval slotiga moslaydi (18:30/19:00 → 18:00)."""
+    st = str(st)[:5]
+    if st >= "18:00":
+        return "18:00"
+    if st < "08:00":
+        return "08:00"
+    # 12:00 → 10:00 slotiga (jadvalda 12:00 yo'q)
+    if st == "12:00":
+        return "10:00"
+    for t in COMPACT_TIMES:
+        if st <= t:
+            return t
+    return "18:00"
+
+
+def collect_compact(lessons):
+    """Ixcham jadval uchun ma'lumot yig'adi.
+
+    Returns: {(time_slot, room): {"text": str, "planned": bool}}
+    planned=True → yaqin orada ochiladi (sariq).
+    """
+    out = {}
+    for lesson in lessons:
+        status = lesson.get("status")
+        if status not in (1, 2):
+            continue
+        room = str((lesson.get("room") or {}).get("name", "") or "")
+        if room not in COMPACT_ROOM_IDS:
+            continue
+        slot = _compact_slot_time(lesson.get("lesson_start_time", ""))
+        if slot not in COMPACT_TIMES:
+            continue
+
+        # Ustoz nomi (teacher yoki guruh nomidan)
+        t = lesson.get("teacher") or {}
+        tname = f"{t.get('first_name','')} {t.get('last_name','')}".strip()
+        if not tname:
+            gname = (lesson.get("name") or "").lower()
+            for disp, _tid, keys in TEACHER_COLUMNS:
+                if any(k in gname for k in keys):
+                    tname = disp
+                    break
+
+        # Guruh/kurs nomi qisqartmasi
+        course_obj = lesson.get("sub_course") or lesson.get("course") or {}
+        level = (course_obj.get("name") or {}).get("uz", "")
+        level = level.replace("Intermediate", "Int").replace("Elementary", "Elem")
+
+        short_t = (tname.split()[0] if tname else "?")
+        txt = f"#{lesson.get('id')}\n{short_t}\n{level[:9]}".strip()
+
+        key = (slot, room)
+        if key in out:
+            out[key]["text"] += f"\n——\n{txt}"
+            if status == 1:
+                out[key]["planned"] = True
+        else:
+            out[key] = {"text": txt, "planned": (status == 1)}
+    return out
+
+
+def write_compact_schedule(sheet, sheet_id, schedule, requests_out):
+    """TOQ/JUFT ixcham jadvalni asosiy jadval yoniga yozadi.
+
+    Layout (M ustunidan):
+      M1:  "TOQ"           | N1: 101 | O1: 102 | ...
+      M2:  "08:00"         | kataklar
+      ...
+      M7:  "JUFT"
+      M8:  "08:00"
+      ...
+    Returns: (planned_cells, filled_cells)
+    """
+    odd = collect_compact(schedule.get("odd", []))
+    even = collect_compact(schedule.get("even", []))
+
+    nrooms = len(COMPACT_ROOM_IDS)
+    sc0 = COMPACT_COL_START - 1          # 0-based
+    ec0 = sc0 + nrooms + 1               # +1 = Soat ustuni
+    rs0 = COMPACT_ROW_START - 1
+
+    matrix = []
+    # TOQ bloki
+    matrix.append(["TOQ"] + COMPACT_ROOM_IDS)
+    for slot, slot_safe in zip(COMPACT_TIMES, COMPACT_TIMES_SAFE):
+        row = [slot_safe]
+        for room in COMPACT_ROOM_IDS:
+            c = odd.get((slot, room))
+            row.append(c["text"] if c else "")
+        matrix.append(row)
+    matrix.append([])                    # ajratgich
+    # JUFT bloki
+    matrix.append(["JUFT"] + COMPACT_ROOM_IDS)
+    for slot, slot_safe in zip(COMPACT_TIMES, COMPACT_TIMES_SAFE):
+        row = [slot_safe]
+        for room in COMPACT_ROOM_IDS:
+            c = even.get((slot, room))
+            row.append(c["text"] if c else "")
+        matrix.append(row)
+
+    end_row = rs0 + len(matrix)
+    rng = f"{_col_letter(COMPACT_COL_START)}{COMPACT_ROW_START}:{_col_letter(sc0 + 1 + nrooms)}{end_row}"
+    sheet.update(rng, matrix, value_input_option="USER_ENTERED")
+
+    def _fmt(sr, er, sc, ec, f, fields="userEnteredFormat"):
+        return {
+            "repeatCell": {
+                "range": {"sheetId": sheet_id,
+                          "startRowIndex": sr, "endRowIndex": er,
+                          "startColumnIndex": sc, "endColumnIndex": ec},
+                "cell": {"userEnteredFormat": f},
+                "fields": fields,
+            }
+        }
+
+    planned_cells = []
+    filled_cells = []
+
+    blocks = [(rs0, odd), (rs0 + len(COMPACT_TIMES) + 2, even)]
+
+    for bs, data in blocks:
+        # Sarlavha qatori
+        requests_out.append(_fmt(bs, bs + 1, sc0, ec0, {
+            "backgroundColor": COMPACT_HEADER_BG,
+            "textFormat": {"bold": True, "fontSize": 9},
+            "horizontalAlignment": "CENTER",
+            "verticalAlignment": "MIDDLE",
+            "borders": BORDER_GRAY,
+        }))
+        # Vaqt ustuni
+        requests_out.append(_fmt(bs + 1, bs + 1 + len(COMPACT_TIMES), sc0, sc0 + 1, {
+            "textFormat": {"bold": True, "fontSize": 8},
+            "horizontalAlignment": "CENTER",
+            "verticalAlignment": "MIDDLE",
+            "borders": BORDER_GRAY,
+            "wrapStrategy": "WRAP",
+        }))
+        # Ma'lumot kataklari
+        for ri, slot in enumerate(COMPACT_TIMES):
+            abs_row = bs + 1 + ri
+            for ci, room in enumerate(COMPACT_ROOM_IDS):
+                c = data.get((slot, room))
+                base = {
+                    "textFormat": {"fontSize": 7},
+                    "horizontalAlignment": "CENTER",
+                    "verticalAlignment": "MIDDLE",
+                    "wrapStrategy": "WRAP",
+                    "borders": BORDER_GRAY,
+                }
+                if c and c.get("planned"):
+                    base["backgroundColor"] = YELLOW_PLANNED_BG
+                    base["textFormat"] = {"fontSize": 7, "bold": False}
+                    planned_cells.append((abs_row + 1, sc0 + 2 + ci))
+                elif c:
+                    filled_cells.append((abs_row + 1, sc0 + 2 + ci))
+                requests_out.append(_fmt(abs_row, abs_row + 1, sc0 + 1 + ci, sc0 + 2 + ci, base))
+
+    # Ustun kengliklari — ixcham
+    requests_out.append({
+        "updateDimensionProperties": {
+            "range": {"sheetId": sheet_id, "dimension": "COLUMNS",
+                      "startIndex": sc0, "endIndex": sc0 + 1},
+            "properties": {"pixelSize": 46}, "fields": "pixelSize",
+        }
+    })
+    for ci in range(sc0 + 1, ec0):
+        requests_out.append({
+            "updateDimensionProperties": {
+                "range": {"sheetId": sheet_id, "dimension": "COLUMNS",
+                          "startIndex": ci, "endIndex": ci + 1},
+                "properties": {"pixelSize": 62}, "fields": "pixelSize",
+            }
+        })
+    # Qator balandliklari — ixcham
+    for ri in range(rs0, rs0 + len(matrix)):
+        is_hdr = ri in (rs0, rs0 + len(COMPACT_TIMES) + 2)
+        requests_out.append({
+            "updateDimensionProperties": {
+                "range": {"sheetId": sheet_id, "dimension": "ROWS",
+                          "startIndex": ri, "endIndex": ri + 1},
+                "properties": {"pixelSize": 22 if is_hdr else 44},
+                "fields": "pixelSize",
+            }
+        })
+
+    return planned_cells, filled_cells
+
+
 async def write_schedule_to_sheets() -> str:
     import asyncio
     import gspread
@@ -523,6 +736,14 @@ async def write_schedule_to_sheets() -> str:
         except Exception as e:
             logger.warning(f"slot clear: {str(e)[:100]}")
 
+        # ====== TOQ/JUFT IXCHAM JADVAL (AE ustunidan) ======
+        try:
+            sheet.batch_clear(["AE1:AO20"])
+        except Exception as e:
+            logger.warning(f"compact clear: {str(e)[:100]}")
+        planned_cells, filled_cells = write_compact_schedule(sheet, sheet_id, schedule, requests)
+        planned_count_compact = len(planned_cells)
+
         busy_count = write_teacher_slots(sheet, schedule, sheet_id, requests)
 
         # ====== FORMATTING ======
@@ -652,10 +873,10 @@ async def write_schedule_to_sheets() -> str:
             f"✅ Dars jadvali Google Sheets ga yozildi!\n\n"
             f"📊 Toq kunlar: {odd_count} ta dars\n"
             f"📊 Juft kunlar: {even_count} ta dars\n"
-            f"⏳ Kutilayotgan guruhlar: {planned_count} ta\n"
+            f"🟡 Yaqin orada ochiladi: {planned_count_compact} ta (sariq)\n"
+            f"🗓 Ixcham TOQ/JUFT jadval: AE1:AO12\n"
             f"👨🏻‍🏫 Ustozlar slot jadvali: O2:AA14 ({len(TEACHER_COLUMNS)} ustoz, {busy_count} ta band slot)\n"
-            f"📋 Sheet: {SHEET_NAME}\n"
-            f"⏰ Vaqtlar: {', '.join(TIME_SLOTS)}"
+            f"📋 Sheet: {SHEET_NAME}"
         )
 
     except Exception as e:
