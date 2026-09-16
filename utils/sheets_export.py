@@ -256,6 +256,27 @@ def write_teacher_slots(sheet, schedule, sheet_id, requests_out):
             }
         })
 
+    # ===== CHECKBOX (Data Validation) =====
+    # TRUE/FALSE qiymatlari checkbox bo'lib ko'rinadi — namuna jadvaldagi kabi.
+    requests_out.append({
+        "setDataValidation": {
+            "range": {"sheetId": sheet_id,
+                      "startRowIndex": block_starts[0],
+                      "endRowIndex": block_starts[0] + len(TEACHER_SLOT_TIMES),
+                      "startColumnIndex": sc0 + 1, "endColumnIndex": ec0},
+            "rule": {"condition": {"type": "BOOLEAN"}, "strict": False, "showCustomUi": True},
+        }
+    })
+    requests_out.append({
+        "setDataValidation": {
+            "range": {"sheetId": sheet_id,
+                      "startRowIndex": block_starts[1],
+                      "endRowIndex": block_starts[1] + len(TEACHER_SLOT_TIMES),
+                      "startColumnIndex": sc0 + 1, "endColumnIndex": ec0},
+            "rule": {"condition": {"type": "BOOLEAN"}, "strict": False, "showCustomUi": True},
+        }
+    })
+
     busy_count = sum(len(busy_odd.get(tid, set())) for _, tid in TEACHER_COLUMNS)
     busy_count += sum(len(busy_even.get(tid, set())) for _, tid in TEACHER_COLUMNS)
     return busy_count
