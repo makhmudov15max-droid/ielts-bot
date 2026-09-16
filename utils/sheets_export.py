@@ -17,23 +17,25 @@ UZ_TZ = timezone(timedelta(hours=5))
 
 # ====== USTOZLAR BAND/BO'SH SLOT JADVALI (O ustundan boshlab) ======
 # Jadval O2:AA14 da joylashadi — DarsJadval matritsasining yonida.
-# Ustozlar LMS teacher ID lari bo'yicha tanlanadi va shu tartibda ustun ochiladi.
+# Ustozlar LMS teacher ID lari bo'yicha aniqlanadi.
 TEACHER_SLOTS_COL_START = 15          # O ustuni (1-based: O = 15)
 TEACHER_SLOTS_ROW_START = 2           # O2
-# (ko'rsatiladigan nom, LMS teacher_id) — None = biriktirilmagan guruhlar (Unknown)
+# (ko'rsatiladigan nom, LMS teacher_id, nom bo'yicha qidiruv kalitlari)
+# LMS'da teacher_id bo'sh bo'lgan guruhlar bor — ular guruh nomidan aniqlanadi.
+# Masalan "125/4 pm Akhmadali T SENTABR OXIRIGA OCHILADI" → Ahmadali
 TEACHER_COLUMNS = [
-    ("Unknown",          None),
-    ("Sardor",           374),
-    ("Ahmadali",         382),
-    ("Otabek",           38),
-    ("Obidjon",          384),
-    ("Xurshid",          6844),
-    ("Odiljon",          11506),
-    ("Ibrohim",          24010),
-    ("Farangiz",         6836),   # Farangiz Elamanova
-    ("Nilufar",          485),
-    ("Diyora",           20105),
-    ("Farangiz (freya)", 27737),  # Farangiz Izzatullayeva
+    ("Adxambek I",       380,   ["adkhambek", "adxambek", "adxam"]),
+    ("Sardor",           374,   ["sardor"]),
+    ("Ahmadali",         382,   ["akhmadali", "ahmadali", "axmadali"]),
+    ("Otabek",           38,    ["otabek"]),
+    ("Obidjon",          384,   ["obidjon"]),
+    ("Xurshid",          6844,  ["khurshid", "xurshid"]),
+    ("Odiljon",          11506, ["odiljon"]),
+    ("Ibrohim",          24010, ["ibrokhim", "ibrohim"]),
+    ("Farangiz",         6836,  ["farangiz e"]),   # Farangiz Elamanova
+    ("Nilufar",          485,   ["nilufar"]),
+    ("Diyora",           20105, ["diyora"]),
+    ("Farangiz (freya)", 27737, ["farangiz i", "freya"]),  # Farangiz Izzatullayeva
 ]
 TEACHER_SLOT_TIMES = ["8:00", "10:00", "14:00", "16:00", "18:00"]
 # Google Sheets vaqt yorliqlarini avtomatik parse qilmasligi uchun apostrof bilan himoyalaymiz
@@ -127,8 +129,8 @@ def _build_teacher_slots(schedule: dict):
     """Ustozlar band/bo'sh slot matritsasini hisoblaydi.
 
     Returns: (busy_odd, busy_even) — har biri {teacher_id: set(vaqt label)}
-      teacher_id None = biriktirilmagan guruhlar (Unknown ustuni)
-      Status 1 (kutilayotgan) va 2 (aktiv) = band; boshqalar hisobga olinmaydi.
+    Status 1 (kutilayotgan) va 2 (aktiv) = band; boshqalar hisobga olinmaydi.
+    teacher_id bo'sh bo'lsa guruh nomidan ustoz aniqlanadi (LMS quirk).
     """
     busy_odd = {}
     busy_even = {}
@@ -136,17 +138,32 @@ def _build_teacher_slots(schedule: dict):
     slot_map = {"08:00": "8:00", "10:00": "10:00", "12:00": "10:00",
                 "14:00": "14:00", "16:00": "16:00", "18:00": "18:00"}
 
+    def resolve_teacher_id(lesson):
+        """LMS teacher_id yoki guruh nomidan aniqlangan ID."""
+        tid = (lesson.get("teacher") or {}).get("id") or lesson.get("teacher_id")
+        if tid:
+            return tid
+        # teacher_id bo'sh — guruh nomidan qidiramiz
+        gname = (lesson.get("name") or "").lower()
+        if not gname:
+            return None
+        for _, t_id, keys in TEACHER_COLUMNS:
+            for k in keys:
+                if k in gname:
+                    return t_id
+        return None
+
     for lessons, busy in ((schedule.get("odd", []), busy_odd),
                           (schedule.get("even", []), busy_even)):
         for lesson in lessons:
             if lesson.get("status") not in (1, 2):
                 continue
-            tid = (lesson.get("teacher") or {}).get("id")
+            tid = resolve_teacher_id(lesson)
             st = str(lesson.get("lesson_start_time", ""))[:5]
             if st >= "18:00":
                 st = "18:00"
             label = slot_map.get(st)
-            if label is None:
+            if label is None or tid is None:
                 continue
             busy.setdefault(tid, set()).add(label)
 
@@ -174,10 +191,10 @@ def write_teacher_slots(sheet, schedule, sheet_id, requests_out):
 
     matrix = []
     for block, busy_map in (("TOQ", busy_odd), ("JUFT", busy_even)):
-        matrix.append([block] + [name for name, _ in TEACHER_COLUMNS])
+        matrix.append([block] + [name for name, _tid, _keys in TEACHER_COLUMNS])
         for label, label_safe in zip(TEACHER_SLOT_TIMES, TEACHER_SLOT_TIMES_SAFE):
             row = [label_safe]
-            for _, tid in TEACHER_COLUMNS:
+            for _, tid, _keys in TEACHER_COLUMNS:
                 row.append("TRUE" if label in busy_map.get(tid, set()) else "FALSE")
             matrix.append(row)
         matrix.append([""] * (ncols + 1))
@@ -234,7 +251,7 @@ def write_teacher_slots(sheet, schedule, sheet_id, requests_out):
 
         for ri, label in enumerate(TEACHER_SLOT_TIMES):
             abs_row = bs + ri
-            for ci, (_, tid) in enumerate(TEACHER_COLUMNS):
+            for ci, (_, tid, _keys) in enumerate(TEACHER_COLUMNS):
                 is_true = label in busy_maps[bi].get(tid, set())
                 bg = TS_TRUE_BG if is_true else TS_FALSE_BG
                 requests_out.append(_fmt(abs_row, abs_row + 1, sc0 + 1 + ci, sc0 + 2 + ci, {
@@ -277,8 +294,8 @@ def write_teacher_slots(sheet, schedule, sheet_id, requests_out):
         }
     })
 
-    busy_count = sum(len(busy_odd.get(tid, set())) for _, tid in TEACHER_COLUMNS)
-    busy_count += sum(len(busy_even.get(tid, set())) for _, tid in TEACHER_COLUMNS)
+    busy_count = sum(len(busy_odd.get(tid, set())) for _, tid, _keys in TEACHER_COLUMNS)
+    busy_count += sum(len(busy_even.get(tid, set())) for _, tid, _keys in TEACHER_COLUMNS)
     return busy_count
 
 
