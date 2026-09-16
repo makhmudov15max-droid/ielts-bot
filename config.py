@@ -13,4 +13,4 @@ REPORTS_GROUP_ID = -1003608063747
 LMS_BASE = "https://main.ieltszoneapp.uz"
 LMS_EMAIL = os.getenv("LMS_EMAIL", "makhmudov15max@gmail.com")
 import os as _os
-LMS_KEY = _os.getenv("LMS_KEY", "Mahmudov02")
+LMS_KEY = _os.getenv("LMS_KEY", "Halollik1902")
