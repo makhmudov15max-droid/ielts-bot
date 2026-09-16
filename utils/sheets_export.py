@@ -57,9 +57,13 @@ def fetch_branch_schedule() -> dict:
     import requests
     s = _get_session()
     r = s.get(f"{LMS_BASE}/admin/branches/{DRUJBA_BRANCH_ID}")
+    if r.status_code in (401, 403):
+        raise Exception("LMS ga kira olmadim (401) — parol o'zgargan bo'lishi mumkin. "
+                        "Railway env'da LMS_KEY ni yangilang.")
     match = re.search(r'data-page="([^"]*)"', r.text)
     if not match:
-        raise Exception("data-page topilmadi")
+        raise Exception(f"data-page topilmadi (HTTP {r.status_code}, {len(r.text)} bayt). "
+                        "LMS paroli o'zgargan yoki sahifa formati o'zgargan.")
     dp = json.loads(unescape(match.group(1)))
     p = dp["props"]
     return {"odd": p.get("oddDaysSchedule", {}).get("lessons", []),

@@ -153,8 +153,29 @@ def _get_lms_session():
     xsrf = s.cookies.get("XSRF-TOKEN", "")
     s.headers["X-XSRF-TOKEN"] = unquote(xsrf)
     s.headers["Content-Type"] = "application/json"
-    r = s.post(f"{LMS_BASE}/admin/login", json={"email": LMS_EMAIL, "password": LMS_KEY})
-    logger.info(f"LMS login status: {r.status_code}")
+    # Login provayderlari: env paroli + kodda saqlangan parollar (fallback)
+    _passwords = []
+    for _p in [LMS_KEY, os.getenv("LMS_KEY2", ""), "Mahmudov02"]:
+        if _p and _p not in _passwords:
+            _passwords.append(_p)
+
+    r = None
+    for _p in _passwords:
+        r = s.post(f"{LMS_BASE}/admin/login", json={"email": LMS_EMAIL, "password": _p})
+        logger.info(f"LMS login status: {r.status_code} (parol #{_passwords.index(_p) + 1})")
+        if r.status_code in (200, 204):
+            break
+        # auth.throttle — juda ko'p urinish, kutish kerak
+        if "throttle" in r.text:
+            logger.warning("LMS login throttle — keyingi urinishgacha kutamiz")
+            break
+
+    # Login muvaffaqiyatini tekshirish
+    if r is None or r.status_code not in (200, 204):
+        _err = "LMS paroli noto'g'ri (Authorization failed)"
+        if r is not None and "throttle" in r.text:
+            _err = "LMS login vaqtincha bloklangan (auth.throttle) — 1-2 daqiqadan so'ng qayta urinib ko'ring"
+        raise Exception(_err)
 
     # Get teacher + course maps
     if not _teacher_map or not _course_map:

@@ -52,9 +52,10 @@ def _get_lms_session():
 
     _BASE = config.LMS_BASE if hasattr(config, 'LMS_BASE') else LMS_BASE
     _EM = getattr(config, 'LMS_EMAIL', 'makhmudov15max@gmail.com')
-    # LMS_KEY — Railway'da eski env o`rnatilgan bo`lsa ham, hozirgi ishlaydigan parolni ishlatamiz.
-    # (kodga maxsus yozilgan, chunki LMS paroli muhim infratuzilma kaliti)
-    _KEY = 'Mahmudov02'
+    # Parol: env (Railway LMS_KEY) ustuvor, keyin kodda saqlangan fallbacklar
+    import os as _os
+    _KEY = _os.getenv("LMS_KEY") or getattr(config, 'LMS_KEY', None) or 'Mahmudov02'
+    _fallbacks = [_KEY, _os.getenv("LMS_KEY2", ""), 'Mahmudov02']
 
     if _lms_session:
         try:
@@ -73,8 +74,16 @@ def _get_lms_session():
     xsrf = s.cookies.get("XSRF-TOKEN", "")
     s.headers["X-XSRF-TOKEN"] = unquote(xsrf)
     s.headers["Content-Type"] = "application/json"
-    r = s.post(f"{_BASE}/admin/login", json={"email": _EM, "password": _KEY})
-    logger.info(f"debtors LMS login: {r.status_code}")
+    r = None
+    for _i, _p in enumerate([p for p in _fallbacks if p]):
+        r = s.post(f"{_BASE}/admin/login", json={"email": _EM, "password": _p})
+        logger.info(f"debtors LMS login: {r.status_code} (parol #{_i + 1})")
+        if r.status_code in (200, 204):
+            break
+        if "throttle" in r.text:
+            raise Exception("LMS login vaqtincha bloklangan (auth.throttle) — 1-2 daqiqadan so'ng qayta urining")
+    if r is None or r.status_code not in (200, 204):
+        raise Exception("LMS paroli noto'g'ri (Authorization failed) — Railway env'dagi LMS_KEY ni yangilang")
 
     # teacher map
     if not _teacher_map:
