@@ -15,6 +15,37 @@ DRUJBA_BRANCH_ID = 3
 LMS_BASE = "https://main.ieltszoneapp.uz"
 UZ_TZ = timezone(timedelta(hours=5))
 
+# ====== USTOZLAR BAND/BO'SH SLOT JADVALI (O ustundan boshlab) ======
+# Jadval O2:AA14 da joylashadi — DarsJadval matritsasining yonida.
+# Ustozlar LMS teacher ID lari bo'yicha tanlanadi va shu tartibda ustun ochiladi.
+TEACHER_SLOTS_COL_START = 15          # O ustuni (1-based: O = 15)
+TEACHER_SLOTS_ROW_START = 2           # O2
+# (ko'rsatiladigan nom, LMS teacher_id) — None = biriktirilmagan guruhlar (Unknown)
+TEACHER_COLUMNS = [
+    ("Unknown",          None),
+    ("Sardor",           374),
+    ("Ahmadali",         382),
+    ("Otabek",           38),
+    ("Obidjon",          384),
+    ("Xurshid",          6844),
+    ("Odiljon",          11506),
+    ("Ibrohim",          24010),
+    ("Farangiz",         6836),   # Farangiz Elamanova
+    ("Nilufar",          485),
+    ("Diyora",           20105),
+    ("Farangiz (freya)", 27737),  # Farangiz Izzatullayeva
+]
+TEACHER_SLOT_TIMES = ["8:00", "10:00", "14:00", "16:00", "18:00"]
+# Google Sheets vaqt yorliqlarini avtomatik parse qilmasligi uchun apostrof bilan himoyalaymiz
+TEACHER_SLOT_TIMES_SAFE = ["'8:00", "'10:00", "'14:00", "'16:00", "'18:00"]
+
+# Ranglar (namuna jadvaldan olingan)
+TS_HEADER_BG = {"red": 0.7176471, "green": 0.7176471, "blue": 0.7176471}  # #B7B7B7
+TS_HEADER_BG2 = {"red": 0.8509804, "green": 0.8509804, "blue": 0.8509804} # #D9D9D9
+TS_TRUE_BG = {"red": 0.0, "green": 1.0, "blue": 0.0}                      # yashil — band
+TS_FALSE_BG = {"red": 1.0, "green": 1.0, "blue": 1.0}                     # oq — ochiq
+TS_FALSE_EARLY_BG = {"red": 0.95686275, "green": 0.8, "blue": 0.8}        # qizg'ish — 8:00 ochiq
+
 # Vaqt bloklari — 18:30/19:00 → 18:00 ga birlashadi
 TIME_SLOTS = ["08:00", "10:00", "12:00", "14:00", "16:00", "18:00"]
 TIME_TO_MATRIX_ROW = {t: i for i, t in enumerate(TIME_SLOTS)}
@@ -90,6 +121,144 @@ def _color_by_days(days: int) -> dict:
         return COLOR_YELLOW
     else:
         return COLOR_GREEN
+
+
+def _build_teacher_slots(schedule: dict):
+    """Ustozlar band/bo'sh slot matritsasini hisoblaydi.
+
+    Returns: (busy_odd, busy_even) — har biri {teacher_id: set(vaqt label)}
+      teacher_id None = biriktirilmagan guruhlar (Unknown ustuni)
+      Status 1 (kutilayotgan) va 2 (aktiv) = band; boshqalar hisobga olinmaydi.
+    """
+    busy_odd = {}
+    busy_even = {}
+
+    slot_map = {"08:00": "8:00", "10:00": "10:00", "12:00": "10:00",
+                "14:00": "14:00", "16:00": "16:00", "18:00": "18:00"}
+
+    for lessons, busy in ((schedule.get("odd", []), busy_odd),
+                          (schedule.get("even", []), busy_even)):
+        for lesson in lessons:
+            if lesson.get("status") not in (1, 2):
+                continue
+            tid = (lesson.get("teacher") or {}).get("id")
+            st = str(lesson.get("lesson_start_time", ""))[:5]
+            if st >= "18:00":
+                st = "18:00"
+            label = slot_map.get(st)
+            if label is None:
+                continue
+            busy.setdefault(tid, set()).add(label)
+
+    return busy_odd, busy_even
+
+
+def write_teacher_slots(sheet, schedule, sheet_id, requests_out):
+    """DarsJadval ichida O ustundan boshlab ustozlar band/bo'sh slot jadvalini yozadi.
+
+    TOQ bloki: O2:AA7 | JUFT bloki: O9:AA14
+    TRUE = band (yashil) | FALSE = slot ochiq (oq / 8:00 da qizg'ish)
+    """
+    busy_odd, busy_even = _build_teacher_slots(schedule)
+
+    ncols = len(TEACHER_COLUMNS)
+    start_col = TEACHER_SLOTS_COL_START
+    start_row = TEACHER_SLOTS_ROW_START
+
+    def col_letter(idx):
+        s = ""
+        while idx > 0:
+            idx, rem = divmod(idx - 1, 26)
+            s = chr(65 + rem) + s
+        return s
+
+    matrix = []
+    for block, busy_map in (("TOQ", busy_odd), ("JUFT", busy_even)):
+        matrix.append([block] + [name for name, _ in TEACHER_COLUMNS])
+        for label, label_safe in zip(TEACHER_SLOT_TIMES, TEACHER_SLOT_TIMES_SAFE):
+            row = [label_safe]
+            for _, tid in TEACHER_COLUMNS:
+                row.append("TRUE" if label in busy_map.get(tid, set()) else "FALSE")
+            matrix.append(row)
+        matrix.append([""] * (ncols + 1))
+
+    matrix = matrix[:-1]
+
+    end_row = start_row + len(matrix) - 1
+    rng = f"{col_letter(start_col)}{start_row}:{col_letter(start_col + ncols)}{end_row}"
+    sheet.update(rng, matrix, value_input_option="USER_ENTERED")
+
+    # ===== FORMATLASH =====
+    def _fmt(sr, er, sc, ec, f):
+        return {
+            "repeatCell": {
+                "range": {"sheetId": sheet_id,
+                          "startRowIndex": sr, "endRowIndex": er,
+                          "startColumnIndex": sc, "endColumnIndex": ec},
+                "cell": {"userEnteredFormat": f},
+                "fields": "userEnteredFormat",
+            }
+        }
+
+    sc0 = start_col - 1
+    ec0 = sc0 + ncols
+
+    # TOQ sarlavha: start_row-1 = O2 (index 1). JUFT sarlavha: O9 (index 8)
+    block_starts = [start_row, start_row + len(TEACHER_SLOT_TIMES) + 2]
+    busy_maps = [busy_odd, busy_even]
+
+    for bi, bs in enumerate(block_starts):
+        # sarlavha qatori (ustoz ismlari) — namuna: birinchi 5 ta #B7B7B7, qolgani #D9D9D9
+        requests_out.append(_fmt(bs - 1, bs, sc0, sc0 + 6, {
+            "backgroundColor": TS_HEADER_BG,
+            "textFormat": {"bold": False, "fontSize": 10},
+            "horizontalAlignment": "CENTER",
+            "verticalAlignment": "MIDDLE",
+            "borders": BORDER_GRAY,
+        }))
+        requests_out.append(_fmt(bs - 1, bs, sc0 + 6, ec0, {
+            "backgroundColor": TS_HEADER_BG2,
+            "textFormat": {"bold": False, "fontSize": 10},
+            "horizontalAlignment": "CENTER",
+            "verticalAlignment": "MIDDLE",
+            "borders": BORDER_GRAY,
+        }))
+        # vaqt ustuni
+        requests_out.append(_fmt(bs, bs + len(TEACHER_SLOT_TIMES), sc0, sc0 + 1, {
+            "backgroundColor": TS_FALSE_BG,
+            "textFormat": {"bold": False, "fontSize": 10},
+            "horizontalAlignment": "CENTER",
+            "verticalAlignment": "MIDDLE",
+            "borders": BORDER_GRAY,
+        }))
+
+        for ri, label in enumerate(TEACHER_SLOT_TIMES):
+            abs_row = bs + ri
+            for ci, (_, tid) in enumerate(TEACHER_COLUMNS):
+                is_true = label in busy_maps[bi].get(tid, set())
+                bg = TS_TRUE_BG if is_true else TS_FALSE_BG
+                requests_out.append(_fmt(abs_row, abs_row + 1, sc0 + 1 + ci, sc0 + 2 + ci, {
+                    "backgroundColor": bg,
+                    "textFormat": {"bold": False, "fontSize": 9},
+                    "horizontalAlignment": "CENTER",
+                    "verticalAlignment": "MIDDLE",
+                    "borders": BORDER_GRAY,
+                }))
+
+    # Ustun kengligi
+    for ci in range(sc0, ec0):
+        requests_out.append({
+            "updateDimensionProperties": {
+                "range": {"sheetId": sheet_id, "dimension": "COLUMNS",
+                          "startIndex": ci, "endIndex": ci + 1},
+                "properties": {"pixelSize": 85 if ci == sc0 else 105},
+                "fields": "pixelSize",
+            }
+        })
+
+    busy_count = sum(len(busy_odd.get(tid, set())) for _, tid in TEACHER_COLUMNS)
+    busy_count += sum(len(busy_even.get(tid, set())) for _, tid in TEACHER_COLUMNS)
+    return busy_count
 
 
 async def write_schedule_to_sheets() -> str:
@@ -308,8 +477,17 @@ async def write_schedule_to_sheets() -> str:
         last_col = chr(65 + MC - 1)
         sheet.update(f"A1:{last_col}{TOTAL_ROWS}", matrix)
 
-        # ====== FORMATTING ======
+        # ====== USTOZLAR BAND/BO'SH SLOT JADVALI (O:AA) ======
         requests = []
+        # Eski slot jadvalini tozalash (O:AC ustunlari)
+        try:
+            sheet.batch_clear(["O1:AC30"])
+        except Exception as e:
+            logger.warning(f"slot clear: {str(e)[:100]}")
+
+        busy_count = write_teacher_slots(sheet, schedule, sheet_id, requests)
+
+        # ====== FORMATTING ======
 
         def _fmt(sr, er, sc, ec, f):
             return {
@@ -437,6 +615,7 @@ async def write_schedule_to_sheets() -> str:
             f"📊 Toq kunlar: {odd_count} ta dars\n"
             f"📊 Juft kunlar: {even_count} ta dars\n"
             f"⏳ Kutilayotgan guruhlar: {planned_count} ta\n"
+            f"👨🏻‍🏫 Ustozlar slot jadvali: O2:AA14 ({len(TEACHER_COLUMNS)} ustoz, {busy_count} ta band slot)\n"
             f"📋 Sheet: {SHEET_NAME}\n"
             f"⏰ Vaqtlar: {', '.join(TIME_SLOTS)}"
         )
