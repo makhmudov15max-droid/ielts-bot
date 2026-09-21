@@ -382,6 +382,52 @@ async def export_schedule_to_sheets(message: types.Message, state: FSMContext):
     await message.answer(result, parse_mode="HTML")
 
 
+def _build_finance_report():
+    """Finance report matnini yasash (blokirovka qiluvchi — to_thread ichida chaqiriladi)"""
+    s = _get_lms_session()
+
+    DRUJBA_TEACHERS = _load_teachers()
+
+    r = s.get(f"{LMS_BASE}/admin/calculated-salaries?per_page=200", timeout=90)
+    match = re.search(r'data-page="([^"]*)"', r.text)
+    api_balances = {}
+    if match:
+        dp = json.loads(unescape(match.group(1)))
+        for emp in dp["props"]["employees"]:
+            name = f"{emp.get('first_name','')} {emp.get('last_name','')}".strip()
+            eb = emp.get("employee_balance", "0")
+            try:
+                eb = float(eb)
+            except:
+                eb = 0
+            api_balances[name] = eb
+
+    def _match_teacher(expected_name, all_balances):
+        parts = expected_name.lower().split()
+        for api_name, bal in all_balances.items():
+            api_lower = api_name.lower()
+            if all(p in api_lower for p in parts):
+                return bal, api_name
+        return 0, expected_name
+
+    text = "💰 <b>DRUJBA — USTOZLAR BALANSI</b>\n\n"
+    total_balance = 0
+    teacher_count = 0
+    for teacher in DRUJBA_TEACHERS:
+        bal, matched_name = _match_teacher(teacher, api_balances)
+        total_balance += bal
+        teacher_count += 1
+        if bal >= 0:
+            text += f"{teacher_count}. 👨🏻‍🏫 {teacher}\n   💰 {int(bal)} so'm\n\n"
+        else:
+            text += f"{teacher_count}. 👨🏻‍🏫 {teacher}\n   🔴 {int(bal)} so'm\n\n"
+
+    text += f"━━━━━━━━━━━━━━━━\n"
+    text += f"📊 <b>Jami:</b> {teacher_count} ta ustoz\n"
+    text += f"💵 <b>Umumiy balans:</b> {int(total_balance)} so'm"
+    return text
+
+
 @report_router.message(ReportStates.waiting_for_report_choice, F.text == "💰 Finance Report")
 async def show_finance_report(message: types.Message, state: FSMContext):
     """Finance report faqat Owner uchun"""
@@ -400,47 +446,7 @@ async def show_finance_report(message: types.Message, state: FSMContext):
             await msg.edit_text(cached[0], parse_mode="HTML")
             return
 
-        s = _get_lms_session()
-
-        DRUJBA_TEACHERS = _load_teachers()
-
-        r = s.get(f"{LMS_BASE}/admin/calculated-salaries?per_page=200", timeout=15)
-        match = re.search(r'data-page="([^"]*)"', r.text)
-        api_balances = {}
-        if match:
-            dp = json.loads(unescape(match.group(1)))
-            for emp in dp["props"]["employees"]:
-                name = f"{emp.get('first_name','')} {emp.get('last_name','')}".strip()
-                eb = emp.get("employee_balance", "0")
-                try:
-                    eb = float(eb)
-                except:
-                    eb = 0
-                api_balances[name] = eb
-
-        def _match_teacher(expected_name, all_balances):
-            parts = expected_name.lower().split()
-            for api_name, bal in all_balances.items():
-                api_lower = api_name.lower()
-                if all(p in api_lower for p in parts):
-                    return bal, api_name
-            return 0, expected_name
-
-        text = "💰 <b>DRUJBA — USTOZLAR BALANSI</b>\n\n"
-        total_balance = 0
-        teacher_count = 0
-        for teacher in DRUJBA_TEACHERS:
-            bal, matched_name = _match_teacher(teacher, api_balances)
-            total_balance += bal
-            teacher_count += 1
-            if bal >= 0:
-                text += f"{teacher_count}. 👨🏻‍🏫 {teacher}\n   💰 {int(bal)} so'm\n\n"
-            else:
-                text += f"{teacher_count}. 👨🏻‍🏫 {teacher}\n   🔴 {int(bal)} so'm\n\n"
-
-        text += f"━━━━━━━━━━━━━━━━\n"
-        text += f"📊 <b>Jami:</b> {teacher_count} ta ustoz\n"
-        text += f"💵 <b>Umumiy balans:</b> {int(total_balance)} so'm"
+        text = await asyncio.to_thread(_build_finance_report)
 
         # Cache
         _REPORT_CACHE["finance"] = (text, datetime.now(timezone.utc).timestamp())
