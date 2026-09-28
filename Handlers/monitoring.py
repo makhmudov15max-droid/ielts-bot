@@ -235,6 +235,40 @@ monitoring_router = Router()
 
 TASHKENT_TZ = timezone(timedelta(hours=5))
 
+# ===== REAL TIME ISBOT SOZLAMASI =====
+# Dumaloq video Telegram'ga shu daqiqalar ichida yuklangan bo'lishi shart.
+# Aks holda (Saved Messages dan tanlangan eski video) rad etiladi.
+REAL_TIME_MAX_AGE_MINUTES = 10
+
+
+def is_forwarded(message) -> bool:
+    """Xabar forward qilinganmi — eski va yangi (aiogram 3.x) atributlarni qamrab oladi."""
+    if getattr(message, "forward_date", None):
+        return True
+    for attr in ("forward_from", "forward_from_chat", "forward_from_message_id",
+                 "forward_sender_name", "forward_origin"):
+        if getattr(message, attr, None):
+            return True
+    return False
+
+
+def is_real_time_media(media, max_age_minutes: int, now=None) -> bool:
+    """Media (video_note/video) Telegram'ga yuklangan vaqti yangimi tekshiradi."""
+    try:
+        media_date = getattr(media, "date", None)
+        if media_date is None:
+            return True  # ma'lumot yo'q — bloklamaymiz
+        if media_date.tzinfo is None:
+            media_date = media_date.replace(tzinfo=timezone.utc)
+        if now is None:
+            now = datetime.now(TASHKENT_TZ)
+        age_sec = (now - media_date.astimezone(TASHKENT_TZ)).total_seconds()
+        if age_sec < 0:
+            return True  # soat farqi — bloklamaymiz
+        return age_sec <= max_age_minutes * 60
+    except Exception:
+        return True
+
 # ================= GLOBAL O'ZGARUVCHILAR =================
 USERS_ROLES = None
 
@@ -1227,6 +1261,7 @@ async def check_in_video_handler(message: types.Message, state: FSMContext):
     current_time = now.strftime("%H:%M")
     
     GROUP_CHAT_ID = REPORTS_GROUP_ID
+    work_start, work_end = await get_user_work_time(user_id)
     
     if not message.video_note:
         await message.answer(
@@ -1245,7 +1280,7 @@ async def check_in_video_handler(message: types.Message, state: FSMContext):
     # Xodimlar oldindan olib qo'yilgan yoki boshqa chatdan
     # forward qilingan videolarni isbot sifatida yubora olmaydi.
     # Faqat shu yerda, hoziroq olingan video qabul qilinadi.
-    if message.forward_date or message.forward_from or message.forward_from_chat:
+    if is_forwarded(message):
         await message.answer(
             text="🚫 <b>Qabul qilinmadi!</b>\n\n"
                  "❌ Boshqa chatdan forward qilingan yoki eski video qabul qilinmaydi.\n\n"
@@ -1260,7 +1295,44 @@ async def check_in_video_handler(message: types.Message, state: FSMContext):
         )
         return
     
-    work_start, work_end = await get_user_work_time(user_id)
+    # ===== REAL TIME TEKSHIRUVI =====
+    # Video Telegram'ga endigina yuklangan bo'lishi kerak.
+    # Eskiroq (masalan Saved Messages'dagi) video tanlansa rad etiladi.
+    check_time = datetime.now(TASHKENT_TZ)
+    allowed_min = REAL_TIME_MAX_AGE_MINUTES
+    # Kech yuborilgan (tungi smena) holatlarni ham qo'llab-quvvatlash uchun
+    # ish vaqtidan oldin/kech bo'lsa oynani kengaytiramiz
+    try:
+        ws_h, ws_m = map(int, work_start.split(":"))
+        now_h, now_m = map(int, current_time.split(":"))
+        present = now_h * 60 + now_m
+        start = ws_h * 60 + ws_m
+        if present < start:
+            allowed_min = max(allowed_min, start - present + REAL_TIME_MAX_AGE_MINUTES)
+    except Exception:
+        pass
+    
+    if not is_real_time_media(message.video_note, allowed_min, check_time):
+        media_dt = message.video_note.date
+        if media_dt.tzinfo is None:
+            media_dt = media_dt.replace(tzinfo=timezone.utc)
+        media_local = media_dt.astimezone(TASHKENT_TZ)
+        age_min = int((check_time - media_local).total_seconds() // 60)
+        await message.answer(
+            text="🚫 <b>Qabul qilinmadi!</b>\n\n"
+                 "❌ Bu video <b>hoziroq olinmagan</b> — eski/avval tashlangan video.\n\n"
+                 f"📹 Video vaqti: <b>{media_local.strftime('%d.%m.%Y %H:%M')}</b>\n"
+                 f"⏱ Hozirgi vaqt: <b>{check_time.strftime('%d.%m.%Y %H:%M')}</b>\n"
+                 f"🕐 Farq: <b>{age_min} daqiqa</b> (ruxsat: {allowed_min} daqiqa)\n\n"
+                 "✅ <b>Ishga kelganingizda hoziroq dumaloq video oling va yuboring:</b>\n"
+                 "1. Mikrofon tugmasini bosing va ushlab turing\n"
+                 "2. <b>Video</b> tugmasiga o'ting\n"
+                 "3. Yozish tugmasini bosing\n"
+                 "4. Yozib bo'lgach, jo'natish tugmasini bosing",
+            parse_mode="HTML",
+            reply_markup=get_back_home_keyboard()
+        )
+        return
     
     try:
         ws_h, ws_m = map(int, work_start.split(":"))
@@ -1466,11 +1538,26 @@ async def task_proof_handler(message: types.Message, state: FSMContext):
         return
     
     # ===== FORWARD QILINGAN VIDEOLARNI QABUL QILMASLIK =====
-    if message.forward_date or message.forward_from or message.forward_from_chat:
+    if is_forwarded(message):
         await message.answer(
             text="🚫 <b>Qabul qilinmadi!</b>\n\n"
                  "❌ Boshqa chatdan forward qilingan yoki eski media qabul qilinmaydi.\n\n"
                  "📹 <b>Faqat hoziroq, shu chatda olingan isbot yuboring.</b>\n\n"
+                 "⚠️ Saved Messages yoki boshqa chatlardagi fayllar ishlamaydi.",
+            parse_mode="HTML",
+            reply_markup=get_back_home_keyboard()
+        )
+        return
+    
+    # ===== REAL TIME TEKSHIRUVI (rasm/video) =====
+    _check_media = message.video_note or message.video or (message.photo[-1] if message.photo else None)
+    if _check_media is not None and not is_real_time_media(_check_media, REAL_TIME_MAX_AGE_MINUTES, now):
+        await message.answer(
+            text="🚫 <b>Qabul qilinmadi!</b>\n\n"
+                 "❌ Bu media <b>hoziroq olinmagan</b> — avval tayyorlangan/eski fayl.\n\n"
+                 f"⏱ Hozirgi vaqt: <b>{now.strftime('%d.%m.%Y %H:%M')}</b>\n"
+                 f"🕐 Ruxsat etilgan: <b>{REAL_TIME_MAX_AGE_MINUTES} daqiqa</b>\n\n"
+                 "✅ Vazifa isbotini <b>hoziroq, shu chatda</b> olib yuboring.\n"
                  "⚠️ Saved Messages yoki boshqa chatlardagi fayllar ishlamaydi.",
             parse_mode="HTML",
             reply_markup=get_back_home_keyboard()
