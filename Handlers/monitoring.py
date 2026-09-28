@@ -238,7 +238,7 @@ TASHKENT_TZ = timezone(timedelta(hours=5))
 # ===== REAL TIME ISBOT SOZLAMASI =====
 # Dumaloq video Telegram'ga shu daqiqalar ichida yuklangan bo'lishi shart.
 # Aks holda (Saved Messages dan tanlangan eski video) rad etiladi.
-REAL_TIME_MAX_AGE_MINUTES = 10
+REAL_TIME_MAX_AGE_MINUTES = 1
 
 
 def is_forwarded(message) -> bool:
