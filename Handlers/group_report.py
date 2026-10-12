@@ -382,6 +382,65 @@ async def export_schedule_to_sheets(message: types.Message, state: FSMContext):
     await message.answer(result, parse_mode="HTML")
 
 
+def _fetch_all_users_with_roles(s):
+    """LMS dagi barcha xodimlarni rol/balans/filial ma'lumotlari bilan olish.
+
+    /admin/users sahifasi roles + employee_balance + branches + active ni
+    bitta javobda beradi. Sahifalash Inertia.js orqali ishlaydi:
+    - ?page=N yolg'iz o'zi e'tiborga olinmaydi — ?sort=id&page=N kerak
+    - X-Inertia + X-Inertia-Version header bo'lsa JSON qaytadi (tezroq)
+    """
+    users = []
+    try:
+        # 1) Inertia version ni olish (oddiy sahifa yuklashdan)
+        r0 = s.get(f"{LMS_BASE}/admin/users", timeout=90)
+        ver = None
+        m0 = re.search(r'data-page="([^"]*)"', r0.text)
+        if m0:
+            try:
+                ver = json.loads(unescape(m0.group(1))).get("version")
+            except Exception:
+                ver = None
+
+        headers = {"X-Inertia": "true"}
+        if ver:
+            headers["X-Inertia-Version"] = ver
+
+        page = 1
+        last_page = 1
+        while page <= last_page and page <= 30:
+            r = s.get(f"{LMS_BASE}/admin/users?sort=id&page={page}", headers=headers, timeout=90)
+            ctype = r.headers.get("Content-Type") or ""
+            if "json" in ctype:
+                dp = r.json()
+            else:
+                m = re.search(r'data-page="([^"]*)"', r.text)
+                if not m:
+                    break
+                dp = json.loads(unescape(m.group(1)))
+                # version o'zgargan bo'lsa yangilaymiz
+                v = dp.get("version")
+                if v and v != ver:
+                    ver = v
+                    headers["X-Inertia-Version"] = v
+
+            pag = (dp.get("props") or {}).get("users") or {}
+            rows = pag.get("data") or []
+            if not rows:
+                break
+            users.extend(rows)
+            try:
+                last_page = int(pag.get("last_page") or 1)
+            except Exception:
+                last_page = 1
+            page += 1
+    except Exception as exc:
+        logger.warning(f"Finance report users fetch error: {exc}")
+
+    logger.info(f"Finance report: {len(users)} xodim yuklandi")
+    return users
+
+
 def _build_finance_report():
     """Finance report matnini yasash (blokirovka qiluvchi — to_thread ichida chaqiriladi)
 
@@ -390,40 +449,18 @@ def _build_finance_report():
     """
     s = _get_lms_session()
 
-    r = s.get(f"{LMS_BASE}/admin/calculated-salaries?per_page=200", timeout=90)
-    match = re.search(r'data-page="([^"]*)"', r.text)
-    if not match:
-        raise Exception("LMS ma'lumotlari topilmadi (data-page yo'q)")
+    employees = _fetch_all_users_with_roles(s)
 
-    dp = json.loads(unescape(match.group(1)))
-    employees = dp["props"]["employees"]
-
-    # Filter: Drujba filial (id=3) + active + Teacher roli bor
-    candidates = []
+    # Filter: Drujba filial (id=3) + active + 'Teacher' roli bor
+    teachers = []
     for emp in employees:
         if not emp.get("active"):
             continue
         branches = emp.get("branches") or []
         if not any(b.get("id") == DRUJBA_BRANCH_ID for b in branches):
             continue
-        candidates.append(emp)
-
-    teachers = []
-    for emp in candidates:
-        # Har bir xodimning rollarini aniqlash — ro'yxatda role bo'lmasa, user sahifasidan
-        roles = emp.get("roles")
-        if roles is None:
-            try:
-                ru = s.get(f"{LMS_BASE}/admin/users/{emp['id']}", timeout=30)
-                rm = re.search(r'data-page="([^"]*)"', ru.text)
-                if rm:
-                    rdp = json.loads(unescape(rm.group(1)))
-                    u = rdp["props"].get("user") or {}
-                    roles = [ro.get("name", "") for ro in (u.get("roles") or [])]
-            except Exception as exc:
-                logger.warning(f"Finance report role fetch error ({emp.get('id')}): {exc}")
-                roles = []
-        if not any((ro or "").strip().lower() == "teacher" for ro in (roles or [])):
+        roles = [ro.get("name", "") for ro in (emp.get("roles") or [])]
+        if not any((ro or "").strip().lower() == "teacher" for ro in roles):
             continue
         try:
             bal = float(emp.get("employee_balance") or 0)
