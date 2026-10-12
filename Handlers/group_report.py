@@ -383,44 +383,67 @@ async def export_schedule_to_sheets(message: types.Message, state: FSMContext):
 
 
 def _build_finance_report():
-    """Finance report matnini yasash (blokirovka qiluvchi — to_thread ichida chaqiriladi)"""
-    s = _get_lms_session()
+    """Finance report matnini yasash (blokirovka qiluvchi — to_thread ichida chaqiriladi)
 
-    DRUJBA_TEACHERS = _load_teachers()
+    LMS dan Drujba filialida active ishlayotgan Teacher rolidagi ustozlarni
+    (Student roli ham bo'lsa ham kiradi) va ularning balansini oladi.
+    """
+    s = _get_lms_session()
 
     r = s.get(f"{LMS_BASE}/admin/calculated-salaries?per_page=200", timeout=90)
     match = re.search(r'data-page="([^"]*)"', r.text)
-    api_balances = {}
-    if match:
-        dp = json.loads(unescape(match.group(1)))
-        for emp in dp["props"]["employees"]:
-            name = f"{emp.get('first_name','')} {emp.get('last_name','')}".strip()
-            eb = emp.get("employee_balance", "0")
-            try:
-                eb = float(eb)
-            except:
-                eb = 0
-            api_balances[name] = eb
+    if not match:
+        raise Exception("LMS ma'lumotlari topilmadi (data-page yo'q)")
 
-    def _match_teacher(expected_name, all_balances):
-        parts = expected_name.lower().split()
-        for api_name, bal in all_balances.items():
-            api_lower = api_name.lower()
-            if all(p in api_lower for p in parts):
-                return bal, api_name
-        return 0, expected_name
+    dp = json.loads(unescape(match.group(1)))
+    employees = dp["props"]["employees"]
+
+    # Filter: Drujba filial (id=3) + active + Teacher roli bor
+    candidates = []
+    for emp in employees:
+        if not emp.get("active"):
+            continue
+        branches = emp.get("branches") or []
+        if not any(b.get("id") == DRUJBA_BRANCH_ID for b in branches):
+            continue
+        candidates.append(emp)
+
+    teachers = []
+    for emp in candidates:
+        # Har bir xodimning rollarini aniqlash — ro'yxatda role bo'lmasa, user sahifasidan
+        roles = emp.get("roles")
+        if roles is None:
+            try:
+                ru = s.get(f"{LMS_BASE}/admin/users/{emp['id']}", timeout=30)
+                rm = re.search(r'data-page="([^"]*)"', ru.text)
+                if rm:
+                    rdp = json.loads(unescape(rm.group(1)))
+                    u = rdp["props"].get("user") or {}
+                    roles = [ro.get("name", "") for ro in (u.get("roles") or [])]
+            except Exception as exc:
+                logger.warning(f"Finance report role fetch error ({emp.get('id')}): {exc}")
+                roles = []
+        if not any((ro or "").strip().lower() == "teacher" for ro in (roles or [])):
+            continue
+        try:
+            bal = float(emp.get("employee_balance") or 0)
+        except Exception:
+            bal = 0
+        name = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
+        teachers.append((name, bal))
+
+    teachers.sort(key=lambda x: x[1], reverse=True)
 
     text = "💰 <b>DRUJBA — USTOZLAR BALANSI</b>\n\n"
     total_balance = 0
     teacher_count = 0
-    for teacher in DRUJBA_TEACHERS:
-        bal, matched_name = _match_teacher(teacher, api_balances)
+    for name, bal in teachers:
         total_balance += bal
         teacher_count += 1
         if bal >= 0:
-            text += f"{teacher_count}. 👨🏻‍🏫 {teacher}\n   💰 {int(bal)} so'm\n\n"
+            text += f"{teacher_count}. 👨🏻‍🏫 {name}\n   💰 {int(bal)} so'm\n\n"
         else:
-            text += f"{teacher_count}. 👨🏻‍🏫 {teacher}\n   🔴 {int(bal)} so'm\n\n"
+            text += f"{teacher_count}. 👨🏻‍🏫 {name}\n   🔴 {int(bal)} so'm\n\n"
 
     text += f"━━━━━━━━━━━━━━━━\n"
     text += f"📊 <b>Jami:</b> {teacher_count} ta ustoz\n"
