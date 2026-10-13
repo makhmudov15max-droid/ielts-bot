@@ -1006,6 +1006,30 @@ async def late_reason_entered(message: types.Message, state: FSMContext):
     from utils.attendance_db import update_attendance_reason
     await update_attendance_reason(attendance_id, reason)
     
+    # ===== GURUH XABARINI TAHRIRLASH (sabab qo'shish) =====
+    # Xodim sabab kiritsa, avval guruhga yuborilgan xabar tahrirlanib,
+    # tagiga kech qolish sababi qo'shiladi. Sabab kiritilmasa — tahrirlanmaydi.
+    group_msg_id = data.get("group_msg_id")
+    if group_msg_id:
+        try:
+            edited_text = (
+                f"✅ <b>Xodim ishga keldi!</b>\n\n"
+                f"👤 <b>Xodim:</b> {user_name}\n"
+                f"📅 <b>Sana:</b> {today}\n"
+                f"⏰ <b>Kelgan vaqt:</b> {arrived_at}\n"
+                f"📋 <b>Ish vaqti:</b> {data.get('work_start')} - {data.get('work_end')}\n"
+                f"⚠️ <b>Kechikish:</b> {late_minutes} daqiqa\n"
+                f"✍️ <b>Sabab:</b> {reason}"
+            )
+            await message.bot.edit_message_text(
+                chat_id=REPORTS_GROUP_ID,
+                message_id=group_msg_id,
+                text=edited_text,
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            logging.error(f"Guruh xabarini tahrirlashda xatolik: {e}")
+    
     # ===== JARIMA INTEGRATSIYASI (kechikish) =====
     # Agar kechikish bo'lsa va shu rol uchun tarif belgilangan bo'lsa -> jarima qo'yiladi
     user_id_str = str(message.from_user.id)
@@ -1365,12 +1389,13 @@ async def check_in_video_handler(message: types.Message, state: FSMContext):
             await state.clear()
             return
         
+        group_msg_id = None
         try:
             await message.bot.send_video_note(
                 chat_id=GROUP_CHAT_ID,
                 video_note=message.video_note.file_id
             )
-            await message.bot.send_message(
+            sent_msg = await message.bot.send_message(
                 chat_id=GROUP_CHAT_ID,
                 text=f"✅ <b>Xodim ishga keldi!</b>\n\n"
                      f"👤 <b>Xodim:</b> {user_name}\n"
@@ -1380,11 +1405,13 @@ async def check_in_video_handler(message: types.Message, state: FSMContext):
                      f"⚠️ <b>Kechikish:</b> {late_min} daqiqa",
                 parse_mode="HTML"
             )
+            group_msg_id = sent_msg.message_id
         except Exception as e:
             logging.error(f"Isbotni guruhga yuborishda xatolik: {e}")
         
         await state.update_data(
             pending_attendance_id=record_id,
+            group_msg_id=group_msg_id,
             user_name=user_name,
             role=role,
             work_start=work_start,
