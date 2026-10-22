@@ -1031,11 +1031,12 @@ async def late_reason_entered(message: types.Message, state: FSMContext):
             logging.error(f"Guruh xabarini tahrirlashda xatolik: {e}")
     
     # ===== JARIMA INTEGRATSIYASI (kechikish) =====
-    # Agar kechikish bo'lsa va shu rol uchun tarif belgilangan bo'lsa -> jarima qo'yiladi
+    # Jarima video tasdiqlangandayoq yozilgan. Bu yerda faqat zaxira:
+    # agar state'da fine_id bo'lmasa (eski oqim) — jarima shu yerda yoziladi.
     user_id_str = str(message.from_user.id)
-    fine_amount = 0
-    fine_id = 0
-    if late_minutes > 0:
+    fine_amount = data.get("fine_amount") or 0
+    fine_id = data.get("fine_id") or 0
+    if not fine_id and late_minutes > 0:
         tariff = await find_tariff_for_minutes(role, late_minutes)
         if tariff:
             fine_id = await add_fine(
@@ -1060,10 +1061,7 @@ async def late_reason_entered(message: types.Message, state: FSMContext):
                 f"⏰ Kelgan vaqt: {arrived_at}\n"
                 f"⚠️ Kechikish: {late_minutes} daqiqa\n"
                 f"✍️ Sabab: {reason}\n\n"
-                f"⬇️ <b>Jarima</b>\n"
-                f"Assalomu alaykum, {user_name}. Bugun ishga {late_minutes} daqiqa kech kelganingiz aniqlandi. "
-                f"Shu sababli sizga <b>{fine_amount} so'm</b> jarima belgilanadi. "
-                f"Iltimos, kelajakda ish jadvaliga rioya qiling.\n\n"
+                f"💰 <b>Jarima:</b> {fine_amount} so'm — belgilangan.\n"
                 f"🌟 E'tiboringiz uchun rahmat!"
             ),
             parse_mode="HTML",
@@ -1409,6 +1407,24 @@ async def check_in_video_handler(message: types.Message, state: FSMContext):
         except Exception as e:
             logging.error(f"Isbotni guruhga yuborishda xatolik: {e}")
         
+        # ===== JARIMA DARHOL YOZILADI =====
+        # Video tasdiqlangandayoq jarima bazaga tushadi. Sabab keyin so'raladi.
+        # Shu tarzda xodim sababni yozmasa ham jarima yo'qolib qolmaydi.
+        fine_id = 0
+        fine_amount = 0
+        tariff = await find_tariff_for_minutes(role, late_min)
+        if tariff:
+            fine_id = await add_fine(
+                user_id=user_id,
+                user_name=user_name,
+                role=role,
+                date=today,
+                late_minutes=late_min,
+                amount=tariff["amount"],
+                reason="late"
+            )
+            fine_amount = tariff["amount"]
+        
         await state.update_data(
             pending_attendance_id=record_id,
             group_msg_id=group_msg_id,
@@ -1418,15 +1434,22 @@ async def check_in_video_handler(message: types.Message, state: FSMContext):
             work_end=work_end,
             arrived_at=current_time,
             today=today,
-            late_minutes=late_min
+            late_minutes=late_min,
+            fine_id=fine_id,
+            fine_amount=fine_amount
         )
         await state.set_state(MonitoringStates.waiting_for_late_reason)
+        fine_line = (
+            f"\n\n💰 <b>Jarima:</b> {fine_amount} so'm — belgilandi."
+            if fine_amount > 0 else ""
+        )
         await message.answer(
             text=(
                 f"⚠️ <b>Hurmatli {user_name}, siz ishga {late_min} daqiqa kech qoldingiz.</b>\n\n"
                 f"📅 Sana: {today}\n"
                 f"⏰ Kelgan vaqt: {current_time}\n"
-                f"📋 Ish vaqti: {work_start} - {work_end}\n\n"
+                f"📋 Ish vaqti: {work_start} - {work_end}"
+                f"{fine_line}\n\n"
                 f"✍️ <b>Iltimos, kech qolish sababini kiriting:</b>"
             ),
             parse_mode="HTML",

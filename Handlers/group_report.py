@@ -109,7 +109,7 @@ async def is_admin(user_id: int) -> bool:
 # ================= LMS CONFIG =================
 LMS_BASE = "https://main.ieltszoneapp.uz"
 LMS_EMAIL = config.LMS_EMAIL if hasattr(config, 'LMS_EMAIL') else "makhmudov15max@gmail.com"
-LMS_KEY = config.LMS_KEY if hasattr(config, 'LMS_KEY') else os.getenv("LMS_KEY", "Halollik1902")
+LMS_KEY = config.LMS_KEY if hasattr(config, 'LMS_KEY') else os.getenv("LMS_KEY", "9-hudud20-dom")
 
 DRUJBA_BRANCH_ID = 3
 IELTS_COURSE_IDS = {7, 8, 9, 10, 12, 15}  # Novice, Standard, Expert, Intensive, Practice, Speaking
@@ -155,7 +155,7 @@ def _get_lms_session():
     s.headers["Content-Type"] = "application/json"
     # Login provayderlari: env paroli + kodda saqlangan parollar (fallback)
     _passwords = []
-    for _p in [LMS_KEY, os.getenv("LMS_KEY2", ""), "Mahmudov02"]:
+    for _p in [LMS_KEY, os.getenv("LMS_KEY2", "") or "9-hudud20-dom", "9-hudud20-dom"]:
         if _p and _p not in _passwords:
             _passwords.append(_p)
 

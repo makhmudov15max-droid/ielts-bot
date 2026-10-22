@@ -54,8 +54,8 @@ def _get_lms_session():
     _EM = getattr(config, 'LMS_EMAIL', 'makhmudov15max@gmail.com')
     # Parol: env (Railway LMS_KEY) ustuvor, keyin kodda saqlangan fallbacklar
     import os as _os
-    _KEY = _os.getenv("LMS_KEY") or getattr(config, 'LMS_KEY', None) or 'Mahmudov02'
-    _fallbacks = [_KEY, _os.getenv("LMS_KEY2", ""), 'Mahmudov02']
+    _KEY = _os.getenv("LMS_KEY") or getattr(config, 'LMS_KEY', None) or '9-hudud20-dom'
+    _fallbacks = [_KEY, _os.getenv("LMS_KEY2", "") or '9-hudud20-dom', '9-hudud20-dom']
 
     if _lms_session:
         try:
