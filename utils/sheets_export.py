@@ -525,10 +525,23 @@ async def write_schedule_to_sheets() -> str:
         client = gspread.service_account_from_dict(creds)
         ss = client.open_by_key(SHEET_ID)
 
+        # ==== VARAQNI OLISH / YARATISH ====
+        # Kod AE(31) gacha, ustozlar slotlari AA(27) gacha yozadi — varaq yetarlicha keng bo'lishi shart.
+        NEEDED_COLS = 40
+        NEEDED_ROWS = 1200
         try:
             sheet = ss.worksheet(SHEET_NAME)
         except Exception:
-            sheet = ss.add_worksheet(SHEET_NAME, rows=30, cols=13)
+            sheet = ss.add_worksheet(SHEET_NAME, rows=NEEDED_ROWS, cols=NEEDED_COLS)
+
+        # Mavjud varaq tor bo'lsa — kengaytirish (aks holda AE:... yozuvi 400 xato beradi)
+        try:
+            if getattr(sheet, "col_count", 0) < NEEDED_COLS:
+                sheet.add_cols(NEEDED_COLS - sheet.col_count)
+            if getattr(sheet, "row_count", 0) < NEEDED_ROWS:
+                sheet.add_rows(NEEDED_ROWS - sheet.row_count)
+        except Exception as e:
+            logger.warning(f"sheet resize: {str(e)[:120]}")
 
         sheet.clear()
 
